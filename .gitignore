@@ -21,3 +21,9 @@ yarn-error.log
 .lando.yml
 laravel-echo-server.json
 laravel-echo-server.lock
+
+# Local AI tooling and generated context
+/.ai-factory.json
+/.ai-factory/
+/.codex/
+/AGENTS.md
