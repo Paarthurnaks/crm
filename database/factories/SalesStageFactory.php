@@ -19,11 +19,11 @@ class SalesStageFactory extends Factory
     public function definition(): array
     {
         return [
-            "title" => fake()->title(),
-            "color" => "#000000",
-            "position" => rand(0, 10),
-            "type" => SalesStageEnum::DEFAULT->value,
-            "sales_funnel_id" => SalesFunnel::COMMON
+            'title' => fake()->title(),
+            'color' => '#000000',
+            'position' => rand(0, 10),
+            'type' => SalesStageEnum::DEFAULT->value,
+            'sales_funnel_id' => SalesFunnel::COMMON,
         ];
     }
 }

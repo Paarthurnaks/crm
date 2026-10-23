@@ -3,15 +3,13 @@
 namespace App\Providers;
 
 use App\Helpers\StringHelpers;
-use Illuminate\Support\Str;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Str;
 
 class HelperServiceProvider extends ServiceProvider
 {
     /**
      * Register services.
-     *
-     * @return void
      */
     public function register(): void
     {
@@ -20,8 +18,6 @@ class HelperServiceProvider extends ServiceProvider
 
     /**
      * Bootstrap services.
-     *
-     * @return void
      */
     public function boot(): void
     {

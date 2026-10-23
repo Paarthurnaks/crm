@@ -20,10 +20,12 @@ class ForwardMessageRequest extends FormRequest
      *     title="Forward Message Request",
      *     description="Request body schema for forwarding messages to other chats.",
      *     required={"chat_ids", "message_ids"},
+     *
      *     @OA\Property(
      *         property="chat_ids",
      *         type="array",
      *         description="Array of chat IDs to forward the message(s) to",
+     *
      *         @OA\Items(
      *             type="integer",
      *             format="int64",
@@ -31,10 +33,12 @@ class ForwardMessageRequest extends FormRequest
      *             example=1
      *         )
      *     ),
+     *
      *     @OA\Property(
      *         property="message_ids",
      *         type="array",
      *         description="Array of message IDs to forward",
+     *
      *         @OA\Items(
      *             type="integer",
      *             format="int64",

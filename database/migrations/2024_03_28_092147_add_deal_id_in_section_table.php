@@ -14,8 +14,8 @@ return new class extends Migration
     {
         Schema::table('sections', function (Blueprint $table) {
             $table->foreignIdFor(Deal::class)->nullable()->constrained()->cascadeOnDelete();
-            $table->boolean("is_template")->default(false);
-            $table->boolean("main_section")->default(false);
+            $table->boolean('is_template')->default(false);
+            $table->boolean('main_section')->default(false);
         });
     }
 
@@ -26,8 +26,8 @@ return new class extends Migration
     {
         Schema::table('sections', function (Blueprint $table) {
             $table->dropForeignIdFor(Deal::class);
-            $table->dropColumn("is_template");
-            $table->dropColumn("main_section");
+            $table->dropColumn('is_template');
+            $table->dropColumn('main_section');
         });
     }
 };

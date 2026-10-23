@@ -19,12 +19,12 @@ class PermissionFactory extends Factory
     public function definition(): array
     {
         return [
-            "entity" => fake()->title(),
-            "role_id" => Role::COMMON,
-            "view" => PermissionTypeEnum::ALL->value,
-            "create" => PermissionTypeEnum::ALL->value,
-            "update" => PermissionTypeEnum::ALL->value,
-            "delete" => PermissionTypeEnum::ALL->value
+            'entity' => fake()->title(),
+            'role_id' => Role::COMMON,
+            'view' => PermissionTypeEnum::ALL->value,
+            'create' => PermissionTypeEnum::ALL->value,
+            'update' => PermissionTypeEnum::ALL->value,
+            'delete' => PermissionTypeEnum::ALL->value,
         ];
     }
 }

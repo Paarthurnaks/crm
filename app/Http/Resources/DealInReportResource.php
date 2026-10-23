@@ -15,8 +15,8 @@ class DealInReportResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            "id" => $this->id,
-            "fields" => ReportFieldsResource::collection($this->fields)
+            'id' => $this->id,
+            'fields' => ReportFieldsResource::collection($this->fields),
         ];
     }
 }

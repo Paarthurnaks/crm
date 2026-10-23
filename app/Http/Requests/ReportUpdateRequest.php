@@ -22,18 +22,18 @@ class ReportUpdateRequest extends FormRequest
     public function rules(): array
     {
         return [
-            "title" => ["string"],
-            "description" => ["string"],
-            "period_from" => ["date_format:Y-m-d H:i:s"],
-            "period_to" => ["date_format:Y-m-d H:i:s"],
-            "filter" => [""],
-            "user_access" => ["array"],
-            "user_access.*" => ["integer", "exists:users,id"],
-            "report_fields" => ["array"],
-            "report_fields.*.id" => ["integer"],
-            "report_fields.*.field_id" => ["integer"],
-            "report_fields.*.user_field_id" => ["integer"],
-            "report_fields.*.position" => ["integer"]
+            'title' => ['string'],
+            'description' => ['string'],
+            'period_from' => ['date_format:Y-m-d H:i:s'],
+            'period_to' => ['date_format:Y-m-d H:i:s'],
+            'filter' => [''],
+            'user_access' => ['array'],
+            'user_access.*' => ['integer', 'exists:users,id'],
+            'report_fields' => ['array'],
+            'report_fields.*.id' => ['integer'],
+            'report_fields.*.field_id' => ['integer'],
+            'report_fields.*.user_field_id' => ['integer'],
+            'report_fields.*.position' => ['integer'],
         ];
     }
 }

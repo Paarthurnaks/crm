@@ -9,14 +9,13 @@ use App\Notifications\DealEventNotification;
 
 class DealEventObserver
 {
-
     public function created(DealEvent $dealEvent): void
     {
-        if($dealEvent->deal->responsible_id && $dealEvent->deal->responsible_id !== auth()->id()) {
+        if ($dealEvent->deal->responsible_id && $dealEvent->deal->responsible_id !== auth()->id()) {
             $dealEvent->deal->responsible->notify(new DealEventNotification($dealEvent));
         }
 
-        if($dealEvent->deal->creator_id && $dealEvent->deal->creator_id !== auth()->id()) {
+        if ($dealEvent->deal->creator_id && $dealEvent->deal->creator_id !== auth()->id()) {
             $dealEvent->deal->creator->notify(new DealEventNotification($dealEvent, []));
         }
 
@@ -27,5 +26,4 @@ class DealEventObserver
             'activityable_id' => $dealEvent->id,
         ]);
     }
-
 }

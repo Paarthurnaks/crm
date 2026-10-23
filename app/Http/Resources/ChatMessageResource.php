@@ -12,9 +12,10 @@ use Illuminate\Support\Facades\Storage;
 
 class ChatMessageResource extends JsonResource
 {
-
     private $userId;
+
     private $chatResource;
+
     public function __construct($resource, $userId = null, $chatResource = null)
     {
         parent::__construct($resource);
@@ -28,6 +29,7 @@ class ChatMessageResource extends JsonResource
      *     schema="ChatMessageResource",
      *     title="Chat Message Resource",
      *     description="Represents a chat message in the API response.",
+     *
      *     @OA\Property(
      *         property="id",
      *         type="integer",
@@ -51,9 +53,11 @@ class ChatMessageResource extends JsonResource
      *     @OA\Property(
      *          property="attachments",
      *          type="array",
+     *
      *          @OA\Items(ref="#/components/schemas/MediaResource"),
      *          description="Array of attachments associated with the message."
      *      ),
+     *
      *     @OA\Property(
      *         property="status",
      *         type="string",
@@ -104,13 +108,13 @@ class ChatMessageResource extends JsonResource
     {
         $res = [
             'id' => $this->id,
-            'chat' => $this->when($this->chatResource, fn() => $this->chatResource, fn() => new ChatResource($this->chat, $this->userId)),
+            'chat' => $this->when($this->chatResource, fn () => $this->chatResource, fn () => new ChatResource($this->chat, $this->userId)),
             'user' => $this->getUserResource(),
             'text' => $this->text,
             'attachments' => MediaResource::collection($this->getMedia()),
             'status' => $this->status,
             'is_read_by_current_user' => $this->resource->isReadByUser($this->userId),
-            'reply_message' => $this->when($this->replyTo, fn() => new ChatMessageResource($this->replyTo, $this->userId)),
+            'reply_message' => $this->when($this->replyTo, fn () => new ChatMessageResource($this->replyTo, $this->userId)),
             'is_forwarded' => $this->is_forwarded,
             'deletable_time' => $this->created_at->addMinutes(config('app.message_lifetime', 1)),
             'created_at' => $this->created_at,
@@ -118,7 +122,7 @@ class ChatMessageResource extends JsonResource
         ];
 
         if ($this->forward && $this->forward->exists()) {
-            if(is_null($this->forward->originalMessage)) {
+            if (is_null($this->forward->originalMessage)) {
                 $res['forwarded_message_author'] = ['full_name' => DefaultChatNameEnum::DELETED_USER->value];
             } else {
                 $res['forwarded_message_author'] = new UserResource($this->forward->originalMessage->user);
@@ -128,22 +132,20 @@ class ChatMessageResource extends JsonResource
         return $res;
     }
 
-    /**
-     * @return UserResource|array
-     */
     private function getUserResource(): UserResource|array
     {
-        if ($this->chat->type === ChatTypeEnum::PARTNER->value){
+        if ($this->chat->type === ChatTypeEnum::PARTNER->value) {
             $user = User::find($this->userId);
 
-            if ($user && $user->hasRole(DefaultRolesEnum::PARTNER->value) && $this->user->id !== $this->userId){
+            if ($user && $user->hasRole(DefaultRolesEnum::PARTNER->value) && $this->user->id !== $this->userId) {
                 return [
                     'name' => 'ЕСБ',
                     'surname' => 'Система',
-                    'avatar' => Storage::url("avatars/esb_logo.png"),
+                    'avatar' => Storage::url('avatars/esb_logo.png'),
                 ];
             }
         }
+
         return new UserResource($this->user);
     }
 }

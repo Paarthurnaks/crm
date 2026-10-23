@@ -12,6 +12,7 @@ class KnowledgeBaseResource extends JsonResource
      *     schema="KnowledgeBaseResource",
      *     type="object",
      *     title="Ресурс базы знаний",
+     *
      *     @OA\Property(
      *         property="id",
      *         type="integer",
@@ -36,6 +37,7 @@ class KnowledgeBaseResource extends JsonResource
      *     @OA\Property(
      *         property="contents",
      *         type="array",
+     *
      *         @OA\Items(ref="#/components/schemas/KnowledgeBaseContentResource")
      *     )
      * )

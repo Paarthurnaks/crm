@@ -14,10 +14,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('section_fields', function (Blueprint $table) {
-            if (!Schema::hasColumn('section_fields', 'field_id')) {
+            if (! Schema::hasColumn('section_fields', 'field_id')) {
                 $table->foreignIdFor(Field::class)->nullable();
             }
-            if (!Schema::hasColumn('section_fields', 'user_field_id')) {
+            if (! Schema::hasColumn('section_fields', 'user_field_id')) {
                 $table->foreignIdFor(UserField::class)->nullable();
             }
 
@@ -31,8 +31,6 @@ return new class extends Migration
 
     /**
      * Reverse the migrations.
-     *
-     * @return void
      */
     public function down(): void
     {

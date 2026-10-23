@@ -15,6 +15,7 @@ use OpenApi\Annotations as OA;
  * @OA\Schema(
  *     title="UserFieldEnumValue",
  *     description="Значение пользовательского поля",
+ *
  *     @OA\Xml(
  *         name="UserFieldValue"
  *     )
@@ -22,12 +23,12 @@ use OpenApi\Annotations as OA;
  */
 class UserFieldEnumValue extends Model
 {
-    use HasFactory,Filterable;
+    use Filterable,HasFactory;
 
     protected $fillable = [
-        "option",
-        "field_id",
-        "sort_order",
+        'option',
+        'field_id',
+        'sort_order',
     ];
 
     /**
@@ -37,8 +38,6 @@ class UserFieldEnumValue extends Model
      *     format="int64",
      *     example=1
      * )
-     *
-     * @var int
      */
     private int $id;
 
@@ -48,8 +47,6 @@ class UserFieldEnumValue extends Model
      *     description="значение списка енама",
      *     example="зеленый"
      * )
-     *
-     * @var string
      */
     private string $option;
 
@@ -60,8 +57,6 @@ class UserFieldEnumValue extends Model
      *     format="int64",
      *     example=2
      * )
-     *
-     * @var int
      */
     private int $field_id;
 
@@ -71,8 +66,6 @@ class UserFieldEnumValue extends Model
      *      description="сортировка",
      *      example=1
      * )
-     *
-     * @var int
      */
     private int $sort_order;
 }

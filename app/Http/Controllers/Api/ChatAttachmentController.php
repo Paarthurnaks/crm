@@ -7,16 +7,12 @@ use App\Http\Resources\ChatMessageResource;
 use App\Services\ChatAttachmentService;
 use App\Services\ResponseService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 class ChatAttachmentController extends Controller
 {
-
     public function __construct(
         private readonly ChatAttachmentService $service
-    )
-    {
-    }
+    ) {}
 
     /**
      * @OA\Get(
@@ -25,37 +21,48 @@ class ChatAttachmentController extends Controller
      *     summary="Get all media images for a chat",
      *     description="Retrieve all image media associated with a specific chat.",
      *     security={{ "bearer_token": {} }},
+     *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
      *         required=true,
      *         description="Chat ID to fetch images for",
+     *
      *         @OA\Schema(type="string")
      *     ),
+     *
      *     @OA\Parameter(
      *          name="page",
      *          in="query",
      *          required=false,
      *          description="Page number of the pagination",
+     *
      *          @OA\Schema(type="integer", default=1)
      *      ),
+     *
      *      @OA\Parameter(
      *          name="limit",
      *          in="query",
      *          required=false,
      *          description="Number of items per page",
+     *
      *          @OA\Schema(type="integer", default=20)
      *      ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Successful operation",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(
      *                 property="data",
      *                 type="array",
+     *
      *                 @OA\Items(ref="#/components/schemas/ChatMessageResource")
      *             ),
+     *
      *             @OA\Property(
      *                 property="meta",
      *                 type="object",
@@ -93,37 +100,48 @@ class ChatAttachmentController extends Controller
      *     summary="Get all media documents for a chat",
      *     description="Retrieve all document media associated with a specific chat. Supports pagination.",
      *     security={{ "bearer_token": {} }},
+     *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
      *         required=true,
      *         description="Chat ID to fetch documents for",
+     *
      *         @OA\Schema(type="string")
      *     ),
+     *
      *     @OA\Parameter(
      *         name="page",
      *         in="query",
      *         required=false,
      *         description="Page number of the pagination",
+     *
      *         @OA\Schema(type="integer", default=1)
      *     ),
+     *
      *     @OA\Parameter(
      *         name="limit",
      *         in="query",
      *         required=false,
      *         description="Number of items per page",
+     *
      *         @OA\Schema(type="integer", default=20)
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Successful operation",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(
      *                 property="data",
      *                 type="array",
+     *
      *                 @OA\Items(ref="#/components/schemas/ChatMessageResource")
      *             ),
+     *
      *             @OA\Property(
      *                 property="meta",
      *                 type="object",
@@ -161,37 +179,48 @@ class ChatAttachmentController extends Controller
      *     summary="Get all links from chat messages",
      *     description="Retrieve all links contained within the messages of a specific chat.",
      *     security={{ "bearer_token": {} }},
+     *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
      *         required=true,
      *         description="Chat ID to fetch links for",
+     *
      *         @OA\Schema(type="string")
      *     ),
+     *
      *     @OA\Parameter(
      *          name="page",
      *          in="query",
      *          required=false,
      *          description="Page number of the pagination",
+     *
      *          @OA\Schema(type="integer", default=1)
      *      ),
+     *
      *      @OA\Parameter(
      *          name="limit",
      *          in="query",
      *          required=false,
      *          description="Number of items per page",
+     *
      *          @OA\Schema(type="integer", default=20)
      *      ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Successful operation",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(
      *                 property="data",
      *                 type="array",
+     *
      *                 @OA\Items(ref="#/components/schemas/ChatMessageResource")
      *             ),
+     *
      *             @OA\Property(
      *                 property="meta",
      *                 type="object",

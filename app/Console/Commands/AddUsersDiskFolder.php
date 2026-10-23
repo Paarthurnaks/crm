@@ -29,10 +29,9 @@ class AddUsersDiskFolder extends Command
     {
         $users = User::all();
 
-        foreach ($users as $user)
-        {
-            $userFullName = $user->name."_".$user->surname;
-            Storage::disk("local")->makeDirectory("public/users/".$userFullName);
+        foreach ($users as $user) {
+            $userFullName = $user->name.'_'.$user->surname;
+            Storage::disk('local')->makeDirectory('public/users/'.$userFullName);
         }
     }
 }

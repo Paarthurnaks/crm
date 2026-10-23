@@ -3,9 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
-use Database\Seeders\UserSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Support\Facades\Auth;
 use Tests\TestCase;
 
@@ -14,6 +12,7 @@ class AuthTest extends TestCase
     use RefreshDatabase;
 
     private array $userData;
+
     private User $user;
 
     protected function setUp(): void
@@ -21,8 +20,8 @@ class AuthTest extends TestCase
         parent::setUp();
 
         $this->userData = [
-            "email" => "example@242_test.com",
-            "password" => "242_test"
+            'email' => 'example@242_test.com',
+            'password' => '242_test',
         ];
 
         $this->user = User::factory()->create($this->userData);
@@ -40,14 +39,14 @@ class AuthTest extends TestCase
     {
         Auth::login($this->user);
 
-        $response = $this->get("/api/me");
+        $response = $this->get('/api/me');
 
         $response->assertStatus(200);
     }
 
     public function test_unauthenticated_user(): void
     {
-        $response = $this->get("/api/me");
+        $response = $this->get('/api/me');
 
         $response->assertStatus(401);
     }

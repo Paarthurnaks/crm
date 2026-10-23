@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @OA\Schema(
  *     title="Report",
  *     description="Отчёт",
+ *
  *     @OA\Xml(
  *         name="Report"
  *     )
@@ -22,16 +23,16 @@ class Report extends Model
     use HasFactory;
 
     protected $fillable = [
-        "title",
-        "description",
-        "period_from",
-        "period_to",
-        "filter",
-        "author_id"
+        'title',
+        'description',
+        'period_from',
+        'period_to',
+        'filter',
+        'author_id',
     ];
 
     protected $casts = [
-        "filter" => "array"
+        'filter' => 'array',
     ];
 
     /**
@@ -45,6 +46,7 @@ class Report extends Model
      * @var bigInteger
      */
     private $id;
+
     /**
      * @OA\Property(
      *      title="title",
@@ -55,6 +57,7 @@ class Report extends Model
      * @var string
      */
     private $title;
+
     /**
      * @OA\Property(
      *      title="title",
@@ -65,6 +68,7 @@ class Report extends Model
      * @var string
      */
     private $description;
+
     /**
      * @OA\Property(
      *     title="period_from",
@@ -76,6 +80,7 @@ class Report extends Model
      * @var datetime
      */
     private $period_from;
+
     /**
      * @OA\Property(
      *     title="period_to",
@@ -87,18 +92,21 @@ class Report extends Model
      * @var datetime
      */
     private $period_to;
+
     /**
      * @OA\Property(
      *      type="array",
      *      title="filter",
      *      description="фильтр отчёта",
      *      example="",
+     *
      *      @OA\Items(),
      * )
      *
      * @var mixed[]
      */
     private $filter;
+
     /**
      * @OA\Property(
      *     title="author_id",
@@ -113,16 +121,16 @@ class Report extends Model
 
     public function fields(): HasMany
     {
-        return $this->hasMany(ReportField::class)->orderBy("position");
+        return $this->hasMany(ReportField::class)->orderBy('position');
     }
 
     public function author(): BelongsTo
     {
-        return $this->belongsTo(User::class, "author_id");
+        return $this->belongsTo(User::class, 'author_id');
     }
 
     public function userAccess(): BelongsToMany
     {
-        return $this->belongsToMany(User::class, "report_accesses");
+        return $this->belongsToMany(User::class, 'report_accesses');
     }
 }

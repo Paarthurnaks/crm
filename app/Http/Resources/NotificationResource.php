@@ -4,12 +4,10 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-
 use OpenApi\Attributes as OA;
 
 class NotificationResource extends JsonResource
 {
-
     #[OA\Schema(
         schema: 'NotificationResource',
         type: 'object',
@@ -51,9 +49,9 @@ class NotificationResource extends JsonResource
                                 property: 'updated_at',
                                 type: 'string',
                                 example: '2024-04-08T12:08:17.000000Z'
-                            )
+                            ),
                         ]
-                    )
+                    ),
                 ]
             ),
             new OA\Property(
@@ -67,10 +65,9 @@ class NotificationResource extends JsonResource
                 type: 'string',
                 format: 'date-time',
                 example: '2024-04-08T12:08:17.000000Z'
-            )
+            ),
         ]
     )]
-
     public function toArray(Request $request): array
     {
         return [

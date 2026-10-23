@@ -4,7 +4,6 @@ namespace App\Http\Requests\ChatMessage;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
 
 class StoreRequest extends FormRequest
 {
@@ -22,6 +21,7 @@ class StoreRequest extends FormRequest
      *     title="Store Chat Message Request",
      *     description="Represents the request body for creating a new chat message.",
      *     required={"text"},
+     *
      *     @OA\Property(
      *          property="text",
      *          type="string",
@@ -37,7 +37,9 @@ class StoreRequest extends FormRequest
      *          property="attachments",
      *          type="array",
      *          description="Optional array of attachments. Required if no text content is provided. Maximum of 10 attachments allowed.",
+     *
      *          @OA\Items(type="string", format="binary"),
+     *
      *          @OA\ExternalDocumentation(
      *              description="Note",
      *              url="Note: Each attachment must be a file of type jpg, jpeg, png, webp, avif, pdf, or txt."

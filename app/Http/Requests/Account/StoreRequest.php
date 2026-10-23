@@ -23,10 +23,10 @@ class StoreRequest extends FormRequest
     public function rules(): array
     {
         return [
-            "sum" => ["numeric"],
-            "deal_id" => ["required","integer", "exists:deals,id"],
-            "author_id" => ["integer", "exists:users,id"],
-            "invoice_date" => ["date"],
+            'sum' => ['numeric'],
+            'deal_id' => ['required', 'integer', 'exists:deals,id'],
+            'author_id' => ['integer', 'exists:users,id'],
+            'invoice_date' => ['date'],
         ];
     }
 }

@@ -19,17 +19,17 @@ class TaskObserver
     {
         $type = TaskEventTypeEnum::NEW_TASK->value;
 
-        if($task->type === TaskTypeEnum::DOCKET->value) {
+        if ($task->type === TaskTypeEnum::DOCKET->value) {
             $type = TaskEventTypeEnum::NEW_DOCKET->value;
         }
 
         TaskEvent::create([
-            "task_id" => $task->id,
-            "initiator_id" => $task->creator_id,
-            "type" => $type,
+            'task_id' => $task->id,
+            'initiator_id' => $task->creator_id,
+            'type' => $type,
         ]);
 
-        if($task->deal_id) {
+        if ($task->deal_id) {
             EntityActivity::create([
                 'entity_id' => $task->deal_id,
                 'entity_type' => Deal::class,
@@ -38,7 +38,7 @@ class TaskObserver
             ]);
         }
 
-        if($task->type === TaskTypeEnum::DOCKET->value || $task->type === TaskTypeEnum::STANDARD->value) {
+        if ($task->type === TaskTypeEnum::DOCKET->value || $task->type === TaskTypeEnum::STANDARD->value) {
             $deadline = Carbon::parse($task->deadline);
             $now = Carbon::now();
 
@@ -51,28 +51,28 @@ class TaskObserver
 
     public function updating(Task $task): void
     {
-        $values = Lang::get("tasks");
+        $values = Lang::get('tasks');
         foreach ($values as $key => $value) {
             if ($task->isDirty($key)) {
-                $type = $key == "status" ? TaskEventTypeEnum::CHANGE_STATUS->value : TaskEventTypeEnum::CHANGE_FIELD->value;
+                $type = $key == 'status' ? TaskEventTypeEnum::CHANGE_STATUS->value : TaskEventTypeEnum::CHANGE_FIELD->value;
                 TaskEvent::create([
-                    "task_id" => $task->id,
-                    "initiator_id" => auth()->id() ?? null,
-                    "type" => $type,
-                    "changed_field" => trans("tasks." . $key),
-                    "old_value" => $task->getOriginal($key),
-                    "new_value" => $task->{$key}
+                    'task_id' => $task->id,
+                    'initiator_id' => auth()->id() ?? null,
+                    'type' => $type,
+                    'changed_field' => trans('tasks.'.$key),
+                    'old_value' => $task->getOriginal($key),
+                    'new_value' => $task->{$key},
                 ]);
             }
         }
 
         if ($task->isDirty('deadline') && $task->deadline) {
-            if(Carbon::parse($task->deadline)->isFuture()) {
+            if (Carbon::parse($task->deadline)->isFuture()) {
                 $task->status = TaskStatusEnum::PENDING->value;
 
                 $delay = Carbon::parse($task->deadline)->diffInSeconds(now());
                 TaskDeadlineExpirationJob::dispatch($task)->delay($delay);
-            } else if(Carbon::parse($task->deadline)->isPast()){
+            } elseif (Carbon::parse($task->deadline)->isPast()) {
                 TaskDeadlineExpirationJob::dispatch($task);
             }
         }

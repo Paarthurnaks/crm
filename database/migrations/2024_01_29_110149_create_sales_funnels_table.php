@@ -14,14 +14,13 @@ return new class extends Migration
     {
         Schema::create('sales_funnels', function (Blueprint $table) {
             $table->id();
-            $table->string("title");
+            $table->string('title');
             $table->timestamps();
         });
 
         SalesFunnel::factory()->create([
-            "title" => "common"
+            'title' => 'common',
         ]);
-
 
     }
 

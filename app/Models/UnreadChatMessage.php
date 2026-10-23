@@ -10,7 +10,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @OA\Schema(
  *     title="UnreadChatMessage",
  *     description="Модель сообщения пользователя в чате",
+ *
  *     @OA\Xml(name="UnreadChatMessage"),
+ *
  *     @OA\Property(
  *         property="id",
  *         title="ID",
@@ -45,7 +47,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *     )
  * )
  */
-
 class UnreadChatMessage extends Model
 {
     use HasFactory;
@@ -56,9 +57,6 @@ class UnreadChatMessage extends Model
         'chat_message_id',
     ];
 
-    /**
-     * @return BelongsTo
-     */
     public function message(): BelongsTo
     {
         return $this->belongsTo(ChatMessage::class, 'chat_message_id');

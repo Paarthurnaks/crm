@@ -24,14 +24,16 @@ class CreateAdminCommand extends Command
 
         // Check if user already exists
         if (User::where('email', $email)->exists()) {
-            $this->error("Пользователь с таким email уже существует!");
+            $this->error('Пользователь с таким email уже существует!');
+
             return 1;
         }
 
         $roleId = Role::where('original_title', DefaultRolesEnum::SUPER_ADMIN->value)->value('id');
 
-        if(!$roleId) {
+        if (! $roleId) {
             $this->error('Роль супер-админа не инициализирована в базе данных!');
+
             return 1;
         }
 
@@ -44,11 +46,11 @@ class CreateAdminCommand extends Command
             'role_id' => $roleId,
         ]);
 
-        if($isSuperAdmin){
+        if ($isSuperAdmin) {
             $user->highLevelAdmin()->create(['user_id' => $user->id]);
         }
 
-        $this->info("Админ успешно создан!");
+        $this->info('Админ успешно создан!');
 
         return 0;
     }

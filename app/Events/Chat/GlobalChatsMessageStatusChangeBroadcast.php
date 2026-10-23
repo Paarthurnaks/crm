@@ -20,10 +20,7 @@ class GlobalChatsMessageStatusChangeBroadcast implements ShouldBroadcast
     public function __construct(
         private readonly ChatMessageResource $message,
         private readonly ChatResource $chat,
-    )
-    {
-
-    }
+    ) {}
 
     /**
      * Get the channels the event should broadcast on.
@@ -33,7 +30,7 @@ class GlobalChatsMessageStatusChangeBroadcast implements ShouldBroadcast
     public function broadcastOn(): array
     {
         return [
-            new PrivateChannel('global-chats.' . $this->message->user->id),
+            new PrivateChannel('global-chats.'.$this->message->user->id),
         ];
     }
 
@@ -41,7 +38,6 @@ class GlobalChatsMessageStatusChangeBroadcast implements ShouldBroadcast
     {
         return 'GlobalChatsMessageStatusChange';
     }
-
 
     public function broadcastWith(): array
     {

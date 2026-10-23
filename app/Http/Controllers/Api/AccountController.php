@@ -18,10 +18,7 @@ use OpenApi\Annotations as OA;
 
 class AccountController extends Controller
 {
-    public function __construct(private readonly AccountService $accountService)
-    {
-
-    }
+    public function __construct(private readonly AccountService $accountService) {}
 
     /**
      * @OA\Get(
@@ -31,105 +28,130 @@ class AccountController extends Controller
      *     description="Получение списка выставленных счетов",
      *     summary="Получение списка выставленных счетов",
      *     security={{"bearer_token":{}}},
+     *
      *     @OA\Parameter(
      *          name="page",
      *          description="Номер страницы",
      *          required=false,
      *          in="query",
+     *
      *          @OA\Schema(
      *              type="int",
      *          )
      *      ),
+     *
      *      @OA\Parameter(
      *          name="limit",
      *          description="Количество элементов на странице",
      *          required=false,
      *          in="query",
+     *
      *          @OA\Schema(
      *              type="int",
      *              default=50,
      *          )
      *      ),
+     *
      *      @OA\Parameter(
      *          name="author_id",
      *          description="id того, кто выставил счет",
      *          required=false,
      *          in="query",
+     *
      *          @OA\Schema(
      *              type="int",
      *          )
      *      ),
+     *
      *      @OA\Parameter(
      *          name="deal_id",
      *          description="id привязанной сделки",
      *          required=false,
      *          in="query",
+     *
      *          @OA\Schema(
      *              type="int",
      *          )
      *      ),
+     *
      *      @OA\Parameter(
      *          name="invoice_date_from",
      *          description="фильтр по дате выставления (от)",
      *          required=false,
      *          in="query",
+     *
      *          @OA\Schema(
      *              type="string",
      *          )
      *      ),
+     *
      *     @OA\Parameter(
      *          name="invoice_date_to",
      *          description="фильтр по дате выставления (до)",
      *          required=false,
      *          in="query",
+     *
      *          @OA\Schema(
      *              type="string",
      *          )
      *      ),
+     *
      *     @OA\Parameter(
      *          name="created_at_from",
      *          description="фильтр по дате создания (от)",
      *          required=false,
      *          in="query",
+     *
      *          @OA\Schema(
      *              type="string",
      *          )
      *      ),
+     *
      *     @OA\Parameter(
      *          name="created_at_to",
      *          description="фильтр по дате создания (до)",
      *          required=false,
      *          in="query",
+     *
      *          @OA\Schema(
      *              type="string",
      *          )
      *      ),
+     *
      *     @OA\Parameter(
      *          name="updated_at_from",
      *          description="фильтр по дате обновления (от)",
      *          required=false,
      *          in="query",
+     *
      *          @OA\Schema(
      *              type="string",
      *          )
-     *      ),  
+     *      ),
+     *
      *     @OA\Parameter(
      *          name="updated_at_to",
      *          description="фильтр по дате обновления (до)",
      *          required=false,
      *          in="query",
+     *
      *          @OA\Schema(
      *              type="string",
      *          )
      *      ),
+     *
      *     @OA\Response(response="200",
      *          description="OK",
+     *
      *          @OA\MediaType(
      *              mediaType="application/json",
+     *
      *              @OA\Schema(
+     *
      *                 @OA\Property(
      *                     property="data",
      *                     type="array",
+     *
      *                     @OA\Items(
      *                        ref="#/components/schemas/Account"
      *                     )
@@ -138,16 +160,12 @@ class AccountController extends Controller
      *          ),
      *      )
      * )
-     *
-     * @param Request $request
-     * @param AccountFilter $filter
-     * @return JsonResponse
      */
     public function index(Request $request, AccountFilter $filter): JsonResponse
     {
         $queryParams = $request->all();
         $accounts = $this->accountService->getList($filter, $queryParams);
-        $total = $accounts->toArray()["total"];
+        $total = $accounts->toArray()['total'];
 
         return ResponseService::success(
             ListResource::make(AccountResource::class, $accounts, $total)
@@ -162,21 +180,27 @@ class AccountController extends Controller
      *     description="Метод для получения конкретного выставленного счета",
      *     summary="Метод для получения конкретного выставленного счета",
      *     security={{"bearer_token":{}}},
+     *
      *     @OA\Parameter(
      *          name="id",
      *          description="id счета",
      *          required=true,
      *          in="path",
+     *
      *          @OA\Schema(
      *              type="string",
      *              example=19
      *          )
      *      ),
+     *
      *     @OA\Response(response="200",
      *          description="OK",
+     *
      *          @OA\MediaType(
      *              mediaType="application/json",
+     *
      *              @OA\Schema(
+     *
      *                 @OA\Property(
      *                     property="data",
      *                     ref="#/components/schemas/Account"
@@ -184,19 +208,17 @@ class AccountController extends Controller
      *              )
      *          )
      *      ),
+     *
      *      @OA\Response(response="404",
      *          description="NOT FOUND"
      *      ),
      * )
-     *
-     * @param int $id
-     * @return JsonResponse
      */
     public function show(int $id): JsonResponse
     {
         $account = Account::find($id);
 
-        if (!$account) {
+        if (! $account) {
             return ResponseService::notFound(
                 message: __('Счет не найден')
             );
@@ -215,10 +237,14 @@ class AccountController extends Controller
      *     description="Метод для выставления счета",
      *     summary="Метод для выставления счета",
      *     security={{"bearer_token":{}}},
+     *
      *     @OA\RequestBody(
+     *
      *       @OA\MediaType(
      *           mediaType="application/json",
+     *
      *           @OA\Schema(
+     *
      *              @OA\Property(property="sum", type="double", example=70000),
      *              @OA\Property(property="deal_id", type="int", example=14),
      *              @OA\Property(property="author_id", type="int", example=98),
@@ -226,11 +252,15 @@ class AccountController extends Controller
      *           ),
      *       ),
      *     ),
+     *
      *     @OA\Response(response="200",
      *          description="OK",
+     *
      *          @OA\MediaType(
      *              mediaType="application/json",
+     *
      *              @OA\Schema(
+     *
      *                 @OA\Property(
      *                     property="data",
      *                     ref="#/components/schemas/Account"
@@ -238,13 +268,11 @@ class AccountController extends Controller
      *              )
      *          )
      *      ),
+     *
      *      @OA\Response(response="403",
      *          description="FORBIDDEN"
      *     ),
      * )
-     *
-     * @param StoreRequest $request
-     * @return JsonResponse
      */
     public function store(StoreRequest $request): JsonResponse
     {
@@ -271,19 +299,25 @@ class AccountController extends Controller
      *     description="Метод для обновления выставленного счета",
      *     summary="Метод для обновления выставленного счета",
      *     security={{"bearer_token":{}}},
+     *
      *     @OA\Parameter(
      *          name="id",
      *          description="id счета",
      *          required=true,
      *          in="path",
+     *
      *          @OA\Schema(
      *              type="string"
      *          )
      *      ),
+     *
      *     @OA\RequestBody(
+     *
      *       @OA\MediaType(
      *           mediaType="application/json",
+     *
      *           @OA\Schema(
+     *
      *              @OA\Property(property="sum", type="double", example=70000),
      *              @OA\Property(property="deal_id", type="int", example=14),
      *              @OA\Property(property="author_id", type="int", example=98),
@@ -291,11 +325,15 @@ class AccountController extends Controller
      *           ),
      *       ),
      *     ),
+     *
      *     @OA\Response(response="200",
      *          description="OK",
+     *
      *          @OA\MediaType(
      *              mediaType="application/json",
+     *
      *              @OA\Schema(
+     *
      *                 @OA\Property(
      *                     property="data",
      *                     ref="#/components/schemas/Account"
@@ -303,6 +341,7 @@ class AccountController extends Controller
      *              )
      *          )
      *      ),
+     *
      *      @OA\Response(response="404",
      *          description="NOT FOUND"
      *      ),
@@ -310,16 +349,12 @@ class AccountController extends Controller
      *          description="FORBIDDEN"
      *     ),
      * )
-     *
-     * @param int $id
-     * @param UpdateRequest $request
-     * @return JsonResponse
      */
     public function update(int $id, UpdateRequest $request): JsonResponse
     {
         $account = Account::find($id);
 
-        if (!$account) {
+        if (! $account) {
             return ResponseService::notFound(
                 message: __('Счет не найден')
             );
@@ -342,15 +377,18 @@ class AccountController extends Controller
      *     description="Метод для удаления выставленного счета",
      *     summary="Метод для удаления выставленного счета",
      *     security={{"bearer_token":{}}},
+     *
      *     @OA\Parameter(
      *          name="id",
      *          description="id счета",
      *          required=true,
      *          in="path",
+     *
      *          @OA\Schema(
      *              type="string"
      *          )
      *      ),
+     *
      *     @OA\Response(response="200",
      *          description="OK",
      *     ),
@@ -361,22 +399,19 @@ class AccountController extends Controller
      *          description="FORBIDDEN"
      *     ),
      * )
-     *
-     * @param int $id
-     * @return JsonResponse
      */
     public function destroy(int $id): JsonResponse
     {
         try {
             $account = Account::find($id);
 
-            if (!$account) {
+            if (! $account) {
                 return ResponseService::notFound(message: __('Счет не найден'));
             }
 
             $this->accountService->delete($account);
 
-            return ResponseService::success(message: __("Счет удален"));
+            return ResponseService::success(message: __('Счет удален'));
         } catch (\Throwable $e) {
             return ResponseService::badRequest($e->getMessage());
         }

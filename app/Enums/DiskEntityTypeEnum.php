@@ -9,7 +9,7 @@ enum DiskEntityTypeEnum: string
 
     public function label(): string
     {
-        return match($this) {
+        return match ($this) {
             self::FOLDER => __('disk_entities.Folder'),
             self::FILE => __('disk_entities.File'),
         };

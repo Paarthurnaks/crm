@@ -29,9 +29,9 @@ class UploadUpdateRequest extends FormRequest
         return [
             'entity' => ['string', Rule::in($entities)],
             'template' => [
-                'mimetypes:application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+                'mimetypes:application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             ],
-            "title" => ['string'],
+            'title' => ['string'],
         ];
     }
 }

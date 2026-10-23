@@ -22,11 +22,11 @@ class SalesStageStoreRequest extends FormRequest
     public function rules(): array
     {
         return [
-            "sales_funnel_id" => ["required", "integer", "exists:sales_funnels,id"],
-            "title" => ["required", "string"],
-            "type" => ["required", "string"],
-            "position" => ["required", "integer"],
-            "color" => ["required", "string"]
+            'sales_funnel_id' => ['required', 'integer', 'exists:sales_funnels,id'],
+            'title' => ['required', 'string'],
+            'type' => ['required', 'string'],
+            'position' => ['required', 'integer'],
+            'color' => ['required', 'string'],
         ];
     }
 }

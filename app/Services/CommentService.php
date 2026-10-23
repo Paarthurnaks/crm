@@ -13,7 +13,7 @@ class CommentService
         return $comment;
     }
 
-    public function delete(Comment $comment): bool|null
+    public function delete(Comment $comment): ?bool
     {
         return $comment->delete();
     }

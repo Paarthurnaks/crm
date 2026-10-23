@@ -15,9 +15,9 @@ class UserTableSettingsResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            "id" => $this->id,
-            "entity" => $this->entity,
-            "settings" => $this->settings
+            'id' => $this->id,
+            'entity' => $this->entity,
+            'settings' => $this->settings,
         ];
     }
 }

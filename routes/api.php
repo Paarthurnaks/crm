@@ -36,56 +36,55 @@ Route::controller(AuthController::class)->group(function () {
     Route::post('change-password/send-link', 'sendLinkChangePassword');
     Route::post('change-password/change', 'changePassword');
 
-    Route::group(["middleware" => "auth:api"], function() {
+    Route::group(['middleware' => 'auth:api'], function () {
         Route::post('logout', 'logout');
         Route::post('refresh', 'refresh');
-        Route::get("me", "me");
-        Route::post("change-user-avatar", "changeAvatar");
+        Route::get('me', 'me');
+        Route::post('change-user-avatar', 'changeAvatar');
     });
 
 });
 
-Route::group(["middleware" => "auth:api"], function() {
+Route::group(['middleware' => 'auth:api'], function () {
     Route::get('user-fields/types', [UserFieldController::class, 'types']);
-    Route::post("user-field-values/attachments", [UserFieldController::class, "addAttachment"]);
-    Route::delete("user-field-values/attachments/{attachmentId}", [UserFieldController::class, "deleteAttachment"]);
+    Route::post('user-field-values/attachments', [UserFieldController::class, 'addAttachment']);
+    Route::delete('user-field-values/attachments/{attachmentId}', [UserFieldController::class, 'deleteAttachment']);
 
-    Route::apiResource("reports", ReportController::class);
+    Route::apiResource('reports', ReportController::class);
     Route::get('reports/{id}/download', [ReportController::class, 'export']);
 
     // api ресурсы
-    Route::apiResource("users", UserController::class)
-        ->middleware("check_permissions:resource,".PermissionEntityEnum::USERS->value);
+    Route::apiResource('users', UserController::class)
+        ->middleware('check_permissions:resource,'.PermissionEntityEnum::USERS->value);
 
-    Route::get("user-table-settings", [UserTableSettingsController::class, "index"]);
-    Route::put("user-table-settings", [UserTableSettingsController::class, "update"]);
+    Route::get('user-table-settings', [UserTableSettingsController::class, 'index']);
+    Route::put('user-table-settings', [UserTableSettingsController::class, 'update']);
 
     Route::middleware(['role:partner'])->group(function () {
         Route::get('stats/deals/in-progress', [DealController::class, 'inProgress']);
     });
 
-    Route::apiResource("roles", RoleController::class)
-        ->middleware("check_permissions:resource,".PermissionEntityEnum::USERS->value);
-    Route::apiResource("sales-funnels", SalesFunnelController::class)
-        ->middleware("check_permissions:resource,".PermissionEntityEnum::DEALS->value);
-    Route::apiResource("sales-stages", SalesStageController::class)
-        ->middleware("check_permissions:resource,".PermissionEntityEnum::DEALS->value);
-    Route::apiResource("sales-tunnels", SalesTunnelController::class)
-        ->middleware("check_permissions:resource,".PermissionEntityEnum::DEALS->value);
-    Route::apiResource("deals", DealController::class)
-        ->middleware("check_permissions:resource,".PermissionEntityEnum::DEALS->value);
-    Route::apiResource("accounts", AccountController::class);
-    Route::apiResource("tasks", TaskController::class);
-    Route::post("tasks/{task}/attachments", [TaskController::class, "addAttachment"]);
-    Route::delete("tasks/{task}/attachments/{attachmentId}", [TaskController::class, "deleteAttachment"]);
+    Route::apiResource('roles', RoleController::class)
+        ->middleware('check_permissions:resource,'.PermissionEntityEnum::USERS->value);
+    Route::apiResource('sales-funnels', SalesFunnelController::class)
+        ->middleware('check_permissions:resource,'.PermissionEntityEnum::DEALS->value);
+    Route::apiResource('sales-stages', SalesStageController::class)
+        ->middleware('check_permissions:resource,'.PermissionEntityEnum::DEALS->value);
+    Route::apiResource('sales-tunnels', SalesTunnelController::class)
+        ->middleware('check_permissions:resource,'.PermissionEntityEnum::DEALS->value);
+    Route::apiResource('deals', DealController::class)
+        ->middleware('check_permissions:resource,'.PermissionEntityEnum::DEALS->value);
+    Route::apiResource('accounts', AccountController::class);
+    Route::apiResource('tasks', TaskController::class);
+    Route::post('tasks/{task}/attachments', [TaskController::class, 'addAttachment']);
+    Route::delete('tasks/{task}/attachments/{attachmentId}', [TaskController::class, 'deleteAttachment']);
     Route::apiResource('comments', CommentController::class);
     Route::apiResource('user-fields', UserFieldController::class);
-    Route::apiResource("sections", SectionController::class);
-    Route::get("sections/{entity}/{id}", [SectionController::class, "getSectionsByEntity"]);
+    Route::apiResource('sections', SectionController::class);
+    Route::get('sections/{entity}/{id}', [SectionController::class, 'getSectionsByEntity']);
     Route::apiResource('document-templates', DocumentController::class);
-    Route::get("fields/{entity}", [FieldController::class, "getFieldsAndUserFields"]);
-    Route::put("fields", [FieldController::class, "updateFieldsOrUserFields"]);
-
+    Route::get('fields/{entity}', [FieldController::class, 'getFieldsAndUserFields']);
+    Route::put('fields', [FieldController::class, 'updateFieldsOrUserFields']);
 
     // комментарии к сущностям
     Route::get('/deals/{dealId}/comments', [DealController::class, 'getComments']);
@@ -96,8 +95,8 @@ Route::group(["middleware" => "auth:api"], function() {
     Route::get('/deals/{dealId}/activity', [DealController::class, 'getActivity']);
     Route::get('/tasks/{task}/activity', [TaskController::class, 'getActivity']);
 
-    Route::get("/deals/{dealId}/events", [DealEventController::class, 'getDealEvents'])->name("deals.events");
-    Route::get("/tasks/{taskId}/events", [TaskEventController::class, 'getTaskEvents'])->name("tasks.events");
+    Route::get('/deals/{dealId}/events', [DealEventController::class, 'getDealEvents'])->name('deals.events');
+    Route::get('/tasks/{taskId}/events', [TaskEventController::class, 'getTaskEvents'])->name('tasks.events');
 
     Route::post('/deals/{dealId}/generateDocument/{templateId}', [DealController::class, 'generateDocument']);
     Route::post('/document-templates/{templateId}/uploadNewTemplate', [DocumentController::class, 'updateTemplate']);
@@ -130,19 +129,18 @@ Route::group(["middleware" => "auth:api"], function() {
         Route::get('/{id}/attachments/links', [ChatAttachmentController::class, 'getAllLinks']);
     });
 
-
     Route::get('/notifications', [NotificationController::class, 'index']);
     Route::post('/notifications/read', [NotificationController::class, 'markAsRead']);
     Route::post('/notifications/read-all', [NotificationController::class, 'markAsReadAll']);
     Route::delete('/notifications/{id}', [NotificationController::class, 'delete']);
 
-    Route::group(["prefix" => "/file-system"], function() {
-        Route::get("/content", [FileSystemController::class, "content"]);
-        Route::post("/store-folder", [FileSystemController::class, "storeFolder"]);
-        Route::post("/store-file", [FileSystemController::class, "storeFile"]);
-        Route::delete("/delete-disk-entity", [FileSystemController::class, "deleteDiskEntity"]);
-        Route::post("/return-disk-entity", [FileSystemController::class, "returnDiskEntity"]);
-        Route::post("/export", [FileSystemController::class, "export"]);
+    Route::group(['prefix' => '/file-system'], function () {
+        Route::get('/content', [FileSystemController::class, 'content']);
+        Route::post('/store-folder', [FileSystemController::class, 'storeFolder']);
+        Route::post('/store-file', [FileSystemController::class, 'storeFile']);
+        Route::delete('/delete-disk-entity', [FileSystemController::class, 'deleteDiskEntity']);
+        Route::post('/return-disk-entity', [FileSystemController::class, 'returnDiskEntity']);
+        Route::post('/export', [FileSystemController::class, 'export']);
     });
 
     Route::get('/download/{id}', DownloadController::class)
@@ -155,4 +153,3 @@ Route::group(["middleware" => "auth:api"], function() {
 
     Route::post('partner-color', [PartnerController::class, 'setColor']);
 });
-

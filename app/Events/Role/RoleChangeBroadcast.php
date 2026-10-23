@@ -3,7 +3,6 @@
 namespace App\Events\Role;
 
 use App\Http\Resources\UserResource;
-use App\Models\User;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
@@ -19,9 +18,7 @@ class RoleChangeBroadcast implements ShouldBroadcast
      */
     public function __construct(
         private readonly UserResource $user
-    )
-    {
-    }
+    ) {}
 
     /**
      * Get the channels the event should broadcast on.
@@ -31,21 +28,15 @@ class RoleChangeBroadcast implements ShouldBroadcast
     public function broadcastOn(): array
     {
         return [
-            new PrivateChannel('user.' . $this->user->id),
+            new PrivateChannel('user.'.$this->user->id),
         ];
     }
 
-    /**
-     * @return string
-     */
     public function broadcastAs(): string
     {
         return 'RoleChange';
     }
 
-    /**
-     * @return array
-     */
     public function broadcastWith(): array
     {
         return [

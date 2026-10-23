@@ -12,6 +12,7 @@ class KnowledgeBaseContentResource extends JsonResource
      *     schema="KnowledgeBaseContentResource",
      *     type="object",
      *     title="Ресурс контента базы знаний",
+     *
      *     @OA\Property(
      *         property="type",
      *         type="string",

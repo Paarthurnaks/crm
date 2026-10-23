@@ -15,21 +15,22 @@ class PartnerDealService
         'dealDoesntHaveClient' => 'У сделки нет такого клиента, привязанного к ней.',
         'noAccess' => 'Нет доступа.',
     ];
+
     public function attach(Deal $deal, array $data): void
     {
         $user = auth()->user();
         $clientId = $data['client_id'];
 
-        if($user->hasRole(DefaultRolesEnum::PARTNER->value) && $deal->creator_id === $user->id) {
+        if ($user->hasRole(DefaultRolesEnum::PARTNER->value) && $deal->creator_id === $user->id) {
             $client = User::find($clientId);
 
-            if(!$deal->partnerClient) {
+            if (! $deal->partnerClient) {
                 PartnerClientDeal::create([
                     'client_id' => $client->id,
                     'deal_id' => $deal->id,
                 ]);
             } else {
-                if(($deal->partnerClient && $deal->partnerClient->id !== $client->id)) {
+                if (($deal->partnerClient && $deal->partnerClient->id !== $client->id)) {
                     throw new Exception(self::ERROR_MESSAGES['dealHasPartnerClient']);
                 }
             }
@@ -43,8 +44,8 @@ class PartnerDealService
         $user = auth()->user();
         $clientId = $data['client_id'];
 
-        if($user->hasRole(DefaultRolesEnum::PARTNER->value) && $deal->creator_id === $user->id) {
-            if($deal->partnerClient && $deal->partnerClient->id !== $clientId) {
+        if ($user->hasRole(DefaultRolesEnum::PARTNER->value) && $deal->creator_id === $user->id) {
+            if ($deal->partnerClient && $deal->partnerClient->id !== $clientId) {
                 throw new Exception(self::ERROR_MESSAGES['dealDoesntHaveClient']);
             }
 

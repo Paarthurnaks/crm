@@ -19,8 +19,7 @@ class GlobalChatUpdateBroadcast implements ShouldBroadcast
     public function __construct(
         private readonly ChatResource $chat,
         private readonly int $userId
-    )
-    {
+    ) {
         //
     }
 
@@ -32,7 +31,7 @@ class GlobalChatUpdateBroadcast implements ShouldBroadcast
     public function broadcastOn(): array
     {
         return [
-            new PrivateChannel('global-chats.' . $this->userId),
+            new PrivateChannel('global-chats.'.$this->userId),
         ];
     }
 
@@ -40,7 +39,6 @@ class GlobalChatUpdateBroadcast implements ShouldBroadcast
     {
         return 'GlobalChatUpdate';
     }
-
 
     public function broadcastWith(): array
     {

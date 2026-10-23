@@ -57,13 +57,13 @@ return [
 
     'url' => env('APP_URL', 'http://localhost'),
 
-    'client_reset_password_url' => env('CLIENT_RESET_PASSWORD_URL', rtrim(env('APP_URL', 'http://localhost'), '/') . '/reset-password'),
+    'client_reset_password_url' => env('CLIENT_RESET_PASSWORD_URL', rtrim(env('APP_URL', 'http://localhost'), '/').'/reset-password'),
 
-    'client_create_password_url' => env('CLIENT_CREATE_PASSWORD_URL', rtrim(env('APP_URL', 'http://localhost'), '/') . '/create-password'),
+    'client_create_password_url' => env('CLIENT_CREATE_PASSWORD_URL', rtrim(env('APP_URL', 'http://localhost'), '/').'/create-password'),
 
-    'partner_create_password_url' => env('PARTNER_CREATE_PASSWORD_URL', rtrim(env('APP_URL', 'http://localhost'), '/') . '/partners-create'),
+    'partner_create_password_url' => env('PARTNER_CREATE_PASSWORD_URL', rtrim(env('APP_URL', 'http://localhost'), '/').'/partners-create'),
 
-    'partner_reset_password_url' => env('PARTNER_RESET_PASSWORD_URL', rtrim(env('APP_URL', 'http://localhost'), '/') . '/partners-change'),
+    'partner_reset_password_url' => env('PARTNER_RESET_PASSWORD_URL', rtrim(env('APP_URL', 'http://localhost'), '/').'/partners-change'),
 
     'asset_url' => env('ASSET_URL'),
 
@@ -173,7 +173,7 @@ return [
          */
         App\Providers\AppServiceProvider::class,
         App\Providers\AuthServiceProvider::class,
-         App\Providers\BroadcastServiceProvider::class,
+        App\Providers\BroadcastServiceProvider::class,
         App\Providers\EventServiceProvider::class,
         App\Providers\RouteServiceProvider::class,
         App\Providers\HelperServiceProvider::class,

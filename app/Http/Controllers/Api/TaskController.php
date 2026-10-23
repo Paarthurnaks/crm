@@ -21,10 +21,7 @@ use OpenApi\Annotations as OA;
 
 class TaskController extends Controller
 {
-    public function __construct(private readonly TaskService $service)
-    {
-
-    }
+    public function __construct(private readonly TaskService $service) {}
 
     /**
      * @OA\Get(
@@ -34,64 +31,78 @@ class TaskController extends Controller
      *     description="Получение списка задач",
      *     summary="Получение списка задач",
      *     security={{"bearer_token":{}}},
+     *
      *     @OA\Parameter(
      *          name="page",
      *          description="Номер страницы",
      *          in="query",
+     *
      *          @OA\Schema(
      *              type="int",
      *          )
      *      ),
+     *
      *      @OA\Parameter(
      *          name="limit",
      *          description="Количество элементов на странице",
      *          required=false,
      *          in="query",
+     *
      *          @OA\Schema(
      *              type="int",
      *          )
      *      ),
+     *
      *      @OA\Parameter(
      *          name="search",
      *          description="поиск",
      *          required=false,
      *          in="query",
+     *
      *          @OA\Schema(
      *              type="string"
      *          )
      *      ),
+     *
      *      @OA\Parameter(
      *          name="creator",
      *          description="id постановщика",
      *          required=false,
      *          in="query",
+     *
      *          @OA\Schema(
      *              type="int",
      *          )
      *      ),
+     *
      *      @OA\Parameter(
      *          name="deal",
      *          description="id привязанной сделки",
      *          required=false,
      *          in="query",
+     *
      *          @OA\Schema(
      *              type="int",
      *          )
      *      ),
+     *
      *      @OA\Parameter(
      *          name="executor",
      *          description="id ответственного",
      *          required=false,
      *          in="query",
+     *
      *          @OA\Schema(
      *              type="int",
      *          )
      *      ),
+     *
      *      @OA\Parameter(
      *          name="deadline_from",
      *          description="фильтр по крайнему сроку (от)",
      *          required=false,
      *          in="query",
+     *
      *          @OA\Schema(
      *              type="string",
      *          )
@@ -102,81 +113,101 @@ class TaskController extends Controller
      *          description="фильтр по крайнему сроку (до)",
      *          required=false,
      *          in="query",
+     *
      *          @OA\Schema(
      *              type="string",
      *          )
      *      ),
+     *
      *      @OA\Parameter(
      *          name="status",
      *          description="фильтр по статусу (new, pending, paused, closed)",
      *          required=false,
      *          in="query",
+     *
      *          @OA\Schema(
      *              type="string",
      *          )
      *      ),
+     *
      *     @OA\Parameter(
      *          name="title",
      *          description="фильтр по заголовку",
      *          required=false,
      *          in="query",
+     *
      *          @OA\Schema(
      *              type="string",
      *          )
      *      ),
+     *
      *     @OA\Parameter(
      *          name="description",
      *          description="фильтр по описанию (через like)",
      *          required=false,
      *          in="query",
+     *
      *          @OA\Schema(
      *              type="string",
      *          )
      *      ),
+     *
      *     @OA\Parameter(
      *          name="created_at_from",
      *          description="фильтр по дате создания (от)",
      *          required=false,
      *          in="query",
+     *
      *          @OA\Schema(
      *              type="string",
      *          )
      *      ),
+     *
      *     @OA\Parameter(
      *          name="created_at_to",
      *          description="фильтр по дате создания (до)",
      *          required=false,
      *          in="query",
+     *
      *          @OA\Schema(
      *              type="string",
      *          )
      *      ),
+     *
      *     @OA\Parameter(
      *          name="updated_at_from",
      *          description="фильтр по дате обновления (от)",
      *          required=false,
      *          in="query",
+     *
      *          @OA\Schema(
      *              type="string",
      *          )
      *      ),
+     *
      *     @OA\Parameter(
      *          name="updated_at_to",
      *          description="фильтр по дате обновления (до)",
      *          required=false,
      *          in="query",
+     *
      *          @OA\Schema(
      *              type="string",
      *          )
      *      ),
+     *
      *     @OA\Response(response="200",
      *          description="OK",
+     *
      *          @OA\MediaType(
      *              mediaType="application/json",
+     *
      *              @OA\Schema(
+     *
      *                 @OA\Property(
      *                     property="data",
      *                     type="array",
+     *
      *                     @OA\Items(
      *                        ref="#/components/schemas/Task"
      *                     )
@@ -185,16 +216,12 @@ class TaskController extends Controller
      *          ),
      *      )
      * )
-     *
-     * @param Request $request
-     * @param TaskFilter $filter
-     * @return JsonResponse
      */
     public function index(Request $request, TaskFilter $filter): JsonResponse
     {
         $queryParams = $request->all();
         $tasks = $this->service->getList($filter, $queryParams);
-        $total = $tasks->toArray()["total"];
+        $total = $tasks->toArray()['total'];
 
         return ResponseService::success(
             ListResource::make(TaskResource::class, $tasks, $total)
@@ -209,21 +236,27 @@ class TaskController extends Controller
      *     description="Метод для получения конкретной задачи",
      *     summary="Метод для получения конкретной задачи",
      *     security={{"bearer_token":{}}},
+     *
      *     @OA\Parameter(
      *          name="id",
      *          description="id задачи",
      *          required=true,
      *          in="path",
+     *
      *          @OA\Schema(
      *              type="string",
      *              example=19
      *          )
      *      ),
+     *
      *     @OA\Response(response="200",
      *          description="OK",
+     *
      *          @OA\MediaType(
      *              mediaType="application/json",
+     *
      *              @OA\Schema(
+     *
      *                 @OA\Property(
      *                     property="data",
      *                     ref="#/components/schemas/Task"
@@ -231,19 +264,17 @@ class TaskController extends Controller
      *              )
      *          )
      *      ),
+     *
      *      @OA\Response(response="404",
      *          description="NOT FOUND"
      *      ),
      * )
-     *
-     * @param int $id
-     * @return JsonResponse
      */
     public function show(int $id): JsonResponse
     {
         $task = Task::find($id);
 
-        if (!$task) {
+        if (! $task) {
             return ResponseService::notFound(
                 message: 'Задача не найдена'
             );
@@ -262,11 +293,15 @@ class TaskController extends Controller
      *     description="Метод для создания задачи",
      *     summary="Метод для создания задачи",
      *     security={{"bearer_token":{}}},
+     *
      *     @OA\RequestBody(
+     *
      *       @OA\MediaType(
      *           mediaType="muptipart/form-data",
+     *
      *           @OA\Schema(
      *              required={"title", "executors"},
+     *
      *              @OA\Property(property="title", type="string", example="242_test", description="Если type = helpdesk, то сюда фио"),
      *              @OA\Property(property="description", type="string", example="242_test"),
      *              @OA\Property(property="creator_id", type="int", example=98),
@@ -294,21 +329,25 @@ class TaskController extends Controller
      *              @OA\Property(
      *                  property="executors",
      *                  type="array",
+     *
      *                  @OA\Items(
      *                      type="integer",
      *                      example=12
      *                  ),
      *                  description="При type = helpdesk передавать не нужно"
      *              ),
+     *
      *              @OA\Property(
      *                   property="observers",
      *                   type="array",
+     *
      *                   @OA\Items(
      *                       type="integer",
      *                       example=12
      *                   ),
      *                   description="При type = helpdesk передавать не нужно"
      *              ),
+     *
      *              @OA\Property(
      *                   property="type",
      *                   type="string",
@@ -320,6 +359,7 @@ class TaskController extends Controller
      *              @OA\Property(
      *                  property="attachments",
      *                  type="array",
+     *
      *                  @OA\Items(
      *                      type="string",
      *                      format="file"
@@ -328,11 +368,15 @@ class TaskController extends Controller
      *           ),
      *       ),
      *     ),
+     *
      *     @OA\Response(response="200",
      *          description="OK",
+     *
      *          @OA\MediaType(
      *              mediaType="application/json",
+     *
      *              @OA\Schema(
+     *
      *                 @OA\Property(
      *                     property="data",
      *                     ref="#/components/schemas/Task"
@@ -340,13 +384,11 @@ class TaskController extends Controller
      *              )
      *          )
      *      ),
+     *
      *      @OA\Response(response="403",
      *          description="FORBIDDEN"
      *     ),
      * )
-     *
-     * @param StoreRequest $request
-     * @return JsonResponse
      */
     public function store(StoreRequest $request): JsonResponse
     {
@@ -373,19 +415,25 @@ class TaskController extends Controller
      *     description="Метод для изменения задачи",
      *     summary="Метод для изменения задачи",
      *     security={{"bearer_token":{}}},
+     *
      *     @OA\Parameter(
      *          name="id",
      *          description="id задачи",
      *          required=true,
      *          in="path",
+     *
      *          @OA\Schema(
      *              type="string"
      *          )
      *      ),
+     *
      *     @OA\RequestBody(
+     *
      *       @OA\MediaType(
      *           mediaType="application/json",
+     *
      *           @OA\Schema(
+     *
      *              @OA\Property(property="title", type="string", example="242_test"),
      *              @OA\Property(property="description", type="string", example="242_test"),
      *              @OA\Property(property="creator_id", type="int", example=98),
@@ -399,14 +447,17 @@ class TaskController extends Controller
      *              @OA\Property(
      *                  property="executors",
      *                  type="array",
+     *
      *                  @OA\Items(
      *                      type="integer",
      *                      example=19
      *                  )
      *              ),
+     *
      *              @OA\Property(
      *                    property="observers",
      *                    type="array",
+     *
      *                    @OA\Items(
      *                        type="integer",
      *                        example=12
@@ -416,11 +467,15 @@ class TaskController extends Controller
      *           ),
      *       ),
      *     ),
+     *
      *     @OA\Response(response="200",
      *          description="OK",
+     *
      *          @OA\MediaType(
      *              mediaType="application/json",
+     *
      *              @OA\Schema(
+     *
      *                 @OA\Property(
      *                     property="data",
      *                     ref="#/components/schemas/Task"
@@ -428,6 +483,7 @@ class TaskController extends Controller
      *              )
      *          )
      *      ),
+     *
      *      @OA\Response(response="404",
      *          description="NOT FOUND"
      *      ),
@@ -435,16 +491,12 @@ class TaskController extends Controller
      *          description="FORBIDDEN"
      *     ),
      * )
-     *
-     * @param int $id
-     * @param UpdateRequest $request
-     * @return JsonResponse
      */
     public function update(int $id, UpdateRequest $request): JsonResponse
     {
         $task = Task::find($id);
 
-        if (!$task) {
+        if (! $task) {
             return ResponseService::notFound(
                 message: __('Задача не найдена')
             );
@@ -467,15 +519,18 @@ class TaskController extends Controller
      *     description="Метод для удаления задачи",
      *     summary="Метод для удаления задачи",
      *     security={{"bearer_token":{}}},
+     *
      *     @OA\Parameter(
      *          name="id",
      *          description="id задачи",
      *          required=true,
      *          in="path",
+     *
      *          @OA\Schema(
      *              type="string"
      *          )
      *      ),
+     *
      *     @OA\Response(response="200",
      *          description="OK",
      *     ),
@@ -486,22 +541,19 @@ class TaskController extends Controller
      *          description="FORBIDDEN"
      *     ),
      * )
-     *
-     * @param int $id
-     * @return JsonResponse
      */
     public function destroy(int $id): JsonResponse
     {
         try {
             $task = Task::find($id);
 
-            if (!$task) {
+            if (! $task) {
                 return ResponseService::notFound(message: __('Задача не найдена'));
             }
 
             $this->service->delete($task);
 
-            return ResponseService::success(message: __("Задача удалена"));
+            return ResponseService::success(message: __('Задача удалена'));
         } catch (\Throwable $e) {
             return ResponseService::badRequest($e->getMessage());
         }
@@ -515,29 +567,39 @@ class TaskController extends Controller
      *     description="Метод для добавления комментария к задаче",
      *     summary="Метод для добавления комментария к задаче",
      *     security={{"bearer_token":{}}},
+     *
      *     @OA\Parameter(
      *          name="id",
      *          description="id задачи",
      *          required=true,
      *          in="path",
+     *
      *          @OA\Schema(
      *              type="string"
      *          )
      *      ),
+     *
      *     @OA\RequestBody(
+     *
      *       @OA\MediaType(
      *           mediaType="application/json",
+     *
      *           @OA\Schema(
+     *
      *              @OA\Property(property="comment", type="string", example="my first comment"),
      *              @OA\Property(property="attachments", type="array", @OA\Items(type="string", example="filename.jpg")),
      *           ),
      *       ),
      *     ),
+     *
      *     @OA\Response(response="200",
      *          description="OK",
+     *
      *          @OA\MediaType(
      *              mediaType="application/json",
+     *
      *              @OA\Schema(
+     *
      *                 @OA\Property(
      *                     property="data",
      *                     ref="#/components/schemas/Comment"
@@ -545,6 +607,7 @@ class TaskController extends Controller
      *              )
      *          )
      *      ),
+     *
      *      @OA\Response(response="404",
      *          description="NOT FOUND"
      *      ),
@@ -552,15 +615,12 @@ class TaskController extends Controller
      *          description="FORBIDDEN"
      *     ),
      * )
-     * @param int $taskId
-     * @param AddCommentRequest $request
-     * @return JsonResponse
      */
     public function addComment(int $taskId, AddCommentRequest $request): JsonResponse
     {
         $task = Task::find($taskId);
 
-        if (!$task) {
+        if (! $task) {
             return ResponseService::notFound(
                 message: __('Задача не найдена')
             );
@@ -587,31 +647,40 @@ class TaskController extends Controller
      *     description="Метод для просмотра списка комментариев к задаче",
      *     summary="Метод для просмотра списка комментариев к задаче",
      *     security={{"bearer_token":{}}},
+     *
      *     @OA\Parameter(
      *          name="page",
      *          description="Номер страницы",
      *          in="query",
+     *
      *          @OA\Schema(
      *              type="int"
      *          )
      *      ),
+     *
      *      @OA\Parameter(
      *          name="limit",
      *          description="Максимальное количество элементов на странице",
      *          required=false,
      *          in="query",
+     *
      *          @OA\Schema(
      *              type="int"
      *          )
      *      ),
+     *
      *     @OA\Response(response="200",
      *          description="OK",
+     *
      *          @OA\MediaType(
      *              mediaType="application/json",
+     *
      *              @OA\Schema(
+     *
      *                 @OA\Property(
      *                     property="data",
      *                     type="array",
+     *
      *                     @OA\Items(
      *                          ref="#/components/schemas/Comment"
      *                      )
@@ -620,25 +689,22 @@ class TaskController extends Controller
      *          ),
      *      )
      * )
-     * @param int $taskId
-     * @param Request $request
-     * @return JsonResponse
      */
     public function getComments(int $taskId, Request $request): JsonResponse
     {
         $task = Task::find($taskId);
 
-        if (!$task) {
+        if (! $task) {
             return ResponseService::notFound(
                 message: __('Задача не найдена')
             );
         }
 
         $comments = $task->comments()->latest()->paginate(
-            $request->input('limit', config("constants.paginator.limit"))
+            $request->input('limit', config('constants.paginator.limit'))
         );
 
-        $total = $comments->toArray()["total"];
+        $total = $comments->toArray()['total'];
 
         return ResponseService::success(
             ListResource::make(CommentResource::class, $comments, $total)
@@ -653,22 +719,29 @@ class TaskController extends Controller
      *     description="Метод для добавления вложения к задаче",
      *     summary="Метод для добавления вложения к задаче",
      *     security={{"bearer_token":{}}},
+     *
      *     @OA\Parameter(
      *          name="id",
      *          description="id задачи",
      *          required=true,
      *          in="path",
+     *
      *          @OA\Schema(
      *              type="string",
      *          )
      *      ),
+     *
      *     @OA\RequestBody(
+     *
      *        @OA\MediaType(
      *           mediaType="muptipart/form-data",
+     *
      *           @OA\Schema(
+     *
      *              @OA\Property(
      *                  property="attachments",
      *                  type="array",
+     *
      *                  @OA\Items(
      *                      type="string",
      *                      format="file"
@@ -677,11 +750,15 @@ class TaskController extends Controller
      *           ),
      *       )
      *     ),
+     *
      *     @OA\Response(response="200",
      *          description="OK",
+     *
      *          @OA\MediaType(
      *              mediaType="application/json",
+     *
      *              @OA\Schema(
+     *
      *                 @OA\Property(
      *                     property="data",
      *                     ref="#/components/schemas/Task"
@@ -689,6 +766,7 @@ class TaskController extends Controller
      *              )
      *          )
      *      ),
+     *
      *      @OA\Response(response="404",
      *          description="NOT FOUND"
      *      ),
@@ -699,8 +777,8 @@ class TaskController extends Controller
      */
     public function addAttachment(Request $request, Task $task)
     {
-        if ($request->has("attachments")) {
-            foreach ($request["attachments"] as $attachment) {
+        if ($request->has('attachments')) {
+            foreach ($request['attachments'] as $attachment) {
                 $task->addMedia($attachment)->toMediaCollection();
             }
         }
@@ -718,29 +796,37 @@ class TaskController extends Controller
      *     description="Метод для удаления вложения у задачи",
      *     summary="Метод для удаления вложения у задачи",
      *     security={{"bearer_token":{}}},
+     *
      *     @OA\Parameter(
      *          name="taskId",
      *          description="id задачи",
      *          required=true,
      *          in="path",
+     *
      *          @OA\Schema(
      *              type="string",
      *          )
      *      ),
+     *
      *     @OA\Parameter(
      *          name="attachmentId",
      *          description="id вложения",
      *          required=true,
      *          in="path",
+     *
      *          @OA\Schema(
      *              type="string",
      *          )
      *      ),
+     *
      *     @OA\Response(response="200",
      *          description="OK",
+     *
      *          @OA\MediaType(
      *              mediaType="application/json",
+     *
      *              @OA\Schema(
+     *
      *                 @OA\Property(
      *                     property="data",
      *                     ref="#/components/schemas/Task"
@@ -748,6 +834,7 @@ class TaskController extends Controller
      *              )
      *          )
      *      ),
+     *
      *      @OA\Response(response="404",
      *          description="NOT FOUND"
      *      ),
@@ -774,57 +861,73 @@ class TaskController extends Controller
      *     description="Метод для просмотра всей активности сделки",
      *     summary="Метод для просмотра всей активности сделки",
      *     security={{"bearer_token":{}}},
+     *
      *     @OA\Parameter(
      *          name="id",
      *          description="id задачи",
      *          in="path",
+     *
      *          @OA\Schema(
      *              type="string",
      *              example="1"
      *          )
      *      ),
+     *
      *     @OA\Parameter(
      *          name="search",
      *          description="Поиск по контексту. В случае задач это название. В случае комментария это контент",
      *          in="query",
+     *
      *          @OA\Schema(
      *              type="string",
      *          )
      *      ),
+     *
      *      @OA\Parameter(
      *          name="author_id",
      *          description="Идентификатор автора",
      *          in="query",
+     *
      *          @OA\Schema(
      *              type="int",
      *          )
      *      ),
+     *
      *     @OA\Parameter(
      *          name="date_from",
      *          description="Дата создания событий (от)",
      *          in="query",
+     *
      *          @OA\Schema(
      *              type="string",
      *          )
      *      ),
+     *
      *     @OA\Parameter(
      *          name="date_to",
      *          description="Дата создания событий (до)",
      *          in="query",
+     *
      *          @OA\Schema(
      *              type="string",
      *          )
      *      ),
+     *
      *     @OA\Response(response="200",
      *          description="OK",
+     *
      *          @OA\MediaType(
      *              mediaType="application/json",
+     *
      *              @OA\Schema(
+     *
      *                 @OA\Property(
      *                     property="data",
      *                     type="array",
+     *
      *                     @OA\Items(
      *                          type="object",
+     *
      *                          @OA\Property(
      *                             property="type",
      *                             type="string",
@@ -840,9 +943,6 @@ class TaskController extends Controller
      *          ),
      *      )
      * )
-     * @param Task $task
-     * @param GetActivityRequest $request
-     * @return JsonResponse
      */
     public function getActivity(Task $task, GetActivityRequest $request): JsonResponse
     {
@@ -850,8 +950,8 @@ class TaskController extends Controller
         $activity = $this->service->getActivity($task, $queryParams);
 
         $data = [
-            "data" => collect($activity),
-            "total" => collect($activity)->count()
+            'data' => collect($activity),
+            'total' => collect($activity)->count(),
         ];
 
         return ResponseService::success($data);

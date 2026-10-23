@@ -11,6 +11,7 @@ use OpenApi\Annotations as OA;
  * @OA\Schema(
  *     title="TaskEvent",
  *     description="Событие задачи",
+ *
  *     @OA\Xml(
  *         name="TaskEvent"
  *     )
@@ -21,15 +22,15 @@ class TaskEvent extends Model
     use HasFactory;
 
     protected $fillable = [
-        "task_id",
-        "initiator_id",
-        "type",
-        "changed_field",
-        "old_value",
-        "new_value"
+        'task_id',
+        'initiator_id',
+        'type',
+        'changed_field',
+        'old_value',
+        'new_value',
     ];
 
-     /**
+    /**
      * @OA\Property(
      *     title="ID",
      *     description="ID",
@@ -40,7 +41,8 @@ class TaskEvent extends Model
      * @var bigInteger
      */
     private $id;
-     /**
+
+    /**
      * @OA\Property(
      *     title="initiator_id",
      *     description="id инициатора события",
@@ -51,6 +53,7 @@ class TaskEvent extends Model
      * @var bigInteger
      */
     private $initiator_id;
+
     /**
      * @OA\Property(
      *      title="type",
@@ -61,6 +64,7 @@ class TaskEvent extends Model
      * @var string
      */
     private $type;
+
     /**
      * @OA\Property(
      *      title="changed_field",
@@ -71,6 +75,7 @@ class TaskEvent extends Model
      * @var string
      */
     private $changed_field;
+
     /**
      * @OA\Property(
      *      title="old_value",
@@ -81,6 +86,7 @@ class TaskEvent extends Model
      * @var string
      */
     private $old_value;
+
     /**
      * @OA\Property(
      *      title="new_value",
@@ -94,7 +100,7 @@ class TaskEvent extends Model
 
     public function initiator(): BelongsTo
     {
-        return $this->belongsTo(User::class, "initiator_id");
+        return $this->belongsTo(User::class, 'initiator_id');
     }
 
     public function task(): BelongsTo

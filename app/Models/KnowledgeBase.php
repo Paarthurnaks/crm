@@ -5,10 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Notifications\HasDatabaseNotifications;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
-
 
 /**
  * @property int $id
@@ -18,6 +16,7 @@ use Spatie\MediaLibrary\InteractsWithMedia;
  * @OA\Schema(
  *     title="KnowledgeBase",
  *     description="База знаний",
+ *
  *     @OA\Xml(
  *         name="KnowledgeBase"
  *     )
@@ -39,8 +38,6 @@ class KnowledgeBase extends Model implements HasMedia
      *     format="int64",
      *     example=1
      * )
-     *
-     * @var int $id
      */
     private int $id;
 
@@ -51,8 +48,6 @@ class KnowledgeBase extends Model implements HasMedia
      *     format="string",
      *     example="my fucking title"
      * )
-     *
-     * @var string $title
      */
     private string $title;
 
@@ -62,8 +57,6 @@ class KnowledgeBase extends Model implements HasMedia
      *     format="string",
      *     example="my fucking description"
      * )
-     *
-     * @var string $description
      */
     private string $description;
 

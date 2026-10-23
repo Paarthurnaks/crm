@@ -15,19 +15,12 @@ use Symfony\Component\HttpFoundation\Response;
 
 class CheckPermissionMiddleware
 {
-    public function __construct(private readonly ActionToPermissionMapper $actionToPermissionMapper)
-    {
-
-    }
+    public function __construct(private readonly ActionToPermissionMapper $actionToPermissionMapper) {}
 
     /**
      * Handle an incoming request.
      *
-     * @param Request $request
-     * @param Closure(Request): (Response) $next
-     * @param string $operation
-     * @param string $entity
-     * @return Response
+     * @param  Closure(Request): (Response)  $next
      */
     public function handle(Request $request, Closure $next, string $operation, string $entity): Response
     {

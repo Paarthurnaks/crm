@@ -19,6 +19,7 @@ use Spatie\MediaLibrary\InteractsWithMedia;
  * @OA\Schema(
  *     title="DocumentTemplate",
  *     description="Шаблон документов",
+ *
  *     @OA\Xml(
  *         name="DocumentTemplate"
  *     )
@@ -26,7 +27,7 @@ use Spatie\MediaLibrary\InteractsWithMedia;
  */
 class DocumentTemplate extends Model implements HasMedia
 {
-    use HasFactory, Filterable, InteractsWithMedia;
+    use Filterable, HasFactory, InteractsWithMedia;
 
     protected $fillable = [
         'title',
@@ -43,8 +44,6 @@ class DocumentTemplate extends Model implements HasMedia
      *     format="int64",
      *     example=1
      * )
-     *
-     * @var int
      */
     private int $id;
 
@@ -54,8 +53,6 @@ class DocumentTemplate extends Model implements HasMedia
      *      description="название шаблона",
      *      example="Генерация счета"
      * )
-     *
-     * @var string
      */
     private string $title;
 
@@ -66,8 +63,6 @@ class DocumentTemplate extends Model implements HasMedia
      *     format="int64",
      *     example=12
      * )
-     *
-     * @var int
      */
     private int $creator_id;
 
@@ -77,13 +72,11 @@ class DocumentTemplate extends Model implements HasMedia
      *      description="сущность к которой принадлежит шаблон",
      *      example="deal"
      * )
-     *
-     * @var string
      */
     private string $entity;
 
     public function creator(): BelongsTo
     {
-        return $this->belongsTo(User::class, "creator_id");
+        return $this->belongsTo(User::class, 'creator_id');
     }
 }

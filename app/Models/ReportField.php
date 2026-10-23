@@ -11,15 +11,15 @@ class ReportField extends Model
     use HasFactory;
 
     protected $fillable = [
-        "report_id",
-        "field_id",
-        "user_field_id",
-        "position"
+        'report_id',
+        'field_id',
+        'user_field_id',
+        'position',
     ];
 
     protected $appends = [
-        "value",
-        "model"
+        'value',
+        'model',
     ];
 
     protected function getValue()

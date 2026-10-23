@@ -22,13 +22,13 @@ class UserUpdateRequest extends FormRequest
     public function rules(): array
     {
         return [
-            "name" => ["string"],
-            "surname" => ["string"],
-            "email" => ["string", "email", "unique:users"],
-            "post" => ["string"],
-            "password" => ["prohibited"],
-            "role_id" => ["integer", "exists:roles,id"],
-            "division_id" => ["integer", "exists:divisions,id"]
+            'name' => ['string'],
+            'surname' => ['string'],
+            'email' => ['string', 'email', 'unique:users'],
+            'post' => ['string'],
+            'password' => ['prohibited'],
+            'role_id' => ['integer', 'exists:roles,id'],
+            'division_id' => ['integer', 'exists:divisions,id'],
         ];
     }
 }

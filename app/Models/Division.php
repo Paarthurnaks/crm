@@ -13,12 +13,12 @@ class Division extends Model
     const COMMON = 1;
 
     protected $fillable = [
-        "title",
-        "parent_id"
+        'title',
+        'parent_id',
     ];
 
     public function parent(): BelongsTo
     {
-        return $this->belongsTo(Division::class, "parent_id");
+        return $this->belongsTo(Division::class, 'parent_id');
     }
 }

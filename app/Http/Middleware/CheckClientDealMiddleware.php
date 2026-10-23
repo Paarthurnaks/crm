@@ -18,11 +18,13 @@ class CheckClientDealMiddleware
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if(!auth()->check()) return $next($request);
+        if (! auth()->check()) {
+            return $next($request);
+        }
 
         $user = auth()->user();
 
-        if($user->hasRole(DefaultRolesEnum::CLIENT->value) && !$user->partnerDeals()->exists()) {
+        if ($user->hasRole(DefaultRolesEnum::CLIENT->value) && ! $user->partnerDeals()->exists()) {
             Auth::logout();
 
             return ResponseService::unauthorized(message: 'У вас нет привязанных сделок. В доступе отказано.');

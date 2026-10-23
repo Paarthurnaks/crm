@@ -22,8 +22,8 @@ class SalesTunnelStoreRequest extends FormRequest
     public function rules(): array
     {
         return [
-            "from_stage_id" => ["integer", "exists:sales_stages,id"],
-            "to_stage_id" => ["integer", "exists:sales_stages,id"]
+            'from_stage_id' => ['integer', 'exists:sales_stages,id'],
+            'to_stage_id' => ['integer', 'exists:sales_stages,id'],
         ];
     }
 }

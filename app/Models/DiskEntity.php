@@ -7,7 +7,6 @@ use App\Http\Filters\Traits\Filterable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Str;
 
 /**
  * @property string $path
@@ -15,6 +14,7 @@ use Illuminate\Support\Str;
  * @OA\Schema(
  *     title="DiskEntity",
  *     description="Элемент диска (папка/файл)",
+ *
  *     @OA\Xml(
  *         name="DiskEntity"
  *     )
@@ -22,18 +22,18 @@ use Illuminate\Support\Str;
  */
 class DiskEntity extends Model
 {
-    use HasFactory, Filterable;
+    use Filterable, HasFactory;
 
     protected $fillable = [
-        "title",
-        "who_created_id",
-        "who_changed_id",
-        "size",
-        "type",
-        "deleted",
-        "path",
-        "original_path",
-        "mime_type",
+        'title',
+        'who_created_id',
+        'who_changed_id',
+        'size',
+        'type',
+        'deleted',
+        'path',
+        'original_path',
+        'mime_type',
     ];
 
     protected $casts = [
@@ -62,7 +62,6 @@ class DiskEntity extends Model
      *
      * @var string
      */
-
     private $title;
 
     /**
@@ -123,7 +122,6 @@ class DiskEntity extends Model
      *
      * @var string
      */
-
     private $path;
 
     /**
@@ -136,7 +134,6 @@ class DiskEntity extends Model
      *
      * @var string
      */
-
     private $original_path;
 
     /**
@@ -147,7 +144,7 @@ class DiskEntity extends Model
      *     example=false
      * )
      *
-     * @var boolean
+     * @var bool
      */
     private $deleted;
 
@@ -165,12 +162,11 @@ class DiskEntity extends Model
 
     public function whoCreated(): BelongsTo
     {
-        return $this->belongsTo(User::class, "who_created_id");
+        return $this->belongsTo(User::class, 'who_created_id');
     }
 
     public function whoChanged(): BelongsTo
     {
-        return $this->belongsTo(User::class, "who_changed_id");
+        return $this->belongsTo(User::class, 'who_changed_id');
     }
-
 }

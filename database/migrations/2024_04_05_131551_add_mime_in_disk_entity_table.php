@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('disk_entities', function (Blueprint $table) {
-            $table->string("mime_type")->nullable();
+            $table->string('mime_type')->nullable();
         });
     }
 
@@ -22,7 +22,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('disk_entities', function (Blueprint $table) {
-            $table->dropColumn("mime_type");
+            $table->dropColumn('mime_type');
         });
     }
 };

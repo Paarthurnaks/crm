@@ -19,9 +19,9 @@ class AuthService
      */
     public function sendLinkChangePassword(string $email): void
     {
-        $key = "reset_password_code_" . $email;
+        $key = 'reset_password_code_'.$email;
         $code = Str::random(64);
-        $lifetime = config("constants.lifetime.code_change_password");
+        $lifetime = config('constants.lifetime.code_change_password');
 
         Redis::setex($key, $lifetime, $code);
 
@@ -36,19 +36,18 @@ class AuthService
      */
     public function changePassword(array $changePasswordData): void
     {
-        $user = User::where("email", $changePasswordData["email"])->first();
-        $code = Redis::get("reset_password_code_".$changePasswordData["email"]);
+        $user = User::where('email', $changePasswordData['email'])->first();
+        $code = Redis::get('reset_password_code_'.$changePasswordData['email']);
 
-        if (!$user) {
-            throw new NotFoundHttpException();
-        } else if ($code == null) {
-            throw new TokenExpiredException();
-        } else if ($code != $changePasswordData["code"]) {
-            throw new BadRequestHttpException();
+        if (! $user) {
+            throw new NotFoundHttpException;
+        } elseif ($code == null) {
+            throw new TokenExpiredException;
+        } elseif ($code != $changePasswordData['code']) {
+            throw new BadRequestHttpException;
         }
 
-        $user->update(["password" => Hash::make($changePasswordData["password"])]);
-
+        $user->update(['password' => Hash::make($changePasswordData['password'])]);
 
     }
 }

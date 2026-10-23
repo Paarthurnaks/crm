@@ -6,9 +6,8 @@ use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 
-class ReportExport implements FromArray, WithHeadings, ShouldAutoSize
+class ReportExport implements FromArray, ShouldAutoSize, WithHeadings
 {
-
     protected array $reports;
 
     public function __construct($reports)

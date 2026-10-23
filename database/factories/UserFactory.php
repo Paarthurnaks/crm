@@ -7,7 +7,6 @@ use App\Models\Division;
 use App\Models\Role;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 
 /**
  * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\User>
@@ -28,6 +27,7 @@ class UserFactory extends Factory
     {
         $roleId = Role::where('original_title', '!=', DefaultRolesEnum::SUPER_ADMIN->value)->value('id');
         $division = Division::first();
+
         return [
             'name' => fake()->name(),
             'surname' => fake()->name(),

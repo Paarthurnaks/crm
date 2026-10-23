@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @OA\Schema(
  *     title="TaskSpectator",
  *     description="Наблюдатель задачи",
+ *
  *     @OA\Xml(
  *         name="TaskSpectator"
  *     )
@@ -64,7 +65,6 @@ class TaskSpectator extends Model
     {
         return $this->belongsTo(Task::class, 'task_id');
     }
-
 
     public function user(): BelongsTo
     {

@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Enums;
+
 enum ChatTypeEnum: string
 {
     case SINGLE = 'single'; // для чатов между пользователями esb

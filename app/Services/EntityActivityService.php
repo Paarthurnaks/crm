@@ -10,7 +10,7 @@ class EntityActivityService
 {
     public function getActivity(Model $model, QueryFilter $filter, array $activityMap): LengthAwarePaginator
     {
-        $limit = request()->input('limit', config("constants.paginator.limit"));
+        $limit = request()->input('limit', config('constants.paginator.limit'));
 
         $activities = $model->activities()
             ->with('activityable')
@@ -27,6 +27,7 @@ class EntityActivityService
                     'data' => new $resourceClass($activity->activityable),
                 ];
             }
+
             return null;
         })->filter();
 
@@ -37,7 +38,7 @@ class EntityActivityService
             $activities->currentPage(),
             [
                 'path' => request()->url(),
-                'query' => request()->query()
+                'query' => request()->query(),
             ]
         );
     }

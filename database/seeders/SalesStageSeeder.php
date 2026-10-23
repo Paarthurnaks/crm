@@ -4,7 +4,6 @@ namespace Database\Seeders;
 
 use App\Enums\SalesStageEnum;
 use App\Models\SalesStage;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class SalesStageSeeder extends Seeder

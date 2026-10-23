@@ -12,8 +12,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('permissions', function (Blueprint $table) {
-            $table->string("import")->nullable();
-            $table->string("export")->nullable();
+            $table->string('import')->nullable();
+            $table->string('export')->nullable();
         });
     }
 
@@ -23,8 +23,8 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('permissions', function (Blueprint $table) {
-            $table->dropColumn("import");
-            $table->dropColumn("export");
+            $table->dropColumn('import');
+            $table->dropColumn('export');
         });
     }
 };

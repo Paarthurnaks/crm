@@ -21,22 +21,24 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 /**
  * @property Role $role
+ *
  * @OA\Schema(
  *     title="User",
  *     description="Пользователь",
+ *
  *     @OA\Xml(
  *         name="User"
  *     )
  * )
  */
-class User extends Authenticatable implements JWTSubject, HasMedia
+class User extends Authenticatable implements HasMedia, JWTSubject
 {
-    use HasApiTokens,
+    use Filterable,
+        HasApiTokens,
+        HasChats,
         HasFactory,
-        Notifiable,
-        Filterable,
         InteractsWithMedia,
-        HasChats;
+        Notifiable;
 
     /**
      * The attributes that are mass assignable.
@@ -57,7 +59,7 @@ class User extends Authenticatable implements JWTSubject, HasMedia
     ];
 
     protected $hidden = [
-        'password'
+        'password',
     ];
 
     protected $casts = [
@@ -65,7 +67,7 @@ class User extends Authenticatable implements JWTSubject, HasMedia
     ];
 
     protected $appends = [
-        'is_high_level_admin'
+        'is_high_level_admin',
     ];
 
     /**
@@ -79,6 +81,7 @@ class User extends Authenticatable implements JWTSubject, HasMedia
      * @var bigInteger
      */
     private $id;
+
     /**
      * @OA\Property(
      *      title="email",
@@ -89,6 +92,7 @@ class User extends Authenticatable implements JWTSubject, HasMedia
      * @var string
      */
     private $email;
+
     /**
      * @OA\Property(
      *      title="name",
@@ -99,6 +103,7 @@ class User extends Authenticatable implements JWTSubject, HasMedia
      * @var string
      */
     private $name;
+
     /**
      * @OA\Property(
      *      title="surname",
@@ -109,6 +114,7 @@ class User extends Authenticatable implements JWTSubject, HasMedia
      * @var string
      */
     private $surname;
+
     /**
      * @OA\Property(
      *     title="role_id",
@@ -120,6 +126,7 @@ class User extends Authenticatable implements JWTSubject, HasMedia
      * @var bigInteger
      */
     private $role_id;
+
     /**
      * @OA\Property(
      *     title="division_id",
@@ -131,6 +138,7 @@ class User extends Authenticatable implements JWTSubject, HasMedia
      * @var bigInteger
      */
     private $division_id;
+
     /**
      * @OA\Property(
      *     title="active",
@@ -142,6 +150,7 @@ class User extends Authenticatable implements JWTSubject, HasMedia
      * @var bool
      */
     private $active;
+
     /**
      * @OA\Property(
      *     title="last_login",
@@ -153,6 +162,7 @@ class User extends Authenticatable implements JWTSubject, HasMedia
      * @var datetime
      */
     private $last_login;
+
     /**
      * @OA\Property(
      *     title="created_at",
@@ -164,6 +174,7 @@ class User extends Authenticatable implements JWTSubject, HasMedia
      * @var datetime
      */
     private $created_at;
+
     /**
      * @OA\Property(
      *     title="updated_at",
@@ -175,6 +186,7 @@ class User extends Authenticatable implements JWTSubject, HasMedia
      * @var datetime
      */
     private $updated_at;
+
     /**
      * @OA\Property(
      *      title="post",
@@ -185,6 +197,7 @@ class User extends Authenticatable implements JWTSubject, HasMedia
      * @var string
      */
     private $post;
+
     /**
      * @OA\Property(
      *      title="is_high_level_admin",
@@ -212,25 +225,16 @@ class User extends Authenticatable implements JWTSubject, HasMedia
         return $this->belongsTo(Role::class);
     }
 
-    /**
-     * @return BelongsTo
-     */
     public function division(): BelongsTo
     {
         return $this->belongsTo(Division::class);
     }
 
-    /**
-     * @return HasMany
-     */
     public function deals(): HasMany
     {
         return $this->hasMany(Deal::class);
     }
 
-    /**
-     * @return HasMany
-     */
     public function partnerDeals(): HasMany
     {
         // берем только тех, у кого значение в client - число
@@ -239,8 +243,6 @@ class User extends Authenticatable implements JWTSubject, HasMedia
 
     /**
      * Get the identifier that will be stored in the subject claim of the JWT.
-     *
-     * @return mixed
      */
     public function getJWTIdentifier(): mixed
     {
@@ -249,15 +251,13 @@ class User extends Authenticatable implements JWTSubject, HasMedia
 
     /**
      * Return a key value array, containing any custom claims to be added to the JWT.
-     *
-     * @return array
      */
     public function getJWTCustomClaims(): array
     {
         return [];
     }
 
-    public function registerMediaConversions(Media $media = null): void
+    public function registerMediaConversions(?Media $media = null): void
     {
         $this
             ->addMediaConversion('preview')
@@ -265,12 +265,6 @@ class User extends Authenticatable implements JWTSubject, HasMedia
             ->nonQueued();
     }
 
-
-
-    /**
-     * @param int $dealId
-     * @return bool
-     */
     public function hasDealAccess(int $dealId): bool
     {
         $user = auth()->user();
@@ -292,16 +286,9 @@ class User extends Authenticatable implements JWTSubject, HasMedia
             ->exists();
     }
 
-
-    /**
-     * @param string $entity
-     * @param string $action
-     * @param string $scope
-     * @return bool
-     */
     public function hasAccess(string $entity, string $action, string $scope): bool
     {
-        if(!$this->role) {
+        if (! $this->role) {
             return false;
         }
 
@@ -312,14 +299,14 @@ class User extends Authenticatable implements JWTSubject, HasMedia
     }
 
     /**
-     * @param mixed $roles
-     * @return bool
+     * @param  mixed  $roles
      */
     public function hasRole(array|string $roles): bool
     {
         if (is_string($roles)) {
             $roles = [$roles];
         }
+
         return $this->role()
             ->whereIn('original_title', $roles)
             ->orWhereIn('title', $roles)

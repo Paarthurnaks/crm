@@ -9,6 +9,6 @@ class DealEventService
 {
     public function getDealEvents(int $dealId): Collection
     {
-        return DealEvent::where("deal_id", $dealId)->get();
+        return DealEvent::where('deal_id', $dealId)->get();
     }
 }

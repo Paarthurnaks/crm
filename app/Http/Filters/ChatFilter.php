@@ -13,10 +13,6 @@ use Illuminate\Support\Str;
 
 class ChatFilter extends QueryFilter
 {
-    /**
-     * @param string $id
-     * @return void
-     */
     public function category_id(string $id): void
     {
         $this->builder->whereHas('categories', function ($query) use ($id) {
@@ -24,10 +20,6 @@ class ChatFilter extends QueryFilter
         });
     }
 
-    /**
-     * @param string $value
-     * @return void
-     */
     public function search_term(string $value): void
     {
         $chatCategory = ChatCategory::find($this->request->get('category_id'));
@@ -49,12 +41,6 @@ class ChatFilter extends QueryFilter
         });
     }
 
-    /**
-     * @param $query
-     * @param $searchTerm
-     * @param $user
-     * @return void
-     */
     private function applySystemChatFilters($query, $searchTerm, $user): void
     {
         $esbSystemName = Str::lower(DefaultChatNameEnum::ESB_SYSTEM->value);
@@ -62,17 +48,11 @@ class ChatFilter extends QueryFilter
 
         if (Str::contains($esbSystemName, $searchTerm) && $user->hasRole(DefaultRolesEnum::PARTNER->value)) {
             $query->orWhere('type', ChatTypeEnum::PARTNER->value);
-        } elseif (Str::contains($defaultName, $searchTerm) && !$user->hasRole(DefaultRolesEnum::havePersonalAccount())) {
+        } elseif (Str::contains($defaultName, $searchTerm) && ! $user->hasRole(DefaultRolesEnum::havePersonalAccount())) {
             $query->orWhere('type', ChatTypeEnum::DEFAULT->value);
         }
     }
 
-    /**
-     * @param $query
-     * @param $typeByCategory
-     * @param $searchTerm
-     * @return void
-     */
     private function applyCategoryBasedFilters($query, $typeByCategory, $searchTerm): void
     {
         if ($typeByCategory === ChatTypeEnum::PARTNER->value || auth()->user()->hasRole(DefaultRolesEnum::CLIENT->value)) {
@@ -82,11 +62,6 @@ class ChatFilter extends QueryFilter
         }
     }
 
-    /**
-     * @param $query
-     * @param $searchTerm
-     * @return void
-     */
     private function applyPartnerFilter($query, $searchTerm): void
     {
         $query->orWhere(function ($subQuery) use ($searchTerm) {
@@ -101,11 +76,6 @@ class ChatFilter extends QueryFilter
         });
     }
 
-    /**
-     * @param $query
-     * @param $searchTerm
-     * @return void
-     */
     private function applyClientFilter($query, $searchTerm): void
     {
         $query->orWhere(function ($subQuery) use ($searchTerm) {
@@ -122,11 +92,6 @@ class ChatFilter extends QueryFilter
         });
     }
 
-    /**
-     * @param $query
-     * @param $searchTerm
-     * @return void
-     */
     private function applyGeneralSearchFilters($query, $searchTerm): void
     {
         $query->orWhere(function ($subQuery) use ($searchTerm) {

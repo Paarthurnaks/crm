@@ -12,9 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('creditors', function (Blueprint $table) {
-            $table->dropForeign(["responsible_id"]);
+            $table->dropForeign(['responsible_id']);
             $table->foreign('responsible_id')->references('id')->on('users')->onDelete('cascade');
-            $table->dropForeign(["creator_id"]);
+            $table->dropForeign(['creator_id']);
             $table->foreign('creator_id')->references('id')->on('users')->onDelete('cascade');
         });
     }
@@ -25,9 +25,9 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('creditors', function (Blueprint $table) {
-            $table->dropForeign(["responsible_id"]);
+            $table->dropForeign(['responsible_id']);
             $table->foreign('responsible_id')->references('id')->on('user_fields')->onDelete('cascade');
-            $table->dropForeign(["creator_id"]);
+            $table->dropForeign(['creator_id']);
             $table->foreign('creator_id')->references('id')->on('user_fields')->onDelete('cascade');
         });
     }

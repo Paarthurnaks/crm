@@ -18,6 +18,7 @@ use Spatie\MediaLibrary\InteractsWithMedia;
  * @OA\Schema(
  *     title="UserFieldValue",
  *     description="Значение пользовательского поля",
+ *
  *     @OA\Xml(
  *         name="UserFieldValue"
  *     )
@@ -25,12 +26,12 @@ use Spatie\MediaLibrary\InteractsWithMedia;
  */
 class UserFieldValue extends Model implements HasMedia
 {
-    use HasFactory, Filterable, InteractsWithMedia;
+    use Filterable, HasFactory, InteractsWithMedia;
 
     protected $fillable = [
-        "entity_id",
-        "field_id",
-        "value",
+        'entity_id',
+        'field_id',
+        'value',
     ];
 
     /**
@@ -40,8 +41,6 @@ class UserFieldValue extends Model implements HasMedia
      *     format="int64",
      *     example=1
      * )
-     *
-     * @var int
      */
     private int $id;
 
@@ -52,8 +51,6 @@ class UserFieldValue extends Model implements HasMedia
      *     format="int64",
      *     example=12
      * )
-     *
-     * @var int
      */
     private int $entity_id;
 
@@ -64,8 +61,6 @@ class UserFieldValue extends Model implements HasMedia
      *     format="int64",
      *     example=2
      * )
-     *
-     * @var int
      */
     private int $field_id;
 
@@ -75,8 +70,6 @@ class UserFieldValue extends Model implements HasMedia
      *      description="значение",
      *      example="тест"
      * )
-     *
-     * @var string
      */
     private string $value;
 

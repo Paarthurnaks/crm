@@ -2,27 +2,24 @@
 
 namespace App\Providers;
 
-
-use App\Models\Chat;
 use App\Models\ChatMessage;
 use App\Models\Comment;
 use App\Models\Deal;
 use App\Models\DealEvent;
+use App\Models\DiskEntity;
 use App\Models\Permission;
 use App\Models\Task;
 use App\Models\TaskEvent;
 use App\Models\User;
 use App\Models\UserField;
 use App\Observers\ChatMessageObserver;
-use App\Observers\ChatObserver;
 use App\Observers\CommentObserver;
-use App\Models\DiskEntity;
 use App\Observers\DealEventObserver;
 use App\Observers\DealObserver;
+use App\Observers\DiskEntityObserver;
 use App\Observers\NotificationObserver;
 use App\Observers\PermissionObserver;
 use App\Observers\TaskEventObserver;
-use App\Observers\DiskEntityObserver;
 use App\Observers\TaskObserver;
 use App\Observers\UserFieldObserver;
 use App\Observers\UserObserver;

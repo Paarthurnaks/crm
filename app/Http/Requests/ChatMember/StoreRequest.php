@@ -3,7 +3,6 @@
 namespace App\Http\Requests\ChatMember;
 
 use App\Models\ChatMember;
-use App\Rules\UniqueChatMember;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreRequest extends FormRequest
@@ -28,9 +27,11 @@ class StoreRequest extends FormRequest
      *     schema="StoreChatMemberRequest",
      *     type="object",
      *     required={"user_ids"},
+     *
      *     @OA\Property(
      *         property="user_ids",
      *         type="array",
+     *
      *         @OA\Items(
      *             type="integer",
      *             description="Идентификатор пользователя",

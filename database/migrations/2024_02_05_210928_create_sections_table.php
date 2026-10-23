@@ -15,11 +15,11 @@ return new class extends Migration
     {
         Schema::create('sections', function (Blueprint $table) {
             $table->id();
-            $table->string("entity");
-            $table->string("title");
+            $table->string('entity');
+            $table->string('title');
             $table->foreignIdFor(User::class)->cascadeOnDelete()->constrained();
             $table->foreignIdFor(SalesFunnel::class)->nullable()->cascadeOnDelete()->constrained();
-            $table->integer("position");
+            $table->integer('position');
             $table->timestamps();
         });
     }

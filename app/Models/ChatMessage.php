@@ -24,7 +24,9 @@ use Spatie\MediaLibrary\InteractsWithMedia;
  * @OA\Schema(
  *     title="ChatMessagel",
  *     description="Модель сообщения",
+ *
  *     @OA\Xml(name="ChatMessage"),
+ *
  *     @OA\Property(
  *         property="id",
  *         title="ID",
@@ -81,10 +83,9 @@ use Spatie\MediaLibrary\InteractsWithMedia;
  *     )
  * )
  */
-
 class ChatMessage extends Model implements HasMedia
 {
-    use HasFactory, SoftDeletes, InteractsWithMedia;
+    use HasFactory, InteractsWithMedia, SoftDeletes;
 
     protected $fillable = [
         'chat_id',
@@ -95,90 +96,60 @@ class ChatMessage extends Model implements HasMedia
         'is_forwarded',
     ];
 
-
-    /**
-     * @return void
-     */
     protected static function boot(): void
     {
         parent::boot();
 
-        static::addGlobalScope(new ExcludeHiddenMessagesScope());
-        static::addGlobalScope(new ChatMessagesScope());
+        static::addGlobalScope(new ExcludeHiddenMessagesScope);
+        static::addGlobalScope(new ChatMessagesScope);
     }
 
-    /**
-     * @return BelongsTo
-     */
     public function chat(): BelongsTo
     {
         return $this->belongsTo(Chat::class);
     }
 
-    /**
-     * @return BelongsTo
-     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    /**
-     * @return BelongsTo
-     */
     public function replyTo(): BelongsTo
     {
         return $this->belongsTo(ChatMessage::class, 'reply_message_id');
     }
 
-    /**
-     * @return HasMany
-     */
     public function replies(): HasMany
     {
         return $this->hasMany(ChatMessage::class, 'reply_message_id');
     }
 
-    /**
-     * @return HasMany
-     */
     public function hiddenByUsers(): HasMany
     {
         return $this->hasMany(ChatHiddenMessage::class, 'chat_message_id');
     }
 
-    /**
-     * @return HasMany
-     */
     public function forwards(): HasMany
     {
         return $this->hasMany(ForwardingChatMessage::class, 'original_message_id');
     }
 
-    /**
-     * @return HasOne
-     */
     public function forward(): HasOne
     {
         return $this->hasOne(ForwardingChatMessage::class, 'forwarded_message_id');
     }
 
-    /**
-     * @return HasMany
-     */
     public function unreadMessages(): HasMany
     {
         return $this->hasMany(UnreadChatMessage::class, 'chat_message_id');
     }
 
-    /**
-     * @param $userId|null
-     * @return bool
-     */
-    public function isReadByUser(int $userId = null): bool
+    public function isReadByUser(?int $userId = null): bool
     {
-        if($userId === null) return false;
+        if ($userId === null) {
+            return false;
+        }
 
-        return !$this->unreadMessages()->where('user_id', $userId)->exists();
+        return ! $this->unreadMessages()->where('user_id', $userId)->exists();
     }
 }

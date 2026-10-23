@@ -26,7 +26,9 @@ use Spatie\MediaLibrary\InteractsWithMedia;
  * @OA\Schema(
  *     title="Chat",
  *     description="Модель чата",
+ *
  *     @OA\Xml(name="Chat"),
+ *
  *     @OA\Property(
  *         property="id",
  *         title="ID",
@@ -67,10 +69,9 @@ use Spatie\MediaLibrary\InteractsWithMedia;
  *      )
  * )
  */
-
 class Chat extends Model implements HasMedia
 {
-    use HasFactory, InteractsWithMedia, Filterable;
+    use Filterable, HasFactory, InteractsWithMedia;
 
     protected $fillable = [
         'type',
@@ -82,46 +83,29 @@ class Chat extends Model implements HasMedia
     {
         parent::boot();
 
-        static::addGlobalScope(new ChatsScope());
+        static::addGlobalScope(new ChatsScope);
     }
 
-    /**
-     * @return HasMany
-     */
     public function messages(): HasMany
     {
         return $this->hasMany(ChatMessage::class);
     }
 
-    /**
-     * @return HasMany
-     */
     public function members(): HasMany
     {
         return $this->hasMany(ChatMember::class);
     }
 
-    /**
-     * @return HasMany
-     */
     public function unreadMessages(): HasMany
     {
         return $this->hasMany(UnreadChatMessage::class, 'chat_id');
     }
 
-
-    /**
-     * @return HasOne
-     */
     public function lastMessage(): HasOne
     {
         return $this->hasOne(ChatMessage::class)->with('chat')->latest();
     }
 
-    /**
-     * @param $userId
-     * @return string
-     */
     public function getDisplayName($userId): string
     {
         return match ($this->type) {
@@ -137,7 +121,7 @@ class Chat extends Model implements HasMedia
     {
         $user = User::find($userId) ?? auth()->user();
 
-        if($user && $user->hasRole(DefaultRolesEnum::havePersonalAccount())) {
+        if ($user && $user->hasRole(DefaultRolesEnum::havePersonalAccount())) {
             return $this->getOtherUserName($userId) ?? DefaultChatNameEnum::DELETED->value;
         }
 
@@ -173,7 +157,7 @@ class Chat extends Model implements HasMedia
             $query->whereHas('user.role', function ($query) {
                 $query->where('original_title', DefaultRolesEnum::CLIENT->value);
             });
-        } else if($this->type === ChatTypeEnum::PARTNER->value) {
+        } elseif ($this->type === ChatTypeEnum::PARTNER->value) {
             $query->whereHas('user.role', function ($query) {
                 $query->where('original_title', DefaultRolesEnum::PARTNER->value);
             });
@@ -195,10 +179,6 @@ class Chat extends Model implements HasMedia
         return $this->getOtherUserName($userId) ?? DefaultChatNameEnum::DELETED->value;
     }
 
-    /**
-     * @param $userId
-     * @return string
-     */
     public function getDisplayAvatar($userId): string
     {
         if ($this->type === ChatTypeEnum::SINGLE->value) {
@@ -208,18 +188,18 @@ class Chat extends Model implements HasMedia
                 ->first()
                 ?->user;
 
-            return $otherUser?->getFirstMedia()?->getUrl() ?? asset(Storage::url("avatars/avatar.png"));
+            return $otherUser?->getFirstMedia()?->getUrl() ?? asset(Storage::url('avatars/avatar.png'));
         }
 
-        if($this->type === ChatTypeEnum::PARTNER->value) {
+        if ($this->type === ChatTypeEnum::PARTNER->value) {
             $partner = User::find($userId);
 
-            if($partner->hasRole(DefaultRolesEnum::PARTNER->value)) {
-                return asset(Storage::url("avatars/esb_logo.png"));
+            if ($partner->hasRole(DefaultRolesEnum::PARTNER->value)) {
+                return asset(Storage::url('avatars/esb_logo.png'));
             }
         }
 
-        return $this->getFirstMedia()?->getUrl() ?? asset(Storage::url("avatars/chat-avatar.png"));
+        return $this->getFirstMedia()?->getUrl() ?? asset(Storage::url('avatars/chat-avatar.png'));
     }
 
     public function category(): BelongsToMany
@@ -235,14 +215,12 @@ class Chat extends Model implements HasMedia
         return $this->belongsToMany(ChatCategory::class, 'chat_category_mappings', 'chat_id', 'chat_category_id');
     }
 
-    /**
-     * @param $userId|null
-     * @return bool
-     */
-    public function isReadByUser(int $userId = null): bool
+    public function isReadByUser(?int $userId = null): bool
     {
-        if($userId === null) return false;
+        if ($userId === null) {
+            return false;
+        }
 
-        return !$this->unreadMessages()->where('user_id', $userId)->exists();
+        return ! $this->unreadMessages()->where('user_id', $userId)->exists();
     }
 }

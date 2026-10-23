@@ -13,12 +13,12 @@ return new class extends Migration
     {
         Schema::create('reports', function (Blueprint $table) {
             $table->id();
-            $table->string("title");
-            $table->text("description")->nullable();
-            $table->dateTime("period_from");
-            $table->dateTime("period_to");
-            $table->json("filter");
-            $table->foreignId("author_id")->nullable()->constrained("users")->nullOnDelete();
+            $table->string('title');
+            $table->text('description')->nullable();
+            $table->dateTime('period_from');
+            $table->dateTime('period_to');
+            $table->json('filter');
+            $table->foreignId('author_id')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
         });
     }

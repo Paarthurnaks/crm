@@ -10,13 +10,13 @@ return new class extends Migration
      * Run the migrations.
      */
     public function up(): void
-    {   
+    {
         Schema::table('role_fields', function (Blueprint $table) {
-            $table->string("type")->default("view");
+            $table->string('type')->default('view');
         });
 
         Schema::table('role_user_fields', function (Blueprint $table) {
-            $table->string("type")->default("view");
+            $table->string('type')->default('view');
         });
     }
 
@@ -24,13 +24,13 @@ return new class extends Migration
      * Reverse the migrations.
      */
     public function down(): void
-    {   
+    {
         Schema::table('role_fields', function (Blueprint $table) {
-            $table->dropColumn("type");
+            $table->dropColumn('type');
         });
 
         Schema::table('role_user_fields', function (Blueprint $table) {
-            $table->dropColumn("type");
+            $table->dropColumn('type');
         });
     }
 };

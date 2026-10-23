@@ -6,7 +6,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-
 /**
  * @property int $id
  * @property int $deal_id
@@ -15,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @OA\Schema(
  *     title="PartnerClientDeal",
  *     description="Связь между сделкой партнера и его клиентом",
+ *
  *     @OA\Xml(
  *         name="Deal"
  *     )
@@ -35,8 +35,6 @@ class PartnerClientDeal extends Model
      *      description="ID",
      *      example="23"
      * )
-     *
-     * @var int $id
      */
     private int $id;
 
@@ -46,8 +44,6 @@ class PartnerClientDeal extends Model
      *      description="ID сделки",
      *      example="2"
      * )
-     *
-     * @var int $deal_id
      */
     private int $deal_id;
 
@@ -57,8 +53,6 @@ class PartnerClientDeal extends Model
      *      description="ID клиента",
      *      example="34"
      * )
-     *
-     * @var int $client_id
      */
     private int $client_id;
 

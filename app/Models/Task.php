@@ -12,9 +12,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
-use Spatie\MediaLibrary\InteractsWithMedia;
 use OpenApi\Annotations as OA;
 use Spatie\MediaLibrary\HasMedia;
+use Spatie\MediaLibrary\InteractsWithMedia;
 
 /**
  * @property int $id
@@ -29,6 +29,7 @@ use Spatie\MediaLibrary\HasMedia;
  * @OA\Schema(
  *     title="Task",
  *     description="Задача",
+ *
  *     @OA\Xml(
  *         name="Task"
  *     )
@@ -36,24 +37,24 @@ use Spatie\MediaLibrary\HasMedia;
  */
 class Task extends Model implements HasMedia
 {
-    use HasFactory,
-        Filterable,
+    use Filterable,
         HasComments,
+        HasFactory,
         InteractsWithMedia;
 
     protected $fillable = [
-        "deal_id",
-        "creator_id",
-        "title",
-        "description",
-        "status",
-        "deadline",
-        "start_time",
-        "type",
-        "email",
-        "client_full_name",
-        "service",
-        "docket_number",
+        'deal_id',
+        'creator_id',
+        'title',
+        'description',
+        'status',
+        'deadline',
+        'start_time',
+        'type',
+        'email',
+        'client_full_name',
+        'service',
+        'docket_number',
     ];
 
     /**
@@ -63,8 +64,6 @@ class Task extends Model implements HasMedia
      *     type="int",
      *     example=15
      * )
-     *
-     * @var int $id
      */
     private int $id;
 
@@ -75,8 +74,6 @@ class Task extends Model implements HasMedia
      *      type="int",
      *      example=150
      * )
-     *
-     * @var float $sum
      */
     private float $creator_id;
 
@@ -87,10 +84,9 @@ class Task extends Model implements HasMedia
      *     type="int",
      *     example=1
      * )
-     *
-     * @var int $deal_id
      */
     private int $deal_id;
+
     /**
      * @OA\Property(
      *     title="expired",
@@ -98,10 +94,9 @@ class Task extends Model implements HasMedia
      *     type="bool",
      *     example="false"
      * )
-     *
-     * @var bool
      */
     private bool $expired;
+
     /**
      * @OA\Property(
      *     title="deadline",
@@ -109,10 +104,9 @@ class Task extends Model implements HasMedia
      *     type="string",
      *     example="2024-02-01 15:17"
      * )
-     *
-     * @var string
      */
     private string $deadline;
+
     /**
      * @OA\Property(
      *     title="start_time",
@@ -120,10 +114,9 @@ class Task extends Model implements HasMedia
      *     type="string",
      *     example="2024-02-01 15:17"
      * )
-     *
-     * @var string
      */
     private string $start_time;
+
     /**
      * @OA\Property(
      *     title="status",
@@ -131,10 +124,9 @@ class Task extends Model implements HasMedia
      *     type="string",
      *     example="new"
      * )
-     *
-     * @var string
      */
     private string $status;
+
     /**
      * @OA\Property(
      *     title="title",
@@ -142,8 +134,6 @@ class Task extends Model implements HasMedia
      *     type="string",
      *     example="242_test"
      * )
-     *
-     * @var string
      */
     private string $title;
 
@@ -154,8 +144,6 @@ class Task extends Model implements HasMedia
      *     type="string",
      *     example="242_test description"
      * )
-     *
-     * @var string
      */
     private string $description;
 
@@ -164,11 +152,11 @@ class Task extends Model implements HasMedia
      *     title="executors",
      *     description="ответственные",
      *     type="array",
+     *
      *     @OA\Items(
      *          ref="#/components/schemas/User"
      *     )
      * )
-     * @var array $executors
      */
     private array $executors;
 
@@ -177,11 +165,11 @@ class Task extends Model implements HasMedia
      *     title="$observers",
      *     description="наблюдатели",
      *     type="array",
+     *
      *     @OA\Items(
      *          ref="#/components/schemas/User"
      *     )
      * )
-     * @var array $observers
      */
     private array $observers;
 
@@ -192,7 +180,6 @@ class Task extends Model implements HasMedia
      *     type="string",
      *     example="helpdesk"
      * )
-     * @var string $type
      */
     private string $type;
 
@@ -203,27 +190,27 @@ class Task extends Model implements HasMedia
 
     public function creator(): BelongsTo
     {
-        return $this->belongsTo(User::class, "creator_id");
+        return $this->belongsTo(User::class, 'creator_id');
     }
 
     public function deal(): BelongsTo
     {
-        return $this->belongsTo(Deal::class, "deal_id");
+        return $this->belongsTo(Deal::class, 'deal_id');
     }
 
     public function executors(): BelongsToMany
     {
-        return $this->belongsToMany(User::class, 'task_executors','task_id', 'user_id');
+        return $this->belongsToMany(User::class, 'task_executors', 'task_id', 'user_id');
     }
 
     public function observers(): BelongsToMany
     {
-        return $this->belongsToMany(User::class, 'task_observers','task_id', 'user_id');
+        return $this->belongsToMany(User::class, 'task_observers', 'task_id', 'user_id');
     }
 
     public function events(): HasMany
     {
-        return $this->hasMany(TaskEvent::class, "task_id", "id");
+        return $this->hasMany(TaskEvent::class, 'task_id', 'id');
     }
 
     public function activities(): MorphMany

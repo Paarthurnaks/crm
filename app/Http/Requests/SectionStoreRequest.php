@@ -24,15 +24,15 @@ class SectionStoreRequest extends FormRequest
     public function rules(): array
     {
         return [
-            "entity" => ["required","string", new Enum(EntityTypeEnum::class)],
-            "title" => ["string"],
-            "position" => ["integer"],
-            "deal_id" => ["integer", "exists:deals,id"],
-            "section_fields" => ["array"],
-            "section_fields.*.field_id" => ["integer"],
-            "section_fields.*.user_field_id" => ["integer"],
-            "section_fields.*.position" => ["integer"],
-            "sales_funnel_id" => ["integer", "exists:sales_funnels,id"],
+            'entity' => ['required', 'string', new Enum(EntityTypeEnum::class)],
+            'title' => ['string'],
+            'position' => ['integer'],
+            'deal_id' => ['integer', 'exists:deals,id'],
+            'section_fields' => ['array'],
+            'section_fields.*.field_id' => ['integer'],
+            'section_fields.*.user_field_id' => ['integer'],
+            'section_fields.*.position' => ['integer'],
+            'sales_funnel_id' => ['integer', 'exists:sales_funnels,id'],
         ];
     }
 }

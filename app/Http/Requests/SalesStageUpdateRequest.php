@@ -22,11 +22,11 @@ class SalesStageUpdateRequest extends FormRequest
     public function rules(): array
     {
         return [
-            "sales_funnel_id" => ["integer", "exists:sales_funnels,id"],
-            "title" => ["string"],
-            "type" => ["string"],
-            "position" => ["integer"],
-            "color" => ["string"]
-        ];  
+            'sales_funnel_id' => ['integer', 'exists:sales_funnels,id'],
+            'title' => ['string'],
+            'type' => ['string'],
+            'position' => ['integer'],
+            'color' => ['string'],
+        ];
     }
 }

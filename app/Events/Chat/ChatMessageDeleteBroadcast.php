@@ -19,9 +19,7 @@ class ChatMessageDeleteBroadcast implements ShouldBroadcast
     public function __construct(
         private readonly ChatResource $chat,
         private readonly int $messageId
-    )
-    {
-    }
+    ) {}
 
     /**
      * Get the channels the event should broadcast on.
@@ -31,7 +29,7 @@ class ChatMessageDeleteBroadcast implements ShouldBroadcast
     public function broadcastOn(): array
     {
         return [
-            new PrivateChannel('chat.' . $this->chat->id),
+            new PrivateChannel('chat.'.$this->chat->id),
         ];
     }
 

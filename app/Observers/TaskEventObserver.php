@@ -12,7 +12,7 @@ class TaskEventObserver
      */
     public function created(TaskEvent $taskEvent): void
     {
-        if($taskEvent->task->creator_id !== auth()->id()) {
+        if ($taskEvent->task->creator_id !== auth()->id()) {
             $taskEvent->task->creator->notify(new TaskEventNotification($taskEvent));
         }
     }

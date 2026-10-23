@@ -15,9 +15,9 @@ class SalesFunnelShortResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            "id" => $this->id,
-            "title" => $this->title,
-            "position" => $this->position
+            'id' => $this->id,
+            'title' => $this->title,
+            'position' => $this->position,
         ];
     }
 }

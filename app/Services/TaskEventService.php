@@ -9,6 +9,6 @@ class TaskEventService
 {
     public function getTaskEvents(int $taskId): Collection
     {
-        return TaskEvent::where("task_id", $taskId)->get();
+        return TaskEvent::where('task_id', $taskId)->get();
     }
 }

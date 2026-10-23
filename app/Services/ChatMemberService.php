@@ -13,22 +13,18 @@ use App\Models\User;
 use Exception;
 use Illuminate\Support\Collection;
 
-class ChatMemberService {
-
+class ChatMemberService
+{
     private const ERROR_MESSAGES = [
         'chatCreatorError' => 'Пользователь не является создателем чата',
         'userAlreadyInChat' => 'Пользователь уже состоит в чате',
     ];
 
-    /**
-     * @param Chat $chat
-     * @return Collection
-     */
     public function getMembers(Chat $chat): Collection
     {
         $query = ChatMember::where('chat_id', $chat->id);
 
-        if(in_array($chat->type, [ChatTypeEnum::PARTNER->value, ChatTypeEnum::CLIENT->value]) &&
+        if (in_array($chat->type, [ChatTypeEnum::PARTNER->value, ChatTypeEnum::CLIENT->value]) &&
             auth()->user()->hasRole(DefaultRolesEnum::havePersonalAccount())
         ) {
             $query->where('chat_id', $chat->id)->whereHas('user.role', function ($query) {
@@ -40,13 +36,9 @@ class ChatMemberService {
     }
 
     /**
-     * @param array $data
-     * @param Chat $chat
-     * @param int|null $creatorId
-     * @return Collection
      * @throws Exception
      */
-    public function create(array $data, Chat $chat, int $creatorId = null): Collection
+    public function create(array $data, Chat $chat, ?int $creatorId = null): Collection
     {
         $user = User::find($creatorId) ?? auth()->user();
 
@@ -55,7 +47,7 @@ class ChatMemberService {
             $chat &&
             $chat->type === ChatTypeEnum::GROUP->value &&
             $chat->members()->exists() &&
-            !$user->isCreatorOfChat($chat->id)
+            ! $user->isCreatorOfChat($chat->id)
         ) {
             throw new Exception(self::ERROR_MESSAGES['chatCreatorError']);
         }
@@ -68,8 +60,8 @@ class ChatMemberService {
         foreach ($data['user_ids'] as $index => $userId) {
             $chatMember = ChatMember::withTrashed()->where('user_id', $userId)->where('chat_id', $chatId)->first();
 
-            if($chatMember) {
-                if($chatMember->trashed()) {
+            if ($chatMember) {
+                if ($chatMember->trashed()) {
                     $chatMember->restore();
                 } else {
                     unset($data['user_ids'][$index]);
@@ -85,11 +77,11 @@ class ChatMemberService {
             ];
         }
 
-        if($creatorId !== null) {
+        if ($creatorId !== null) {
             $chatMember = ChatMember::withTrashed()->where('user_id', $creatorId)->where('chat_id', $chatId)->first();
 
-            if($chatMember) {
-                if($chatMember->trashed()) {
+            if ($chatMember) {
+                if ($chatMember->trashed()) {
                     $chatMember->restore();
                 }
             } else {
@@ -108,16 +100,11 @@ class ChatMemberService {
         return ChatMember::whereIn('user_id', $data['user_ids'])->get() ?? collect();
     }
 
-    /**
-     * @param array $user_ids
-     * @param Chat $chat
-     * @return void
-     */
     public function broadcastAddingToChatToGlobal(array $user_ids, Chat $chat): void
     {
 
-        if(in_array($chat->type, ChatTypeEnum::personalTypes())) {
-            User::find($user_ids)->each(function($user) {
+        if (in_array($chat->type, ChatTypeEnum::personalTypes())) {
+            User::find($user_ids)->each(function ($user) {
                 app(ChatService::class)->setupSystemCategories($user);
             });
         }
@@ -129,17 +116,16 @@ class ChatMemberService {
     }
 
     /**
-     * @param ChatMember $chatMember
-     * @return void
      * @throws Exception
      */
     public function delete(ChatMember $chatMember): void
     {
-        if(!auth()->user()->isCreatorOfChat($chatMember->chat_id)) throw new Exception(self::ERROR_MESSAGES['chatCreatorError']);
+        if (! auth()->user()->isCreatorOfChat($chatMember->chat_id)) {
+            throw new Exception(self::ERROR_MESSAGES['chatCreatorError']);
+        }
 
         broadcast(new GlobalChatDeleteBroadcast($chatMember->chat_id, $chatMember->user_id));
 
         $chatMember->forceDelete();
     }
-
 }

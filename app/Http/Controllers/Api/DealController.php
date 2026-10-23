@@ -28,12 +28,9 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 class DealController extends Controller
 {
     public function __construct(
-        private readonly DealService     $dealService,
+        private readonly DealService $dealService,
         private readonly DocumentService $documentService,
-    )
-    {
-
-    }
+    ) {}
 
     /**
      * @OA\Get(
@@ -43,164 +40,202 @@ class DealController extends Controller
      *     description="Метод для просмотра списка сделок",
      *     summary="Метод для просмотра списка сделок",
      *     security={{"bearer_token":{}}},
+     *
      *     @OA\Parameter(
      *          name="page",
      *          description="Номер страницы",
      *          required=false,
      *          in="query",
+     *
      *          @OA\Schema(
      *              type="int"
      *          )
      *      ),
+     *
      *     @OA\Parameter(
      *           name="has_clients",
      *           description="Получает сделки с привязанными клиентами или без",
      *           required=false,
      *           in="query",
+     *
      *           @OA\Schema(
      *               type="boolean"
      *           )
      *       ),
+     *
      *      @OA\Parameter(
      *          name="limit",
      *          description="Максимальное количество элементов на странице",
      *          required=false,
      *          in="query",
+     *
      *          @OA\Schema(
      *              type="int"
      *          )
      *      ),
+     *
      *      @OA\Parameter(
      *          name="search",
      *          description="поиск",
      *          required=false,
      *          in="query",
+     *
      *          @OA\Schema(
      *              type="string"
      *          )
      *      ),
+     *
      *     @OA\Parameter(
      *          name="title",
      *          description="фильтр по title",
      *          required=false,
      *          in="query",
+     *
      *          @OA\Schema(
      *              type="string"
      *          )
      *      ),
+     *
      *      @OA\Parameter(
      *          name="sales_stage",
      *          description="фильтр по sales_stage_id",
      *          required=false,
      *          in="query",
+     *
      *          @OA\Schema(
      *              type="int"
      *          )
      *      ),
+     *
      *      @OA\Parameter(
      *          name="sales_funnel",
      *          description="фильтр по sales_funnel_id",
      *          required=false,
      *          in="query",
+     *
      *          @OA\Schema(
      *              type="int"
      *          )
      *      ),
+     *
      *      @OA\Parameter(
      *          name="creator",
      *          description="фильтр по creator_id",
      *          required=false,
      *          in="query",
+     *
      *          @OA\Schema(
      *              type="int"
      *          )
      *      ),
+     *
      *      @OA\Parameter(
      *          name="responsible",
      *          description="фильтр по responsible_id",
      *          required=false,
      *          in="query",
+     *
      *          @OA\Schema(
      *              type="int"
      *          )
      *      ),
+     *
      *      @OA\Parameter(
      *          name="note",
      *          description="фильтр по note",
      *          required=false,
      *          in="query",
+     *
      *          @OA\Schema(
      *              type="string"
      *          )
      *      ),
+     *
      *      @OA\Parameter(
      *          name="client",
      *          description="фильтр по client",
      *          required=false,
      *          in="query",
+     *
      *          @OA\Schema(
      *              type="string"
      *          )
      *      ),
+     *
      *      @OA\Parameter(
      *          name="amount_from",
      *          description="фильтр по amount (от)",
      *          required=false,
      *          in="query",
+     *
      *          @OA\Schema(
      *              type="string"
      *          )
      *      ),     *
+     *
      *      @OA\Parameter(
      *          name="amount_to",
      *          description="фильтр по amount (до)",
      *          required=false,
      *          in="query",
+     *
      *          @OA\Schema(
      *              type="string"
      *          )
      *      ),
+     *
      *     @OA\Parameter(
      *          name="created_at_from",
      *          description="фильтр по дате создания (от)",
      *          required=false,
      *          in="query",
+     *
      *          @OA\Schema(
      *              type="string",
      *          )
      *      ),
+     *
      *     @OA\Parameter(
      *          name="created_at_to",
      *          description="фильтр по дате создания (до)",
      *          required=false,
      *          in="query",
+     *
      *          @OA\Schema(
      *              type="string",
      *          )
      *      ),
+     *
      *     @OA\Parameter(
      *          name="updated_at_from",
      *          description="фильтр по дате обновления (от)",
      *          required=false,
      *          in="query",
+     *
      *          @OA\Schema(
      *              type="string",
      *          )
      *      ),
+     *
      *     @OA\Parameter(
      *          name="updated_at_to",
      *          description="фильтр по дате обновления (до)",
      *          required=false,
      *          in="query",
+     *
      *          @OA\Schema(
      *              type="string",
      *          )
      *      ),
+     *
      *     @OA\Response(response="200",
      *          description="OK",
+     *
      *          @OA\MediaType(
      *              mediaType="application/json",
+     *
      *              @OA\Schema(
+     *
      *                 @OA\Property(
      *                     property="data",
      *                     ref="#/components/schemas/Deal"
@@ -209,17 +244,13 @@ class DealController extends Controller
      *          ),
      *      )
      * )
-     *
-     * @param Request $request
-     * @param DealFilter $filter
-     * @return JsonResponse
      */
     public function index(Request $request, DealFilter $filter): JsonResponse
     {
         $queryParams = $request->all();
 
         $deals = $this->dealService->getDeals($filter, $queryParams);
-        $total = $deals->toArray()["total"];
+        $total = $deals->toArray()['total'];
 
         return ResponseService::success(
             ListResource::make(DealResource::class, $deals, $total)
@@ -234,20 +265,26 @@ class DealController extends Controller
      *     description="Метод для детального просмотра сделки",
      *     summary="Метод для детального просмотра сделки",
      *     security={{"bearer_token":{}}},
+     *
      *     @OA\Parameter(
      *          name="id",
      *          description="id сделки",
      *          required=true,
      *          in="path",
+     *
      *          @OA\Schema(
      *              type="string"
      *          )
      *      ),
+     *
      *     @OA\Response(response="200",
      *          description="OK",
+     *
      *          @OA\MediaType(
      *              mediaType="application/json",
+     *
      *              @OA\Schema(
+     *
      *                 @OA\Property(
      *                     property="data",
      *                     ref="#/components/schemas/Deal"
@@ -255,13 +292,11 @@ class DealController extends Controller
      *              )
      *          )
      *      ),
+     *
      *      @OA\Response(response="404",
      *          description="NOT FOUND"
      *      ),
      * )
-     *
-     * @param Deal $deal
-     * @return JsonResponse
      */
     public function show(Deal $deal): JsonResponse
     {
@@ -278,10 +313,14 @@ class DealController extends Controller
      *     description="Метод для создания новой сделки",
      *     summary="Метод для создания новой сделки",
      *     security={{"bearer_token":{}}},
+     *
      *     @OA\RequestBody(
+     *
      *       @OA\MediaType(
      *           mediaType="application/json",
+     *
      *           @OA\Schema(
+     *
      *              @OA\Property(property="title", type="string", example="my deal"),
      *              @OA\Property(property="sales_funnel_id", type="int64", example=1),
      *              @OA\Property(property="sales_stage_id", type="int64", example=1),
@@ -296,11 +335,15 @@ class DealController extends Controller
      *           ),
      *       ),
      *     ),
+     *
      *     @OA\Response(response="200",
      *          description="OK",
+     *
      *          @OA\MediaType(
      *              mediaType="application/json",
+     *
      *              @OA\Schema(
+     *
      *                 @OA\Property(
      *                     property="data",
      *                     ref="#/components/schemas/Deal"
@@ -308,13 +351,11 @@ class DealController extends Controller
      *              )
      *          )
      *      ),
+     *
      *      @OA\Response(response="403",
      *          description="FORBIDDEN"
      *     ),
      * )
-     *
-     * @param DealStoreUpdateRequest $request
-     * @return JsonResponse
      */
     public function store(DealStoreUpdateRequest $request): JsonResponse
     {
@@ -335,19 +376,25 @@ class DealController extends Controller
      *     description="Метод для обновления сделки",
      *     summary="Метод для обновления сделки",
      *     security={{"bearer_token":{}}},
+     *
      *     @OA\Parameter(
      *          name="id",
      *          description="id сделки",
      *          required=true,
      *          in="path",
+     *
      *          @OA\Schema(
      *              type="string"
      *          )
      *      ),
+     *
      *     @OA\RequestBody(
+     *
      *       @OA\MediaType(
      *           mediaType="application/json",
+     *
      *           @OA\Schema(
+     *
      *              @OA\Property(property="title", type="string", example="my deal"),
      *              @OA\Property(property="sales_funnel_id", type="int64", example=1),
      *              @OA\Property(property="sales_stage_id", type="int64", example=1),
@@ -362,11 +409,15 @@ class DealController extends Controller
      *           ),
      *       ),
      *     ),
+     *
      *     @OA\Response(response="200",
      *          description="OK",
+     *
      *          @OA\MediaType(
      *              mediaType="application/json",
+     *
      *              @OA\Schema(
+     *
      *                 @OA\Property(
      *                     property="data",
      *                     ref="#/components/schemas/Deal"
@@ -374,6 +425,7 @@ class DealController extends Controller
      *              )
      *          )
      *      ),
+     *
      *      @OA\Response(response="404",
      *          description="NOT FOUND"
      *      ),
@@ -381,10 +433,6 @@ class DealController extends Controller
      *          description="FORBIDDEN"
      *     ),
      * )
-     *
-     * @param Deal $deal
-     * @param DealStoreUpdateRequest $request
-     * @return JsonResponse
      */
     public function update(Deal $deal, DealStoreUpdateRequest $request): JsonResponse
     {
@@ -409,15 +457,18 @@ class DealController extends Controller
      *     description="Метод для удаления сделки",
      *     summary="Метод для удаления сделки",
      *     security={{"bearer_token":{}}},
+     *
      *     @OA\Parameter(
      *          name="id",
      *          description="id сделки",
      *          required=true,
      *          in="path",
+     *
      *          @OA\Schema(
      *              type="string"
      *          )
      *      ),
+     *
      *     @OA\Response(response="200",
      *          description="OK",
      *     ),
@@ -428,15 +479,12 @@ class DealController extends Controller
      *          description="FORBIDDEN"
      *     ),
      * )
-     *
-     * @param Deal $deal
-     * @return JsonResponse
      */
     public function destroy(Deal $deal): JsonResponse
     {
         $this->dealService->deleteDeal($deal);
 
-        return ResponseService::success(message: "Сделка успешно удалена");
+        return ResponseService::success(message: 'Сделка успешно удалена');
     }
 
     /**
@@ -447,29 +495,39 @@ class DealController extends Controller
      *     description="Метод для добавления комментария к сделке",
      *     summary="Метод для добавления комментария к сделке",
      *     security={{"bearer_token":{}}},
+     *
      *     @OA\Parameter(
      *          name="id",
      *          description="id сделки",
      *          required=true,
      *          in="path",
+     *
      *          @OA\Schema(
      *              type="string"
      *          )
      *      ),
+     *
      *     @OA\RequestBody(
+     *
      *       @OA\MediaType(
      *           mediaType="application/json",
+     *
      *           @OA\Schema(
+     *
      *              @OA\Property(property="comment", type="string", example="my first comment"),
      *              @OA\Property(property="attachments", type="array", @OA\Items(type="string", example="filename.jpg")),
      *           ),
      *       ),
      *     ),
+     *
      *     @OA\Response(response="200",
      *          description="OK",
+     *
      *          @OA\MediaType(
      *              mediaType="application/json",
+     *
      *              @OA\Schema(
+     *
      *                 @OA\Property(
      *                     property="data",
      *                     ref="#/components/schemas/Comment"
@@ -477,6 +535,7 @@ class DealController extends Controller
      *              )
      *          )
      *      ),
+     *
      *      @OA\Response(response="404",
      *          description="NOT FOUND"
      *      ),
@@ -484,15 +543,12 @@ class DealController extends Controller
      *          description="FORBIDDEN"
      *     ),
      * )
-     * @param int $dealId
-     * @param AddCommentRequest $request
-     * @return JsonResponse
      */
     public function addComment(int $dealId, AddCommentRequest $request): JsonResponse
     {
         $deal = Deal::find($dealId);
 
-        if (!$deal) {
+        if (! $deal) {
             return ResponseService::notFound(
                 message: 'Сделка не найдена'
             );
@@ -520,31 +576,40 @@ class DealController extends Controller
      *     description="Метод для просмотра списка комментариев к сделке",
      *     summary="Метод для просмотра списка комментариев к сделке",
      *     security={{"bearer_token":{}}},
+     *
      *     @OA\Parameter(
      *          name="page",
      *          description="Номер страницы",
      *          in="query",
+     *
      *          @OA\Schema(
      *              type="int"
      *          )
      *      ),
+     *
      *      @OA\Parameter(
      *          name="limit",
      *          description="Максимальное количество элементов на странице",
      *          required=false,
      *          in="query",
+     *
      *          @OA\Schema(
      *              type="int"
      *          )
      *      ),
+     *
      *     @OA\Response(response="200",
      *          description="OK",
+     *
      *          @OA\MediaType(
      *              mediaType="application/json",
+     *
      *              @OA\Schema(
+     *
      *                 @OA\Property(
      *                     property="data",
      *                     type="array",
+     *
      *                     @OA\Items(
      *                          ref="#/components/schemas/Comment"
      *                      )
@@ -553,22 +618,19 @@ class DealController extends Controller
      *          ),
      *      )
      * )
-     * @param int $dealId
-     * @param Request $request
-     * @return JsonResponse
      */
     public function getComments(int $dealId, Request $request): JsonResponse
     {
         $deal = Deal::find($dealId);
 
-        if (!$deal) {
+        if (! $deal) {
             return ResponseService::notFound(
                 message: 'Сделка не найдена'
             );
         }
 
         $comments = $deal->comments()->latest()->paginate(
-            $request->input('limit', config("constants.paginator.limit"))
+            $request->input('limit', config('constants.paginator.limit'))
         );
 
         return ResponseService::success(
@@ -584,61 +646,77 @@ class DealController extends Controller
      *     description="Метод для просмотра всей активности сделки",
      *     summary="Метод для просмотра всей активности сделки",
      *     security={{"bearer_token":{}}},
+     *
      *     @OA\Parameter(
      *          name="id",
      *          description="id сделки",
      *          in="path",
+     *
      *          @OA\Schema(
      *              type="string",
      *              example="1"
      *          )
      *      ),
+     *
      *     @OA\Parameter(
      *          name="search",
      *          description="Поиск по контексту. В случае задач это название. В случае комментария это контент",
      *          in="query",
+     *
      *          @OA\Schema(
      *              type="string",
      *              example="перезвонить"
      *          )
      *      ),
+     *
      *      @OA\Parameter(
      *          name="author_id",
      *          description="Идентификатор автора",
      *          in="query",
+     *
      *          @OA\Schema(
      *              type="int",
      *              example=12
      *          )
      *      ),
+     *
      *     @OA\Parameter(
      *          name="date_from",
      *          description="Дата создания событий (от)",
      *          in="query",
+     *
      *          @OA\Schema(
      *              type="string",
      *              example="2023-12-11"
      *          )
      *      ),
+     *
      *     @OA\Parameter(
      *          name="date_to",
      *          description="Дата создания событий (до)",
      *          in="query",
+     *
      *          @OA\Schema(
      *              type="string",
      *              example="2023-12-17"
      *          )
      *      ),
+     *
      *     @OA\Response(response="200",
      *          description="OK",
+     *
      *          @OA\MediaType(
      *              mediaType="application/json",
+     *
      *              @OA\Schema(
+     *
      *                 @OA\Property(
      *                     property="data",
      *                     type="array",
+     *
      *                     @OA\Items(
      *                          type="object",
+     *
      *                          @OA\Property(
      *                             property="type",
      *                             type="string",
@@ -654,15 +732,12 @@ class DealController extends Controller
      *          ),
      *      )
      * )
-     * @param int $dealId
-     * @param DealActivityFilter $filter
-     * @return JsonResponse
      */
     public function getActivity(int $dealId, DealActivityFilter $filter): JsonResponse
     {
         $deal = Deal::find($dealId);
 
-        if (!$deal) {
+        if (! $deal) {
             return ResponseService::notFound(
                 message: __('Сделка не найдена')
             );
@@ -681,38 +756,48 @@ class DealController extends Controller
      *     description="Метод для генерации документа в сделки. Добавляем данные в шаблон из имеющихся в сделке по примеру ${id} или же ${creator.name}",
      *     summary="Метод для генерации документа в сделки",
      *     security={{"bearer_token":{}}},
+     *
      *     @OA\Parameter(
      *          name="dealId",
      *          description="id сделки",
      *          required=true,
      *          in="path",
+     *
      *          @OA\Schema(
      *              type="string"
      *          )
      *      ),
+     *
      *      @OA\Parameter(
      *          name="templateId",
      *          description="id шаблона",
      *          required=true,
      *          in="path",
+     *
      *          @OA\Schema(
      *              type="string"
      *          )
      *      ),
+     *
      *     @OA\Parameter(
      *           name="title",
      *           description="название шиблона",
      *           required=true,
      *           in="query",
+     *
      *           @OA\Schema(
      *               type="string"
      *           )
      *       ),
+     *
      *     @OA\Response(response="200",
      *          description="OK",
+     *
      *          @OA\MediaType(
      *              mediaType="application/json",
+     *
      *              @OA\Schema(
+     *
      *                 @OA\Property(
      *                     property="data",
      *                     type="object",
@@ -730,6 +815,7 @@ class DealController extends Controller
      *              )
      *          )
      *      ),
+     *
      *      @OA\Response(response="404",
      *          description="NOT FOUND"
      *      ),
@@ -737,10 +823,7 @@ class DealController extends Controller
      *          description="FORBIDDEN"
      *     ),
      * )
-     * @param GenerateDocumentRequest $request
-     * @param int $dealId
-     * @param int $templateId
-     * @return JsonResponse
+     *
      * @throws CopyFileException
      * @throws CreateTemporaryFileException
      * @throws \PhpOffice\PhpWord\Exception\Exception
@@ -766,16 +849,15 @@ class DealController extends Controller
             return ResponseService::forbidden(message: 'Документ с таким названием уже существует у данной сделки');
         }
 
-        if (!$deal) {
+        if (! $deal) {
             return ResponseService::notFound(
                 message: __('Сделка не найдена')
             );
         }
 
-
         $template = DocumentTemplate::find($templateId);
 
-        if (!$template) {
+        if (! $template) {
             return ResponseService::notFound(
                 message: __('Шаблон не найден')
             );
@@ -791,13 +873,13 @@ class DealController extends Controller
 
         $docxMedia = $deal->addMedia($document['docx'])
             ->setName($validated['title'])
-            ->setFileName($validated['title'] . '.docx')
+            ->setFileName($validated['title'].'.docx')
             ->withCustomProperties(['user_id' => auth()->id(), 'template_id' => $template->id])
             ->toMediaCollection('docs');
 
         $pdfMedia = $deal->addMedia($document['pdf'])
             ->setName($validated['title'])
-            ->setFileName($validated['title'] . '.pdf')
+            ->setFileName($validated['title'].'.pdf')
             ->withCustomProperties(['user_id' => auth()->id(), 'template_id' => $template->id])
             ->toMediaCollection('docs');
 
@@ -815,14 +897,19 @@ class DealController extends Controller
      *     tags={"Deal"},
      *     description="Метод для получения списка документов (позже будет дорабатываться. пока отсутствуют фильтры и адекватный вывод)",
      *     security={{"bearer_token":{}}},
+     *
      *     @OA\Response(response="200",
      *          description="OK",
+     *
      *          @OA\MediaType(
      *              mediaType="application/json",
+     *
      *              @OA\Schema(
+     *
      *                 @OA\Property(
      *                     property="data",
      *                     type="array",
+     *
      *                     @OA\Items(
      *                      )
      *                 ),
@@ -830,14 +917,12 @@ class DealController extends Controller
      *          ),
      *      )
      * )
-     * @param int $dealId
-     * @return JsonResponse
      */
     public function documents(int $dealId): JsonResponse
     {
         $deal = Deal::find($dealId);
 
-        if (!$deal || !auth()->user()->hasDealAccess($dealId)) {
+        if (! $deal || ! auth()->user()->hasDealAccess($dealId)) {
             return ResponseService::notFound(
                 message: __('Сделка не найдена')
             );
@@ -855,27 +940,35 @@ class DealController extends Controller
      *     tags={"Deal"},
      *     summary="Retrieve a document by its ID",
      *     description="Returns a single document's details including URL.",
+     *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
      *         description="ID of the document to retrieve",
      *         required=true,
+     *
      *         @OA\Schema(
      *             type="integer",
      *             format="int64"
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Successful operation",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="url", type="string", description="URL of the document"),
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=404,
      *         description="Document not found",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="message", type="string", example="Документ не найден")
      *         )
      *     ),
@@ -888,7 +981,7 @@ class DealController extends Controller
     {
         $media = Media::find($id);
 
-        if (!$media || !$request->user()->hasDealAccess($media->model_id)) {
+        if (! $media || ! $request->user()->hasDealAccess($media->model_id)) {
             return ResponseService::notFound(
                 message: __('Документ не найден')
             );
@@ -906,10 +999,13 @@ class DealController extends Controller
      *     tags={"Stats"},
      *     summary="Get count of in-progress deals",
      *     description="Returns the count of deals that are currently in progress for a partner.",
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Successful operation",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(
      *                 property="data",
      *                 type="object",
@@ -921,17 +1017,23 @@ class DealController extends Controller
      *             )
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=401,
      *         description="Unauthenticated",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="message", type="string", example="Unauthenticated.")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=403,
      *         description="Forbidden",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="message", type="string", example="This action is unauthorized.")
      *         )
      *     ),

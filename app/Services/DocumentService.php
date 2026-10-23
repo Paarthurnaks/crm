@@ -21,10 +21,6 @@ use Symfony\Component\Translation\Exception\NotFoundResourceException;
 
 class DocumentService
 {
-    /**
-     * @param array $data
-     * @return mixed
-     */
     public function create(array $data): mixed
     {
         $user = Auth::user();
@@ -32,7 +28,7 @@ class DocumentService
         $documentTemplate = DocumentTemplate::create([
             'creator_id' => $user->id,
             'entity' => $data['entity'],
-            'title' => $data['title']
+            'title' => $data['title'],
         ]);
 
         $documentTemplate->addMediaFromRequest('template')->toMediaCollection();
@@ -47,7 +43,7 @@ class DocumentService
     {
         $documentTemplate = DocumentTemplate::find($templateId);
 
-        if (!$documentTemplate) {
+        if (! $documentTemplate) {
             throw new NotFoundResourceException(__('document template not found'));
         }
 
@@ -66,7 +62,7 @@ class DocumentService
     {
         $documentTemplate = DocumentTemplate::find($templateId);
 
-        if (!$documentTemplate) {
+        if (! $documentTemplate) {
             throw new NotFoundResourceException(__('document template not found'));
         }
 
@@ -79,7 +75,7 @@ class DocumentService
 
     public function getList(DocumentTemplateFilter $filter, array $queryParams = [])
     {
-        $limit = $queryParams["limit"] ?? config("constants.paginator.limit");
+        $limit = $queryParams['limit'] ?? config('constants.paginator.limit');
 
         return DocumentTemplate::filter($filter)
             ->paginate($limit);
@@ -100,13 +96,13 @@ class DocumentService
         // берём все юзерфилды и их значение у этой сделки, если ее нет - вернется пустой массив,
         // а в доке будет "Не указано"
         $userFieldValues = UserField::with(['fieldValues' => function ($query) use ($deal) {
-                $query->where('entity_id', $deal->id);
-            }])
+            $query->where('entity_id', $deal->id);
+        }])
             ->get()
             ->mapWithKeys(function ($userField) {
                 $userFieldValue = $userField->fieldValues->first();
 
-                if($userField->type === UserFieldTypeEnum::BOOLEAN->value) {
+                if ($userField->type === UserFieldTypeEnum::BOOLEAN->value) {
                     return [$userField->code => $userFieldValue?->value ? 'Да' : 'Нет'];
                 }
 
@@ -122,7 +118,7 @@ class DocumentService
             'responsible' => $deal->responsible ? "{$deal->responsible->name} {$deal->responsible->surname}" : 'Не указано',
             'note' => $deal->note ?: 'Не указано',
             'amount' => $deal->amount ?? 0.00,
-            'client' => ($deal->client instanceof User ?  "{$deal->client?->name} {$deal->client?->surname}" : $deal->client) ?: 'Не указано',
+            'client' => ($deal->client instanceof User ? "{$deal->client?->name} {$deal->client?->surname}" : $deal->client) ?: 'Не указано',
             'created_at' => $deal->created_at->toDateTimeString(),
             'updated_at' => $deal->updated_at->toDateTimeString(),
             'id' => $deal->id,
@@ -139,10 +135,10 @@ class DocumentService
             if (is_array($value) || is_object($value)) {
                 return json_encode($value, JSON_UNESCAPED_UNICODE);
             }
+
             return (string) $value;
         }, $data);
         $templateProcessor->setValues($data);
-
 
         if (isset($data['table'])) {
             $tableData = $data['table'];
@@ -150,54 +146,55 @@ class DocumentService
         }
 
         $fileBaseName = Str::random(15);
-        $fileDocxName = storage_path($fileBaseName . '.docx');
-//        $filePdfName = storage_path($fileBaseName . '.pdf');
+        $fileDocxName = storage_path($fileBaseName.'.docx');
+        //        $filePdfName = storage_path($fileBaseName . '.pdf');
 
         $templateProcessor->saveAs($fileDocxName);
 
         // конвертация из docx в pdf, формирование html для нормализации utf-8 кодировки
         // формирование pdf и удаление html
-//        Settings::setPdfRenderer(Settings::PDF_RENDERER_DOMPDF, base_path('vendor/dompdf/dompdf'));
+        //        Settings::setPdfRenderer(Settings::PDF_RENDERER_DOMPDF, base_path('vendor/dompdf/dompdf'));
         $phpWord = IOFactory::load($fileDocxName);
-//
-//        $htmlWriter = IOFactory::createWriter($phpWord, 'HTML');
-//        $htmlWriter->save(storage_path($fileBaseName . '.html'));
+        //
+        //        $htmlWriter = IOFactory::createWriter($phpWord, 'HTML');
+        //        $htmlWriter->save(storage_path($fileBaseName . '.html'));
 
-//        $options = new \Dompdf\Options();
-//        $options->set('defaultFont', 'DejaVu Sans');
-//        $options->set('isHtml5ParserEnabled', true);
-//        $options->set('isPhpEnabled', true);
-//        $options->setIsRemoteEnabled(true);
+        //        $options = new \Dompdf\Options();
+        //        $options->set('defaultFont', 'DejaVu Sans');
+        //        $options->set('isHtml5ParserEnabled', true);
+        //        $options->set('isPhpEnabled', true);
+        //        $options->setIsRemoteEnabled(true);
 
-//        $dompdf = new \Dompdf\Dompdf($options);
-//        $html = '
-//<!DOCTYPE html>
-//<html>
-//<head>
-//    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
-//    <style>
-//        body { font-family: DejaVu Sans, sans-serif; line-height: 1.6; }
-//        table { border-collapse: collapse; width: 100%; }
-//        table, th, td { border: 1px solid #ddd; }
-//        th, td { padding: 8px; text-align: left; }
-//    </style>
-//</head>
-//<body>' . file_get_contents(storage_path($fileBaseName . '.html')) . '
-//</body>
-//</html>';
-//        $dompdf->loadHtml($html, 'UTF-8');
-//        $dompdf->setPaper('A4');
-//        $dompdf->render();
+        //        $dompdf = new \Dompdf\Dompdf($options);
+        //        $html = '
+        // <!DOCTYPE html>
+        // <html>
+        // <head>
+        //    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+        //    <style>
+        //        body { font-family: DejaVu Sans, sans-serif; line-height: 1.6; }
+        //        table { border-collapse: collapse; width: 100%; }
+        //        table, th, td { border: 1px solid #ddd; }
+        //        th, td { padding: 8px; text-align: left; }
+        //    </style>
+        // </head>
+        // <body>' . file_get_contents(storage_path($fileBaseName . '.html')) . '
+        // </body>
+        // </html>';
+        //        $dompdf->loadHtml($html, 'UTF-8');
+        //        $dompdf->setPaper('A4');
+        //        $dompdf->render();
 
-//        $output = $dompdf->output();
-//        file_put_contents($filePdfName, $output);
+        //        $output = $dompdf->output();
+        //        file_put_contents($filePdfName, $output);
 
-//        unlink(storage_path($fileBaseName . '.html'));
+        //        unlink(storage_path($fileBaseName . '.html'));
 
         $filePdfName = $this->convertDocxToPdf($fileDocxName);
+
         return [
             'docx' => $fileDocxName,
-            'pdf' => $filePdfName
+            'pdf' => $filePdfName,
         ];
     }
 
@@ -206,10 +203,11 @@ class DocumentService
         $templateProcessor->cloneRowAndSetValues(current(array_keys($tableData)), $tableData);
     }
 
-    public function convertDocxToPdf(string $docxPath): string {
-        $outputPdf = storage_path() . '/' . pathinfo($docxPath, PATHINFO_FILENAME) . '.pdf';
+    public function convertDocxToPdf(string $docxPath): string
+    {
+        $outputPdf = storage_path().'/'.pathinfo($docxPath, PATHINFO_FILENAME).'.pdf';
 
-        $profilePath = '/tmp/lo_profile_' . uniqid();
+        $profilePath = '/tmp/lo_profile_'.uniqid();
         mkdir($profilePath, 0777, true);
 
         $command = sprintf(
@@ -225,12 +223,12 @@ class DocumentService
             'command' => $command,
             'return_code' => $returnCode,
             'output' => $output,
-            'file_exists' => file_exists($docxPath)
+            'file_exists' => file_exists($docxPath),
         ]);
-//
-//        if ($returnCode !== 0) {
-//            throw new Exception("Конвертация не удалась: " . implode("\n", $output));
-//        }
+        //
+        //        if ($returnCode !== 0) {
+        //            throw new Exception("Конвертация не удалась: " . implode("\n", $output));
+        //        }
 
         return $outputPdf;
     }

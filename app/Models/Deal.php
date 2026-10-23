@@ -30,6 +30,7 @@ use Spatie\MediaLibrary\InteractsWithMedia;
  * @OA\Schema(
  *     title="Deal",
  *     description="Сделка",
+ *
  *     @OA\Xml(
  *         name="Deal"
  *     )
@@ -37,21 +38,21 @@ use Spatie\MediaLibrary\InteractsWithMedia;
  */
 class Deal extends Model implements HasMedia
 {
-    use HasFactory,
-        Filterable,
+    use Filterable,
         HasComments,
+        HasFactory,
         HasUserFields,
         InteractsWithMedia;
 
     protected $fillable = [
-        "title",
-        "sales_stage_id",
-        "sales_funnel_id",
-        "creator_id",
-        "responsible_id",
-        "note",
-        "amount",
-        "client"
+        'title',
+        'sales_stage_id',
+        'sales_funnel_id',
+        'creator_id',
+        'responsible_id',
+        'note',
+        'amount',
+        'client',
     ];
 
     /**
@@ -65,6 +66,7 @@ class Deal extends Model implements HasMedia
      * @var bigInteger
      */
     private $id;
+
     /**
      * @OA\Property(
      *      title="title",
@@ -75,6 +77,7 @@ class Deal extends Model implements HasMedia
      * @var string
      */
     private $title;
+
     /**
      * @OA\Property(
      *     title="sales_stage",
@@ -84,6 +87,7 @@ class Deal extends Model implements HasMedia
      * @var SalesStage
      */
     private $sales_stage;
+
     /**
      * @OA\Property(
      *     title="sales_funnel",
@@ -93,6 +97,7 @@ class Deal extends Model implements HasMedia
      * @var SalesFunnel
      */
     private $sales_funnel;
+
     /**
      * @OA\Property(
      *     title="creator",
@@ -102,6 +107,7 @@ class Deal extends Model implements HasMedia
      * @var User
      */
     private $creator;
+
     /**
      * @OA\Property(
      *     title="responsible_id",
@@ -111,6 +117,7 @@ class Deal extends Model implements HasMedia
      * @var User
      */
     private $responsible;
+
     /**
      * @OA\Property(
      *      title="note",
@@ -121,6 +128,7 @@ class Deal extends Model implements HasMedia
      * @var string
      */
     private $note;
+
     /**
      * @OA\Property(
      *      title="amount",
@@ -131,6 +139,7 @@ class Deal extends Model implements HasMedia
      * @var float
      */
     private $amount;
+
     /**
      * @OA\Property(
      *      title="client",
@@ -141,6 +150,7 @@ class Deal extends Model implements HasMedia
      * @var string
      */
     private $client;
+
     /**
      * @OA\Property(
      *      title="user_field_values",
@@ -168,27 +178,24 @@ class Deal extends Model implements HasMedia
 
     public function creator(): BelongsTo
     {
-        return $this->belongsTo(User::class, "creator_id");
+        return $this->belongsTo(User::class, 'creator_id');
     }
 
     public function responsible(): BelongsTo
     {
-        return $this->belongsTo(User::class, "responsible_id");
+        return $this->belongsTo(User::class, 'responsible_id');
     }
 
     public function events(): HasMany
     {
-        return $this->hasMany(DealEvent::class, "deal_id", "id");
+        return $this->hasMany(DealEvent::class, 'deal_id', 'id');
     }
 
-    /**
-     * @return MorphMany
-     */
     public function activities(): MorphMany
     {
         $user = auth()->user();
 
-        if($user->hasRole(DefaultRolesEnum::CLIENT->value)) {
+        if ($user->hasRole(DefaultRolesEnum::CLIENT->value)) {
             return $this->morphMany(EntityActivity::class, 'entity')
                 ->where('activityable_type', \BeyondCode\Comments\Comment::class)
                 ->whereHasMorph('activityable', [\BeyondCode\Comments\Comment::class], function ($query) use ($user) {
@@ -201,31 +208,19 @@ class Deal extends Model implements HasMedia
 
     }
 
-    /**
-     * @param $query
-     * @return Builder
-     */
     public function scopeAllDeals($query): Builder
     {
         return $query;
     }
 
-    /**
-     * @param $query
-     * @return Builder
-     */
     public function scopeOwnDeals($query): Builder
     {
-        return $query->where(function($query) {
+        return $query->where(function ($query) {
             $query->where('creator_id', auth()->id())
                 ->orWhere('responsible_id', auth()->id());
         });
     }
 
-    /**
-     * @param $query
-     * @return Builder
-     */
     public function scopeOpenedDeals($query): Builder
     {
         return $query->whereHas('salesStage', function ($query) {
@@ -235,12 +230,12 @@ class Deal extends Model implements HasMedia
 
     public function setClientAttribute($value): void
     {
-        if (is_integer($value)) {
+        if (is_int($value)) {
             $this->attributes['client'] = $value;
-        } else if(is_null($value) || empty($value)) {
+        } elseif (is_null($value) || empty($value)) {
             $this->attributes['client'] = null;
         } else {
-            $this->attributes['client'] = 'str_' . $value;
+            $this->attributes['client'] = 'str_'.$value;
         }
     }
 

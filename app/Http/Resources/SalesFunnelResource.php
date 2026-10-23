@@ -15,14 +15,14 @@ class SalesFunnelResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            "id" => $this->id,
-            "title" => $this->title,
-            "position" => $this->position,
-            "stages" => SalesStageResource::collection($this->sortedSalesStages()),
-            "fields" => array_merge(
+            'id' => $this->id,
+            'title' => $this->title,
+            'position' => $this->position,
+            'stages' => SalesStageResource::collection($this->sortedSalesStages()),
+            'fields' => array_merge(
                 FieldResource::collection($this->fields)->toArray(request()),
                 UserFieldResource::collection($this->userFields)->toArray(request())
             ),
-         ];
+        ];
     }
 }

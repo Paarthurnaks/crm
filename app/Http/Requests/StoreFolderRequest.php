@@ -23,15 +23,11 @@ class StoreFolderRequest extends FormRequest
     public function rules(): array
     {
         return [
-            "title" => ["required", "string"],
-            "path" => ["required", "string"]
+            'title' => ['required', 'string'],
+            'path' => ['required', 'string'],
         ];
     }
 
-    /**
-     * @param $validator
-     * @return void
-     */
     public function withValidator($validator): void
     {
         $validator->after(function ($validator) {

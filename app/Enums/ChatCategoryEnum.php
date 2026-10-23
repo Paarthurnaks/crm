@@ -14,5 +14,4 @@ enum ChatCategoryEnum: string
             self::SYSTEM_PARTNER_CLIENTS => __('chat_categories.system-partner-clients'),
         };
     }
-
 }

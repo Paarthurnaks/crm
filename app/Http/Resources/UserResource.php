@@ -11,13 +11,13 @@ class UserResource extends JsonResource
 {
     public static array $includedPartnerIds = [];
 
-
     /**
      * @OA\Schema(
      *     schema="UserResource",
      *     type="object",
      *     title="Пользователь",
      *     description="Детальная информация о пользователе, включая его роль и аватар",
+     *
      *     @OA\Property(
      *         property="id",
      *         type="integer",
@@ -79,22 +79,22 @@ class UserResource extends JsonResource
     public function toArray(Request $request): array
     {
         $res = [
-            "id" => $this->id,
-            "full_name" => "$this->name $this->surname",
-            "name" => $this->name,
-            "surname" => $this->surname,
-            "post" => $this->post,
-            "email" => $this->email,
-            "active" => $this->active,
-            "color" => $this->color,
-            "last_login" => $this->last_login,
-            "role" => RoleResource::make($this->role),
-            "created_at" => $this->created_at,
-            "updated_at" => $this->updated_at,
-            'avatar' => $this->getFirstMedia()?->getUrl() ?? Storage::disk('public')->url("avatars/avatar.png"),
+            'id' => $this->id,
+            'full_name' => "$this->name $this->surname",
+            'name' => $this->name,
+            'surname' => $this->surname,
+            'post' => $this->post,
+            'email' => $this->email,
+            'active' => $this->active,
+            'color' => $this->color,
+            'last_login' => $this->last_login,
+            'role' => RoleResource::make($this->role),
+            'created_at' => $this->created_at,
+            'updated_at' => $this->updated_at,
+            'avatar' => $this->getFirstMedia()?->getUrl() ?? Storage::disk('public')->url('avatars/avatar.png'),
         ];
 
-        if (!array_key_exists($this->id, self::$includedPartnerIds) &&
+        if (! array_key_exists($this->id, self::$includedPartnerIds) &&
             auth()->user()?->clients()->where('users.id', $this->id)->exists() &&
             auth()->user()->hasRole(DefaultRolesEnum::PARTNER->value)
         ) {
@@ -105,7 +105,7 @@ class UserResource extends JsonResource
             }
         }
 
-        if($this->role?->original_title === DefaultRolesEnum::SUPER_ADMIN->value) {
+        if ($this->role?->original_title === DefaultRolesEnum::SUPER_ADMIN->value) {
             $res['is_high_level_admin'] = $this->is_high_level_admin;
         }
 

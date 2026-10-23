@@ -15,14 +15,14 @@ return new class extends Migration
     {
         Schema::create('deals', function (Blueprint $table) {
             $table->id();
-            $table->string("title");
+            $table->string('title');
             $table->foreignIdFor(SalesStage::class)->constrained();
             $table->foreignIdFor(SalesFunnel::class)->constrained();
-            $table->foreignId("creator_id")->constrained("users");
-            $table->foreignId("responsible_id")->constrained("users");
-            $table->text("note");
-            $table->float("amount")->default(0);
-            $table->string("client")->nullable();
+            $table->foreignId('creator_id')->constrained('users');
+            $table->foreignId('responsible_id')->constrained('users');
+            $table->text('note');
+            $table->float('amount')->default(0);
+            $table->string('client')->nullable();
             $table->timestamps();
         });
     }

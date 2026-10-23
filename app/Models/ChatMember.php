@@ -8,7 +8,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
- *
  * @property $chat_id
  * @property $user_id
  * @property $is_creator
@@ -16,7 +15,9 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @OA\Schema(
  *     title="ChatMember",
  *     description="Модель для участника чата",
+ *
  *     @OA\Xml(name="ChatMember"),
+ *
  *     @OA\Property(
  *         property="id",
  *         title="ID",
@@ -43,7 +44,6 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  *     )
  * )
  */
-
 class ChatMember extends Model
 {
     use HasFactory, SoftDeletes;

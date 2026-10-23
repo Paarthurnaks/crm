@@ -2,19 +2,14 @@
 
 namespace App\Services;
 
-
 use App\Http\Resources\NotificationResource;
 use Carbon\Carbon;
 use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 
-class NotificationService{
-
-
+class NotificationService
+{
     /**
-     * @param array $data
      * @return LengthAwarePaginator
      */
     public function getNotifications(array $data): array
@@ -43,38 +38,27 @@ class NotificationService{
 
         return [
             'notifications' => NotificationResource::collection($notifications)->response()->getData(true),
-            'total_unread_notifications' => $totalNotifications
+            'total_unread_notifications' => $totalNotifications,
         ];
     }
 
-    /**
-     * @param array $data
-     * @return void
-     */
     public function markAsRead(array $data): void
     {
         auth()->user()->unreadNotifications()
-                    ->whereIn('id', $data['notification_ids'])
-                    ->get()
-                    ->markAsRead();
+            ->whereIn('id', $data['notification_ids'])
+            ->get()
+            ->markAsRead();
     }
 
-    /**
-     * @param DatabaseNotification $notification
-     * @return void
-     */
     public function delete(DatabaseNotification $notification): void
     {
         $notification->delete();
     }
 
-    /**
-     * @return void
-     */
     public function markAsReadAll(): void
     {
         auth()->user()->unreadNotifications()
-                    ->get()
-                    ->markAsRead();
+            ->get()
+            ->markAsRead();
     }
 }

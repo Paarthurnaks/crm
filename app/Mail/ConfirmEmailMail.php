@@ -5,7 +5,6 @@ namespace App\Mail;
 use App\Enums\DefaultRolesEnum;
 use App\Models\User;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
@@ -22,10 +21,10 @@ class ConfirmEmailMail extends Mailable
      */
     public function __construct(string $code, User $user)
     {
-        if($user->hasRole(DefaultRolesEnum::PARTNER->value) || $user->hasRole(DefaultRolesEnum::CLIENT->value)) {
-            $this->link = config('app.partner_create_password_url')."?code=".$code."&email=".$user->email;
+        if ($user->hasRole(DefaultRolesEnum::PARTNER->value) || $user->hasRole(DefaultRolesEnum::CLIENT->value)) {
+            $this->link = config('app.partner_create_password_url').'?code='.$code.'&email='.$user->email;
         } else {
-            $this->link = config('app.client_create_password_url')."?code=".$code."&email=".$user->email;
+            $this->link = config('app.client_create_password_url').'?code='.$code.'&email='.$user->email;
         }
     }
 

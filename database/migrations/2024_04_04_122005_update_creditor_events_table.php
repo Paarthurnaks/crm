@@ -12,11 +12,11 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('creditor_events', function (Blueprint $table) {
-        $table->dropForeign(["creditor_id"]);
-        $table->foreign("creditor_id")
-                    ->references("id")
-                    ->on("creditors")
-                    ->onDelete("cascade");
+            $table->dropForeign(['creditor_id']);
+            $table->foreign('creditor_id')
+                ->references('id')
+                ->on('creditors')
+                ->onDelete('cascade');
         });
     }
 

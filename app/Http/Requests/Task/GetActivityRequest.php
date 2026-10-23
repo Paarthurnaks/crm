@@ -23,10 +23,10 @@ class GetActivityRequest extends FormRequest
     public function rules(): array
     {
         return [
-            "search" => [ 'string'],
-            "author_id" => ["integer", "exists:users,id"],
-            "date_from" => ["datetime"],
-            "date_to" => ["datetime"]
+            'search' => ['string'],
+            'author_id' => ['integer', 'exists:users,id'],
+            'date_from' => ['datetime'],
+            'date_to' => ['datetime'],
         ];
     }
 }

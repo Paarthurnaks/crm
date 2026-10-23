@@ -4,7 +4,6 @@ namespace Database\Seeders;
 
 use App\Enums\ChatCategoryEnum;
 use App\Models\ChatCategory;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class ChatCategorySeeder extends Seeder

@@ -22,13 +22,13 @@ class SalesFunnelStoreRequest extends FormRequest
     public function rules(): array
     {
         return [
-            "title" => ["string"],
-            "position" => ["integer"],
-            "stages" => ["array"],
-            "stages.*.title" => ["required", "string"],
-            "stages.*.type" => ["required", "string"],
-            "stages.*.position" => ["integer"],
-            "stages.*.color" => ["string"]
+            'title' => ['string'],
+            'position' => ['integer'],
+            'stages' => ['array'],
+            'stages.*.title' => ['required', 'string'],
+            'stages.*.type' => ['required', 'string'],
+            'stages.*.position' => ['integer'],
+            'stages.*.color' => ['string'],
         ];
     }
 }

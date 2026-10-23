@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('user_fields', function (Blueprint $table) {
-            $table->boolean("is_required")->default(false);
+            $table->boolean('is_required')->default(false);
         });
     }
 

@@ -19,9 +19,7 @@ class ChatMessageController extends Controller
 {
     public function __construct(
         private readonly ChatMessageService $service
-    )
-    {
-    }
+    ) {}
 
     /**
      * @OA\Get(
@@ -30,48 +28,59 @@ class ChatMessageController extends Controller
      *     tags={"ChatMessages"},
      *     summary="Получает список сообщений в чате",
      *     description="Возвращает список сообщений для указанного чата.",
+     *
      *     @OA\Parameter(
      *         name="chatId",
      *         in="path",
      *         required=true,
      *         description="Идентификатор чата",
+     *
      *         @OA\Schema(type="string")
      *     ),
+     *
      *     @OA\Parameter(
      *         name="direction",
      *         in="query",
      *         description="Направление загрузки сообщений",
      *         required=false,
+     *
      *         @OA\Schema(
      *             type="string",
      *             enum={"upward", "downward", "both"}
      *         )
      *     ),
+     *
      *     @OA\Parameter(
      *         name="last_message_id",
      *         in="query",
      *         description="Идентификатор последнего сообщения для пагинации",
      *         required=false,
+     *
      *         @OA\Schema(
      *             type="integer"
      *         ),
      *         example=123
      *     ),
+     *
      *     @OA\Parameter(
      *         name="search_term",
      *         in="query",
      *         description="Строка поиска для фильтрации сообщений",
      *         required=false,
+     *
      *         @OA\Schema(
      *             type="string"
      *         ),
      *         example="Привет"
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Список сообщений получен успешно",
+     *
      *         @OA\JsonContent(
      *             type="array",
+     *
      *             @OA\Items(ref="#/components/schemas/ChatMessageResource")
      *         )
      *     )
@@ -95,21 +104,27 @@ class ChatMessageController extends Controller
      *     tags={"ChatMessages"},
      *     summary="Создает новое сообщение в чате",
      *     description="Добавляет новое сообщение в указанный чат.",
+     *
      *     @OA\Parameter(
      *         name="chatId",
      *         in="path",
      *         required=true,
      *         description="Идентификатор чата",
+     *
      *         @OA\Schema(type="string")
      *     ),
+     *
      *     @OA\RequestBody(
      *         required=true,
      *         description="Данные нового сообщения",
+     *
      *         @OA\JsonContent(ref="#/components/schemas/StoreChatMessageRequest")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Сообщение успешно создано",
+     *
      *         @OA\JsonContent(ref="#/components/schemas/ChatMessageResource")
      *     )
      * )
@@ -136,22 +151,29 @@ class ChatMessageController extends Controller
      *     tags={"ChatMessages"},
      *     summary="Получает информацию о сообщении",
      *     description="Возвращает детальную информацию о конкретном сообщении в чате.",
+     *
      *     @OA\Parameter(
      *         name="messageId",
      *         in="path",
      *         required=true,
      *         description="Идентификатор сообщения",
+     *
      *         @OA\Schema(type="string")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Информация о сообщении получена успешно",
+     *
      *         @OA\JsonContent(ref="#/components/schemas/ChatMessageResource")
      *     ),
+     *
      *     @OA\Response(
      *         response=404,
      *         description="Сообщение не найдено",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(
      *                 property="message",
      *                 type="string",
@@ -165,7 +187,7 @@ class ChatMessageController extends Controller
     {
         $message = ChatMessage::find($messageId);
 
-        if (!$message) {
+        if (! $message) {
             return ResponseService::notFound(
                 message: __('Сообщение не найдено.')
             );
@@ -176,7 +198,6 @@ class ChatMessageController extends Controller
         );
     }
 
-
     /**
      * Update the specified resource in storage.
      *
@@ -185,30 +206,39 @@ class ChatMessageController extends Controller
      *     path="/api/chats/messages/{messageId}",
      *     summary="Update a chat message",
      *     tags={"ChatMessages"},
+     *
      *     @OA\Parameter(
      *         name="messageId",
      *         in="path",
      *         required=true,
      *         description="ID of the message to update",
+     *
      *         @OA\Schema(
      *             type="string"
      *         )
      *     ),
+     *
      *     @OA\RequestBody(
      *         required=true,
      *         description="Data for updating the message",
+     *
      *         @OA\JsonContent(ref="#/components/schemas/UpdateChatMessageRequest")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Successful operation",
+     *
      *         @OA\JsonContent(ref="#/components/schemas/ChatMessageResource")
      *     ),
+     *
      *     @OA\Response(
      *         response=404,
      *         description="Message not found",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(
      *                 property="message",
      *                 type="string",
@@ -222,7 +252,7 @@ class ChatMessageController extends Controller
     {
         $message = ChatMessage::find($messageId);
 
-        if (!$message) {
+        if (! $message) {
             return ResponseService::notFound(
                 message: __('Сообщение не найдено.')
             );
@@ -249,20 +279,25 @@ class ChatMessageController extends Controller
      *     path="/api/chats/messages/{messageId}",
      *     summary="Delete a chat message",
      *     tags={"ChatMessages"},
+     *
      *     @OA\Parameter(
      *         name="messageId",
      *         in="path",
      *         required=true,
      *         description="ID of the message to delete",
+     *
      *         @OA\Schema(
      *             type="string"
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Successful operation",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *              @OA\Property(
      *                  property="message",
      *                  type="string",
@@ -270,11 +305,14 @@ class ChatMessageController extends Controller
      *              )
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=404,
      *         description="Message not found",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(
      *                 property="message",
      *                 type="string",
@@ -288,7 +326,7 @@ class ChatMessageController extends Controller
     {
         $message = ChatMessage::find($messageId);
 
-        if (!$message) {
+        if (! $message) {
             return ResponseService::notFound(
                 message: __('Сообщение не найдено.')
             );
@@ -305,31 +343,40 @@ class ChatMessageController extends Controller
      *     tags={"ChatMessages"},
      *     summary="Update message status",
      *     description="Update the status of multiple chat messages in a specific chat.",
+     *
      *     @OA\Parameter(
      *         name="chatId",
      *         in="path",
      *         description="ID of the chat",
      *         required=true,
+     *
      *         @OA\Schema(
      *             type="string",
      *             format="uuid"
      *         )
      *     ),
+     *
      *     @OA\RequestBody(
      *         required=true,
      *         description="Request body for updating message status",
+     *
      *         @OA\JsonContent(ref="#/components/schemas/UpdateStatusRequest")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Successful operation",
+     *
      *         @OA\JsonContent(ref="#/components/schemas/ChatMessageResource")
      *     ),
+     *
      *     @OA\Response(
      *         response=404,
      *         description="Message not found",
+     *
      *         @OA\JsonContent(
      *              type="object",
+     *
      *              @OA\Property(
      *                  property="message",
      *                  type="string",
@@ -358,19 +405,23 @@ class ChatMessageController extends Controller
      *     tags={"ChatMessages"},
      *     summary="Hide message",
      *     description="Hide a specific chat message.",
+     *
      *     @OA\Parameter(
      *         name="messageId",
      *         in="path",
      *         description="ID of the message",
      *         required=true,
+     *
      *         @OA\Schema(
      *             type="integer",
      *             format="int64"
      *         )
      *     ),
+     *
      *     @OA\Response(
      *          response=200,
      *          description="Successful operation",
+     *
      *          @OA\JsonContent(ref="#/components/schemas/ChatMessageResource")
      *      ),
      * )
@@ -379,7 +430,7 @@ class ChatMessageController extends Controller
     {
         $message = ChatMessage::find($messageId);
 
-        if (!$message) {
+        if (! $message) {
             return ResponseService::notFound(
                 message: __('Сообщение не найдено.')
             );
@@ -396,14 +447,18 @@ class ChatMessageController extends Controller
      *     tags={"ChatMessages"},
      *     summary="Forward message",
      *     description="Forward a message to one or more chats.",
+     *
      *     @OA\RequestBody(
      *         required=true,
      *         description="Request body for forwarding a message",
+     *
      *         @OA\JsonContent(ref="#/components/schemas/ForwardMessageRequest")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Successful operation",
+     *
      *         @OA\JsonContent(ref="#/components/schemas/ChatMessageResource")
      *     )
      * )

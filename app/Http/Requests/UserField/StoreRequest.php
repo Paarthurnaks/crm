@@ -29,12 +29,12 @@ class StoreRequest extends FormRequest
         $types = UserFieldTypeEnum::values();
 
         return [
-            "entity" => ["required", 'string', new Enum(EntityTypeEnum::class)],
-            "name" => ['required', 'string'],
-            "type" => ['required', "string", Rule::in($types)],
-            "options" => [
-                'required_if:type,' . UserFieldTypeEnum::ENUM->value,
-                'array'
+            'entity' => ['required', 'string', new Enum(EntityTypeEnum::class)],
+            'name' => ['required', 'string'],
+            'type' => ['required', 'string', Rule::in($types)],
+            'options' => [
+                'required_if:type,'.UserFieldTypeEnum::ENUM->value,
+                'array',
             ],
             'options.*.id' => ['integer'],
             'options.*.option' => ['required', 'string'],

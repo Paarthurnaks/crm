@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class EntityActivity extends Model
 {
-    use HasFactory, Filterable;
+    use Filterable, HasFactory;
 
     protected $fillable = [
         'activityable_type',
@@ -18,17 +18,11 @@ class EntityActivity extends Model
         'entity_type',
     ];
 
-    /**
-     * @return MorphTo
-     */
     public function activityable(): MorphTo
     {
         return $this->morphTo();
     }
 
-    /**
-     * @return MorphTo
-     */
     public function entity(): MorphTo
     {
         return $this->morphTo();

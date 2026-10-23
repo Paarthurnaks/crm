@@ -10,7 +10,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @OA\Schema(
  *     title="ForwardingChatMessage",
  *     description="Модель пересылаемого сообщения",
+ *
  *     @OA\Xml(name="ForwardingChatMessage"),
+ *
  *     @OA\Property(
  *         property="id",
  *         title="ID",

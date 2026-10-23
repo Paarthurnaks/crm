@@ -22,8 +22,8 @@ class StoreFileRequest extends FormRequest
     public function rules(): array
     {
         return [
-            "path" => ["required", "string"],
-            "file" => ["file"]
+            'path' => ['required', 'string'],
+            'file' => ['file'],
         ];
     }
 }

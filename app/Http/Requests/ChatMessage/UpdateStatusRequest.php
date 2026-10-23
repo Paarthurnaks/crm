@@ -20,10 +20,12 @@ class UpdateStatusRequest extends FormRequest
      *     title="Update Status Request",
      *     description="Request body schema for updating message status.",
      *     required={"message_ids"},
+     *
      *     @OA\Property(
      *         property="message_ids",
      *         type="array",
      *         description="Array of message IDs to update status",
+     *
      *         @OA\Items(
      *             type="integer",
      *             format="int64",

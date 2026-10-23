@@ -15,18 +15,24 @@ class ChatCategoryController extends Controller
      *     tags={"ChatCategory"},
      *     description="Метод для получения категорий чатов",
      *     security={{"bearer_token":{}}},
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Successful response",
+     *
      *         @OA\JsonContent(
      *             type="array",
+     *
      *             @OA\Items(ref="#/components/schemas/ChatCategoryResource")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=401,
      *         description="Unauthenticated",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(
      *                 property="message",
      *                 type="string",

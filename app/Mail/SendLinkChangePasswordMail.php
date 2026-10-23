@@ -21,10 +21,10 @@ class SendLinkChangePasswordMail extends Mailable
      */
     public function __construct(string $code, User $user)
     {
-        if($user->hasRole(DefaultRolesEnum::PARTNER->value) || $user->hasRole(DefaultRolesEnum::CLIENT->value)) {
-            $this->link = config('app.partner_create_password_url')."?code=".$code."&email=".$user->email;
+        if ($user->hasRole(DefaultRolesEnum::PARTNER->value) || $user->hasRole(DefaultRolesEnum::CLIENT->value)) {
+            $this->link = config('app.partner_create_password_url').'?code='.$code.'&email='.$user->email;
         } else {
-            $this->link = config('app.client_create_password_url')."?code=".$code."&email=".$user->email;
+            $this->link = config('app.client_create_password_url').'?code='.$code.'&email='.$user->email;
         }
     }
 

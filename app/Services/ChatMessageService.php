@@ -22,36 +22,33 @@ use App\Models\UnreadChatMessage;
 use Exception;
 use Illuminate\Support\Collection;
 
-
-class ChatMessageService {
+class ChatMessageService
+{
     private const ERROR_MESSAGES = [
         'chatMemberError' => 'Пользователь не является участником чата',
         'chatNotFound' => 'Чат не существует',
         'clientChatError' => 'Только партнер и клиент могут писать в этот чат',
     ];
 
-    /**
-     * @param int $chatId
-     * @param array $data
-     * @return array
-     */
     public function getMessagesList(int $chatId, array $data): array
     {
         $limit = config('chats.messages_limit');
         $additionalCount = 1; // дополнительное сообщение для проверки наличия следующих сообщений
         $data['search_term'] = $data['search_term'] ?? null;
 
-        if(!isset($data['direction'])) {
+        if (! isset($data['direction'])) {
             $messages = ChatMessage::where('chat_id', $chatId)
-                            ->when($data['search_term'], function($query) use ($data) {
-                                $query->whereRaw('LOWER(text) LIKE ?', [mb_strtolower("%{$data['search_term']}%")]);
-                            })
-                            ->limit($limit + $additionalCount)
-                            ->orderBy('id', 'desc')
-                            ->get();
+                ->when($data['search_term'], function ($query) use ($data) {
+                    $query->whereRaw('LOWER(text) LIKE ?', [mb_strtolower("%{$data['search_term']}%")]);
+                })
+                ->limit($limit + $additionalCount)
+                ->orderBy('id', 'desc')
+                ->get();
 
             $hasMoreUpward = $messages->count() > $limit;
-            if($hasMoreUpward) $messages->pop();
+            if ($hasMoreUpward) {
+                $messages->pop();
+            }
 
             return [
                 'messages' => $messages->map(function ($message) {
@@ -68,8 +65,12 @@ class ChatMessageService {
         $hasMoreUpward = $upwardMessages->count() > $limit;
         $hasMoreDownward = $downwardMessages->count() > $limit;
 
-        if ($hasMoreUpward) $upwardMessages->pop();
-        if ($hasMoreDownward) $downwardMessages->shift();
+        if ($hasMoreUpward) {
+            $upwardMessages->pop();
+        }
+        if ($hasMoreDownward) {
+            $downwardMessages->shift();
+        }
 
         $lastMessage = collect();
         $messages = collect();
@@ -101,20 +102,14 @@ class ChatMessageService {
                 return new ChatMessageResource($message, auth()->id());
             }),
             'has_more_upward' => $hasMoreUpward,
-            'has_more_downward' => $hasMoreDownward
+            'has_more_downward' => $hasMoreDownward,
         ];
     }
 
-    /**
-     * @param int $chatId
-     * @param array $data
-     * @param int $limit
-     * @return Collection
-     */
     private function getUpwardMessages(int $chatId, array $data, int $limit): Collection
     {
         return ChatMessage::where('chat_id', $chatId)
-            ->when($data['search_term'], function($query) use ($data) {
+            ->when($data['search_term'], function ($query) use ($data) {
                 $query->whereRaw('LOWER(text) LIKE ?', [mb_strtolower("%{$data['search_term']}%")]);
             })
             ->where('id', '<', $data['last_message_id'])
@@ -123,17 +118,10 @@ class ChatMessageService {
             ->get();
     }
 
-
-    /**
-     * @param int $chatId
-     * @param array $data
-     * @param int $limit
-     * @return Collection
-     */
     private function getDownwardMessages(int $chatId, array $data, int $limit): Collection
     {
         return ChatMessage::where('chat_id', $chatId)
-            ->when($data['search_term'], function($query) use ($data) {
+            ->when($data['search_term'], function ($query) use ($data) {
                 $query->whereRaw('LOWER(text) LIKE ?', [mb_strtolower("%{$data['search_term']}%")]);
             })
             ->where('id', '>', $data['last_message_id'])
@@ -142,22 +130,22 @@ class ChatMessageService {
             ->get();
     }
 
-
     /**
-     * @param array $data
-     * @param int $chatId
-     * @return ChatMessage
      * @throws Exception
      */
     public function sendMessage(array $data, int $chatId): ChatMessage
     {
-        if(!auth()->user()->isMemberOfChat($chatId)) throw new Exception(self::ERROR_MESSAGES['chatMemberError']);
+        if (! auth()->user()->isMemberOfChat($chatId)) {
+            throw new Exception(self::ERROR_MESSAGES['chatMemberError']);
+        }
 
         $chat = Chat::find($chatId);
 
-        if(!$chat) throw new Exception(self::ERROR_MESSAGES['chatNotFound']);
+        if (! $chat) {
+            throw new Exception(self::ERROR_MESSAGES['chatNotFound']);
+        }
 
-        if($chat->type === ChatTypeEnum::CLIENT->value && !auth()->user()->hasRole(DefaultRolesEnum::havePersonalAccount())) {
+        if ($chat->type === ChatTypeEnum::CLIENT->value && ! auth()->user()->hasRole(DefaultRolesEnum::havePersonalAccount())) {
             throw new Exception(self::ERROR_MESSAGES['clientChatError']);
         }
 
@@ -183,10 +171,6 @@ class ChatMessageService {
         return $message;
     }
 
-    /**
-     * @param ChatMessage $message
-     * @return void
-     */
     public function broadcastMessageSentToGlobal(ChatMessage $message): void
     {
         if ($message->status !== ChatMessageTypeEnum::DELIVERED->value) {
@@ -219,8 +203,8 @@ class ChatMessageService {
                 ]];
             });
 
-        $message->chat->members->each(function ($member) use ($chatResources, $message) {
-            if($member->user_id !== auth()->id()) {
+        $message->chat->members->each(function ($member) use ($chatResources) {
+            if ($member->user_id !== auth()->id()) {
                 $chatResource = $chatResources[$member->user_id]['chat'];
                 $chatMessageResource = $chatResources[$member->user_id]['message'];
 
@@ -231,21 +215,18 @@ class ChatMessageService {
                         $member->user_id
                     ));
                 } catch (\Exception $e) {
-                    \Log::error('Ошибка при broadcast для пользователя ' . $member->user_id . ': ' . $e->getMessage());
+                    \Log::error('Ошибка при broadcast для пользователя '.$member->user_id.': '.$e->getMessage());
                 }
             }
         });
     }
 
     /**
-     * @param array $data
-     * @param ChatMessage $message
-     * @return bool
      * @throws Exception
      */
     public function updateMessage(array $data, ChatMessage $message): bool
     {
-        if(!auth()->user()->isAuthorOfChatMessage($message->id)) {
+        if (! auth()->user()->isAuthorOfChatMessage($message->id)) {
             throw new Exception(self::ERROR_MESSAGES['chatMemberError']);
         }
 
@@ -256,15 +237,11 @@ class ChatMessageService {
         return $isUpdated;
     }
 
-    /**
-     * @param $message
-     * @return void
-     */
     public function broadcastMessageUpdateToGlobal($message): void
     {
         $message->chat->load('lastMessage.chat', 'lastMessage.user', 'category', 'unreadMessages.message.user', 'members.user.role', 'forward');
-        $message->chat->members->each(function($member) use ($message) {
-            if($member->user_id !== auth()->id()) {
+        $message->chat->members->each(function ($member) use ($message) {
+            if ($member->user_id !== auth()->id()) {
                 broadcast(
                     new GlobalChatsMessageUpdateBroadcast(
                         ChatMessageResource::make($message, $member->user_id),
@@ -276,29 +253,24 @@ class ChatMessageService {
         });
     }
 
-    /**
-     * @param array $data
-     * @param int $chatId
-     * @return Collection
-     */
     public function updateMessageStatus(array $data, int $chatId): Collection
     {
         $userId = auth()->id();
         $messageIds = $data['message_ids'];
 
         $messages = ChatMessage::with([
-                'chat' => [
-                    'lastMessage' => [
-                        'chat',
-                        'user',
-                        'forward',
-                    ],
-                    'category',
-                    'members.user.role',
+            'chat' => [
+                'lastMessage' => [
+                    'chat',
+                    'user',
+                    'forward',
                 ],
-                'replyTo',
-                'forward',
-            ])
+                'category',
+                'members.user.role',
+            ],
+            'replyTo',
+            'forward',
+        ])
             ->whereIn('id', $messageIds)
             ->get();
 
@@ -309,7 +281,6 @@ class ChatMessageService {
         UnreadChatMessage::where('user_id', $userId)
             ->whereIn('chat_message_id', $messageIds)
             ->delete();
-
 
         $updatedMessages = $messages->map(function ($message) use ($lastMessageId, $userId) {
             if ($message->user_id !== $userId && $message->status !== ChatMessageTypeEnum::READ->value) {
@@ -336,10 +307,6 @@ class ChatMessageService {
         return $updatedMessages;
     }
 
-    /**
-     * @param int $messageId
-     * @return void
-     */
     public function hideMessage(int $messageId): void
     {
         ChatHiddenMessage::create([
@@ -348,10 +315,6 @@ class ChatMessageService {
         ]);
     }
 
-    /**
-     * @param ChatMessage $message
-     * @return void
-     */
     public function destroy(ChatMessage $message): void
     {
         $chat = $message->chat;
@@ -369,15 +332,10 @@ class ChatMessageService {
         $message->delete();
     }
 
-    /**
-     * @param $chatId
-     * @param $messageId
-     * @return void
-     */
     private function broadcastMessageDeleteToGlobal($chatId, $messageId): void
     {
-        Chat::find($chatId)->members->each(function($member) use($chatId, $messageId) {
-            if($member->user_id !== auth()->id()) {
+        Chat::find($chatId)->members->each(function ($member) use ($messageId) {
+            if ($member->user_id !== auth()->id()) {
                 broadcast(
                     new GlobalChatsMessageDeleteBroadcast(
                         new ChatResource($member->chat, $member->userId),
@@ -390,8 +348,6 @@ class ChatMessageService {
     }
 
     /**
-     * @param array $data
-     * @return Collection
      * @throws Exception
      */
     public function forwardMessage(array $data): Collection
@@ -400,7 +356,7 @@ class ChatMessageService {
 
         $result = [];
 
-        foreach($data['chat_ids'] as $chatId) {
+        foreach ($data['chat_ids'] as $chatId) {
             foreach ($messages as $message) {
                 $newMessageData = [
                     'chat_id' => $chatId,

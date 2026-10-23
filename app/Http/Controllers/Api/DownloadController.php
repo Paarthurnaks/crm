@@ -19,42 +19,47 @@ class DownloadController extends Controller
      *     operationId="downloadMedia",
      *     tags={"Download"},
      *     security={{"bearer_token":{}}},
+     *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
      *         description="ID медиафайла",
      *         required=true,
+     *
      *         @OA\Schema(type="integer")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Файл найден и возвращен для скачивания",
+     *
      *         @OA\MediaType(
      *              mediaType="application/octet-stream",
+     *
      *              @OA\Schema(
      *                  type="string",
      *                  format="binary"
      *              )
      *          )
      *     ),
+     *
      *     @OA\Response(
      *         response=400,
      *         description="Ничего не найдено",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="message", type="string", example="Ничего не найдено."),
      *             @OA\Property(property="status", type="string", example="error")
      *         )
      *     )
      * )
-     *
-     * @param int $id
-     * @return BinaryFileResponse|JsonResponse
      */
     public function __invoke(int $id): BinaryFileResponse|JsonResponse
     {
         $media = Media::find($id);
 
-        if(! $media) {
+        if (! $media) {
             return ResponseService::badRequest(message: 'Ничего не найдено.');
         }
 

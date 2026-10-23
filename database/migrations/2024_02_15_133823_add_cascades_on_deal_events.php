@@ -12,8 +12,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('deal_events', function (Blueprint $table) {
-            $table->dropForeign(["deal_id"]);
-            $table->foreign('deal_id')->references("id")->on('deals')->onDelete("cascade");
+            $table->dropForeign(['deal_id']);
+            $table->foreign('deal_id')->references('id')->on('deals')->onDelete('cascade');
         });
     }
 
@@ -23,8 +23,8 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('deal_events', function (Blueprint $table) {
-            $table->dropForeign(["deal_id"]);
-            $table->foreign('deal_id')->references("id")->on('deals');
+            $table->dropForeign(['deal_id']);
+            $table->foreign('deal_id')->references('id')->on('deals');
         });
     }
 };

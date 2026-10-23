@@ -5,20 +5,17 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Account\StoreRequest;
 use App\Http\Requests\Account\UpdateRequest;
+use App\Models\Comment;
 use App\Models\EntityActivity;
 use App\Services\CommentService;
 use App\Services\ResponseService;
-use App\Models\Comment;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class CommentController extends Controller
 {
-    public function __construct(private readonly CommentService $service)
-    {
-
-    }
+    public function __construct(private readonly CommentService $service) {}
 
     public function index(): JsonResponse
     {
@@ -52,29 +49,39 @@ class CommentController extends Controller
      *     description="Метод для обновления комментария",
      *     summary="Метод для обновления комментария",
      *     security={{"bearer_token":{}}},
+     *
      *     @OA\Parameter(
      *          name="id",
      *          description="id комментария",
      *          required=true,
      *          in="path",
+     *
      *          @OA\Schema(
      *              type="string",
      *              example=5984
      *          )
      *      ),
+     *
      *     @OA\RequestBody(
+     *
      *       @OA\MediaType(
      *           mediaType="application/json",
+     *
      *           @OA\Schema(
+     *
      *              @OA\Property(property="comment", type="string", example="some comment"),
      *           ),
      *       ),
      *     ),
+     *
      *     @OA\Response(response="200",
      *          description="OK",
+     *
      *          @OA\MediaType(
      *              mediaType="application/json",
+     *
      *              @OA\Schema(
+     *
      *                 @OA\Property(
      *                     property="data",
      *                     type="boolean",
@@ -83,6 +90,7 @@ class CommentController extends Controller
      *              )
      *          )
      *      ),
+     *
      *      @OA\Response(response="404",
      *          description="NOT FOUND"
      *      ),
@@ -90,10 +98,6 @@ class CommentController extends Controller
      *          description="FORBIDDEN"
      *     ),
      * )
-     *
-     * @param int $id
-     * @param UpdateRequest $request
-     * @return JsonResponse
      */
     public function update(int $id, UpdateRequest $request): JsonResponse
     {
@@ -102,18 +106,18 @@ class CommentController extends Controller
             ->where('id', $id)
             ->first();
 
-        if (!$comment) {
+        if (! $comment) {
             return ResponseService::notFound(
                 message: 'Комментарий не найден'
             );
         }
 
         $request->validate([
-            'comment' => ['required', 'string']
+            'comment' => ['required', 'string'],
         ]);
 
         $this->service->update($comment, [
-            'comment' => $request->input('comment')
+            'comment' => $request->input('comment'),
         ]);
 
         return ResponseService::success(true);
@@ -127,16 +131,19 @@ class CommentController extends Controller
      *     description="Метод для удаления комментария",
      *     summary="Метод для удаления комментария",
      *     security={{"bearer_token":{}}},
+     *
      *     @OA\Parameter(
      *          name="id",
      *          description="id комментария",
      *          required=true,
      *          in="path",
+     *
      *          @OA\Schema(
      *              type="string",
      *              example=42
      *          )
      *      ),
+     *
      *     @OA\Response(response="200",
      *          description="OK",
      *     ),
@@ -147,9 +154,6 @@ class CommentController extends Controller
      *          description="FORBIDDEN"
      *     ),
      * )
-     *
-     * @param int $id
-     * @return JsonResponse
      */
     public function destroy(int $id): JsonResponse
     {
@@ -175,7 +179,7 @@ class CommentController extends Controller
                 }
             });
 
-            return ResponseService::success(message: "Комментарий удален");
+            return ResponseService::success(message: 'Комментарий удален');
         } catch (\Throwable $e) {
             return ResponseService::badRequest($e->getMessage());
         }

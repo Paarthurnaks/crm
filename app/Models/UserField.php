@@ -17,6 +17,7 @@ use OpenApi\Annotations as OA;
  * @OA\Schema(
  *     title="UserField",
  *     description="Пользовательское поле",
+ *
  *     @OA\Xml(
  *         name="UserField"
  *     )
@@ -24,12 +25,12 @@ use OpenApi\Annotations as OA;
  */
 class UserField extends Model
 {
-    use HasFactory,Filterable;
+    use Filterable,HasFactory;
 
     protected $fillable = [
-        "name",
-        "entity",
-        "type",
+        'name',
+        'entity',
+        'type',
         'code',
         'is_required',
     ];
@@ -41,28 +42,24 @@ class UserField extends Model
      *     format="int64",
      *     example=1
      * )
-     *
-     * @var int
      */
     private int $id;
+
     /**
      * @OA\Property(
      *      title="name",
      *      description="название поля",
      *      example="Тестовое поле"
      * )
-     *
-     * @var string
      */
     private string $name;
+
     /**
      * @OA\Property(
      *     title="entity",
      *     description="сущность",
      *     example="deal"
      * )
-     *
-     * @var string
      */
     private string $entity;
 
@@ -72,8 +69,6 @@ class UserField extends Model
      *     description="код поля",
      *     example="uf_deal_1"
      * )
-     *
-     * @var string
      */
     private string $code;
 
@@ -83,22 +78,14 @@ class UserField extends Model
      *     description="тип поля (integer, float, boolean, datetime, date, enum, file, user, deal)",
      *     example="integer"
      * )
-     *
-     * @var string
      */
     private string $type;
 
-    /**
-     * @return HasMany
-     */
     public function userFieldEnumValues(): HasMany
     {
         return $this->hasMany(UserFieldEnumValue::class, 'field_id', 'id');
     }
 
-    /**
-     * @return HasMany
-     */
     public function fieldValues(): HasMany
     {
         return $this->hasMany(UserFieldValue::class, 'field_id');

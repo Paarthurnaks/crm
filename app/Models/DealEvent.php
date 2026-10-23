@@ -11,6 +11,7 @@ use OpenApi\Annotations as OA;
  * @OA\Schema(
  *     title="DealEvent",
  *     description="Событие сделки",
+ *
  *     @OA\Xml(
  *         name="DealEvent"
  *     )
@@ -21,15 +22,15 @@ class DealEvent extends Model
     use HasFactory;
 
     protected $fillable = [
-        "deal_id",
-        "initiator_id",
-        "type",
-        "changed_field",
-        "old_value",
-        "new_value"
+        'deal_id',
+        'initiator_id',
+        'type',
+        'changed_field',
+        'old_value',
+        'new_value',
     ];
 
-     /**
+    /**
      * @OA\Property(
      *     title="ID",
      *     description="ID",
@@ -40,7 +41,8 @@ class DealEvent extends Model
      * @var bigInteger
      */
     private $id;
-     /**
+
+    /**
      * @OA\Property(
      *     title="initiator_id",
      *     description="id инициатора события",
@@ -51,6 +53,7 @@ class DealEvent extends Model
      * @var bigInteger
      */
     private $initiator_id;
+
     /**
      * @OA\Property(
      *      title="type",
@@ -61,6 +64,7 @@ class DealEvent extends Model
      * @var string
      */
     private $type;
+
     /**
      * @OA\Property(
      *      title="changed_field",
@@ -71,6 +75,7 @@ class DealEvent extends Model
      * @var string
      */
     private $changed_field;
+
     /**
      * @OA\Property(
      *      title="old_value",
@@ -81,6 +86,7 @@ class DealEvent extends Model
      * @var string
      */
     private $old_value;
+
     /**
      * @OA\Property(
      *      title="new_value",
@@ -94,7 +100,7 @@ class DealEvent extends Model
 
     public function initiator(): BelongsTo
     {
-        return $this->belongsTo(User::class, "initiator_id");
+        return $this->belongsTo(User::class, 'initiator_id');
     }
 
     public function deal(): BelongsTo

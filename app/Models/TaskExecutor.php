@@ -16,6 +16,7 @@ use OpenApi\Annotations as OA;
  * @OA\Schema(
  *     title="TaskExecutor",
  *     description="Ответственный задачи",
+ *
  *     @OA\Xml(
  *         name="TaskExecutor"
  *     )
@@ -23,15 +24,15 @@ use OpenApi\Annotations as OA;
  */
 class TaskExecutor extends Model
 {
-    use HasFactory, Filterable;
+    use Filterable, HasFactory;
 
     /**
      * @var string[]
      */
     protected $fillable = [
-        "task_id",
-        "user_id",
-        'created_at'
+        'task_id',
+        'user_id',
+        'created_at',
     ];
 
     /**
@@ -64,12 +65,10 @@ class TaskExecutor extends Model
      */
     private int $task_id;
 
-
     public function task(): BelongsTo
     {
         return $this->belongsTo(Task::class, 'task_id');
     }
-
 
     public function user(): BelongsTo
     {

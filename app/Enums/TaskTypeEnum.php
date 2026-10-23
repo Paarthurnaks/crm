@@ -10,7 +10,7 @@ enum TaskTypeEnum: string
 
     public function getTitle(): string
     {
-        return match($this) {
+        return match ($this) {
             self::STANDARD => 'Стандартная',
             self::DOCKET => 'Судебное дело',
             self::HELPDESK => 'HELPDESK',
@@ -21,16 +21,16 @@ enum TaskTypeEnum: string
     {
         return [
             [
-                "title" => self::STANDARD->getTitle(),
-                "option" => self::STANDARD,
+                'title' => self::STANDARD->getTitle(),
+                'option' => self::STANDARD,
             ],
             [
-                "title" => self::DOCKET->getTitle(),
-                "option" => self::DOCKET,
+                'title' => self::DOCKET->getTitle(),
+                'option' => self::DOCKET,
             ],
             [
-                "title" => self::HELPDESK->getTitle(),
-                "option" => self::HELPDESK,
+                'title' => self::HELPDESK->getTitle(),
+                'option' => self::HELPDESK,
             ],
         ];
     }

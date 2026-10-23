@@ -19,21 +19,21 @@ class MeResource extends JsonResource
     public function toArray(Request $request): array
     {
         $res = [
-            "id" => $this->id,
-            "full_name" => "$this->name $this->surname",
-            "name" => $this->name,
-            "surname" => $this->surname,
-            "email" => $this->email,
-            "active" => $this->active,
-            "color" => $this->color,
-            "last_login" => $this->last_login,
-            "role" => RoleDetailResource::make($this->role),
-            "created_at" => $this->created_at,
-            "updated_at" => $this->updated_at,
-            'avatar' => $this->getFirstMedia()?->getUrl() ?? Storage::disk('public')->url("avatars/avatar.png"),
+            'id' => $this->id,
+            'full_name' => "$this->name $this->surname",
+            'name' => $this->name,
+            'surname' => $this->surname,
+            'email' => $this->email,
+            'active' => $this->active,
+            'color' => $this->color,
+            'last_login' => $this->last_login,
+            'role' => RoleDetailResource::make($this->role),
+            'created_at' => $this->created_at,
+            'updated_at' => $this->updated_at,
+            'avatar' => $this->getFirstMedia()?->getUrl() ?? Storage::disk('public')->url('avatars/avatar.png'),
         ];
 
-        if (!array_key_exists($this->id, self::$includedPartnerIds) && auth()->user()->hasRole(DefaultRolesEnum::CLIENT->value)
+        if (! array_key_exists($this->id, self::$includedPartnerIds) && auth()->user()->hasRole(DefaultRolesEnum::CLIENT->value)
         ) {
             $partnerDeals = $this->partnerDeals()->select('id', 'title')->get();
             if ($partnerDeals) {

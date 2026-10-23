@@ -30,40 +30,35 @@ class FieldService
             $queryParams['type'] = 'view';
         }
 
-//        if (Auth::user()->role->title == "Руководитель") {
-            return [
-                "fields" => Field::where("entity", $entity)->when($queryParams["type"] !== "view", function ($query) use ($prohibited) {
-                    $query->whereNotIn("code", $prohibited);
-                })->get(),
-                "user_fields" => UserField::where("entity", $entity)->when($queryParams["type"] !== "view", function ($query) use ($prohibited) {
-                    $query->whereNotIn("code", $prohibited);
-                })->get()
-            ];
-//        } else {
-//            return [
-//                "fields" => Auth::user()->role->fields()
-//                    ->wherePivot("type", $queryParams["type"])
-//                    ->where("entity", $entity)
-//                    ->when($queryParams["type"] !== "view", function ($query) use ($prohibited) {
-//                        $query->whereNotIn("code", $prohibited);
-//                    })
-//                    ->get(),
-//                "user_fields" => Auth::user()->role->userFields()
-//                    ->wherePivot("type", $queryParams["type"] ?? "view")
-//                    ->where("entity", $entity)
-//                    ->when($queryParams["type"] !== "view", function ($query) use ($prohibited) {
-//                        $query->whereNotIn("code", $prohibited);
-//                    })
-//                    ->get(),
-//            ];
-//        }
+        //        if (Auth::user()->role->title == "Руководитель") {
+        return [
+            'fields' => Field::where('entity', $entity)->when($queryParams['type'] !== 'view', function ($query) use ($prohibited) {
+                $query->whereNotIn('code', $prohibited);
+            })->get(),
+            'user_fields' => UserField::where('entity', $entity)->when($queryParams['type'] !== 'view', function ($query) use ($prohibited) {
+                $query->whereNotIn('code', $prohibited);
+            })->get(),
+        ];
+        //        } else {
+        //            return [
+        //                "fields" => Auth::user()->role->fields()
+        //                    ->wherePivot("type", $queryParams["type"])
+        //                    ->where("entity", $entity)
+        //                    ->when($queryParams["type"] !== "view", function ($query) use ($prohibited) {
+        //                        $query->whereNotIn("code", $prohibited);
+        //                    })
+        //                    ->get(),
+        //                "user_fields" => Auth::user()->role->userFields()
+        //                    ->wherePivot("type", $queryParams["type"] ?? "view")
+        //                    ->where("entity", $entity)
+        //                    ->when($queryParams["type"] !== "view", function ($query) use ($prohibited) {
+        //                        $query->whereNotIn("code", $prohibited);
+        //                    })
+        //                    ->get(),
+        //            ];
+        //        }
     }
 
-    /**
-     * @param array $data
-     * @param UserField|Field $field
-     * @return void
-     */
     public function update(array $data, UserField|Field $field): void
     {
         try {
@@ -73,20 +68,15 @@ class FieldService
                 $this->setupRolesByField($field);
             });
         } catch (Exception $e) {
-            throw new Exception(self::ERROR_MESSAGES["updateError"]);
+            throw new Exception(self::ERROR_MESSAGES['updateError']);
         }
     }
 
-
-    /**
-     * @param UserField|Field $field
-     * @return void
-     */
     private function addRequiredFieldToTemplates(UserField|Field $field): void
     {
         $isUserfield = $field instanceof UserField;
 
-        if($field->is_required) {
+        if ($field->is_required) {
             $this->addFieldToFunnels($field, $isUserfield);
         }
 
@@ -110,7 +100,7 @@ class FieldService
                 ->where('position', $sectionFieldsLastPosition + 1)
                 ->exists();
 
-            if(!$fieldIsExists) {
+            if (! $fieldIsExists) {
                 SectionField::create([
                     'section_id' => $section->id,
                     'position' => $sectionFieldsLastPosition + 1,
@@ -121,25 +111,22 @@ class FieldService
         }
     }
 
-    /**
-     * @param UserField|Field $field
-     * @param bool $isUserfield
-     * @return void
-     */
     private function addFieldToFunnels(UserField|Field $field, bool $isUserfield): void
     {
         $funnels = SalesFunnel::all();
 
         foreach ($funnels as $funnel) {
             $fieldIsAlreadyExists = $funnel->whereHas('userFields', function ($query) use ($field) {
-                    $query->where('user_fields.id', $field->id);
-                })->orWhereHas('fields', function ($query) use ($field) {
-                    $query->where('fields.id', $field->id);
-                })->exists();
+                $query->where('user_fields.id', $field->id);
+            })->orWhereHas('fields', function ($query) use ($field) {
+                $query->where('fields.id', $field->id);
+            })->exists();
 
-            if($fieldIsAlreadyExists) continue;
+            if ($fieldIsAlreadyExists) {
+                continue;
+            }
 
-            if($isUserfield) {
+            if ($isUserfield) {
                 $funnel->userFields()->attach($field->id, ['sales_funnel_id' => $funnel->id]);
             } else {
                 $funnel->fields()->attach($field->id, ['sales_funnel_id' => $funnel->id]);
@@ -147,10 +134,6 @@ class FieldService
         }
     }
 
-    /**
-     * @param Field|UserField $field
-     * @return void
-     */
     private function setupRolesByField(Field|UserField $field): void
     {
         $roles = Role::all();
@@ -174,7 +157,7 @@ class FieldService
                         ->wherePivot('type', $permissionType)
                         ->exists();
 
-                    if (!$existingPermission) {
+                    if (! $existingPermission) {
                         $role->$relationMethod()->attach($field->id, ['type' => $permissionType]);
                         break;
                     }

@@ -14,6 +14,7 @@ class RoleResource extends JsonResource
      *     type="object",
      *     title="Роль",
      *     description="Ресурс роли, содержащий основную информацию о роли.",
+     *
      *     @OA\Property(
      *         property="id",
      *         type="integer",
@@ -30,9 +31,9 @@ class RoleResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            "id" => $this->id,
-            "title" => $this->title,
-            "original_title" => $this->original_title,
+            'id' => $this->id,
+            'title' => $this->title,
+            'original_title' => $this->original_title,
             'is_client' => $this->original_title === DefaultRolesEnum::CLIENT->value,
             'is_partner' => $this->original_title === DefaultRolesEnum::PARTNER->value,
         ];

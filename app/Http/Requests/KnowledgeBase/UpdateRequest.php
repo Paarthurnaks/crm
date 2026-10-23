@@ -19,6 +19,7 @@ class UpdateRequest extends FormRequest
      *     schema="KnowledgeBaseUpdateRequest",
      *     type="object",
      *     title="Запрос на обновление базы знаний",
+     *
      *     @OA\Property(
      *         property="title",
      *         type="string",
@@ -38,8 +39,10 @@ class UpdateRequest extends FormRequest
      *     @OA\Property(
      *         property="contents",
      *         type="array",
+     *
      *         @OA\Items(
      *             type="object",
+     *
      *              @OA\Property(
      *                  property="id",
      *                  type="integer",
@@ -72,12 +75,12 @@ class UpdateRequest extends FormRequest
             'contents.*.content' => [
                 'required_without_all:contents.*.file,contents.*.id',
                 'string',
-                'nullable'
+                'nullable',
             ],
             'contents.*.file' => [
                 'required_without_all:contents.*.content,contents.*.id',
                 'file',
-                'nullable'
+                'nullable',
             ],
         ];
     }

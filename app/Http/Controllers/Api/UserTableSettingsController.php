@@ -7,17 +7,13 @@ use App\Http\Requests\UpdateUserTableSettingsRequest;
 use App\Http\Resources\UserTableSettingsResource;
 use App\Services\ResponseService;
 use App\Services\UserTableSettingsService;
-use Collator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class UserTableSettingsController extends Controller
 {
-    public function __construct(private UserTableSettingsService $userTableSettingsService)
-    {
-
-    }
+    public function __construct(private UserTableSettingsService $userTableSettingsService) {}
 
     /**
      * @OA\Get(
@@ -27,20 +23,26 @@ class UserTableSettingsController extends Controller
      *     description="Метод для вывода пользователю его настроек таблиц",
      *     summary="Метод для вывода пользователю его настроек таблиц",
      *     security={{"bearer_token":{}}},
+     *
      *     @OA\Parameter(
      *          name="entity",
      *          description="Фильтр по entity",
      *          required=false,
      *          in="query",
+     *
      *          @OA\Schema(
      *              type="string"
      *          )
      *      ),
+     *
      *     @OA\Response(response="200",
      *          description="OK",
+     *
      *          @OA\MediaType(
      *              mediaType="application/json",
+     *
      *              @OA\Schema(
+     *
      *                 @OA\Property(
      *                     property="data",
      *                     ref="#/components/schemas/UserTableSettings"
@@ -49,16 +51,13 @@ class UserTableSettingsController extends Controller
      *          ),
      *      )
      * )
-     *
-     * @param Request $request
-     * @return JsonResponse
      */
     public function index(Request $request): JsonResponse
     {
         $queryParams = $request->all();
         $tableSettings = $this->userTableSettingsService->getUserTableSettings($queryParams);
 
-        if(is_null($tableSettings)) {
+        if (is_null($tableSettings)) {
             return ResponseService::success();
         }
 
@@ -77,10 +76,14 @@ class UserTableSettingsController extends Controller
      *     description="Метод для обновления настроек таблицы пользователей",
      *     summary="Метод для обновления настроек таблицы пользователей",
      *     security={{"bearer_token":{}}},
+     *
      *     @OA\RequestBody(
+     *
      *       @OA\MediaType(
      *           mediaType="application/json",
+     *
      *           @OA\Schema(
+     *
      *              @OA\Property(property="entity",type="string",example="deals"),
      *              @OA\Property(
      *                  property="settings",
@@ -93,11 +96,15 @@ class UserTableSettingsController extends Controller
      *           ),
      *       ),
      *     ),
+     *
      *     @OA\Response(response="200",
      *          description="OK",
+     *
      *          @OA\MediaType(
      *              mediaType="application/json",
+     *
      *              @OA\Schema(
+     *
      *                 @OA\Property(
      *                     property="data",
      *                     ref="#/components/schemas/UserTableSettings"
@@ -105,13 +112,11 @@ class UserTableSettingsController extends Controller
      *              )
      *          )
      *      ),
+     *
      *      @OA\Response(response="404",
      *          description="NOT FOUND"
      *      ),
      * )
-     *
-     * @param UpdateUserTableSettingsRequest $request
-     * @return JsonResponse
      */
     public function update(UpdateUserTableSettingsRequest $request): JsonResponse
     {

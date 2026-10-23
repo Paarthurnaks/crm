@@ -2,7 +2,6 @@
 
 namespace App\Http\Resources;
 
-use App\Enums\ChatCategoryEnum;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -14,6 +13,7 @@ class ChatCategoryResource extends JsonResource
      *     type="object",
      *     title="Категория Чата",
      *     required={"id", "name"},
+     *
      *     @OA\Property(
      *         property="id",
      *         type="integer",

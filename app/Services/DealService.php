@@ -18,7 +18,6 @@ use App\Models\DealEvent;
 use App\Models\SalesFunnel;
 use App\Models\SalesStage;
 use App\Models\Task;
-use App\Models\User;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -30,28 +29,21 @@ class DealService
     public function __construct(
         private readonly EntityActivityService $activityService,
         private readonly UserFieldService $userFieldService,
-    )
-    {
-    }
+    ) {}
 
-    /**
-     * @param DealFilter $filter
-     * @param array $queryParams
-     * @return LengthAwarePaginator
-     */
     public function getDeals(DealFilter $filter, array $queryParams): LengthAwarePaginator
     {
         $user = auth()->user();
-        $limit = $queryParams["limit"] ?? config("constants.paginator.limit");
+        $limit = $queryParams['limit'] ?? config('constants.paginator.limit');
 
-        if($user->hasRole(DefaultRolesEnum::CLIENT->value)) {
+        if ($user->hasRole(DefaultRolesEnum::CLIENT->value)) {
             // клиенту выводим его единственную сделку с партнером
             return auth()->user()->partnerDeals()->filter($filter)->paginate($limit);
         } else {
             $dealScopes = [
-                PermissionTypeEnum::ALL->value    => 'allDeals',
-                PermissionTypeEnum::OWN->value    => 'ownDeals',
-                PermissionTypeEnum::OPENED->value => 'openedDeals'
+                PermissionTypeEnum::ALL->value => 'allDeals',
+                PermissionTypeEnum::OWN->value => 'ownDeals',
+                PermissionTypeEnum::OPENED->value => 'openedDeals',
             ];
 
             foreach ($dealScopes as $type => $scopeMethod) {
@@ -68,39 +60,31 @@ class DealService
         }
     }
 
-    /**
-     * @param array $dealData
-     * @return Deal
-     */
     public function createDeal(array $dealData): Deal
     {
-        $sales_funnel_id = $dealData["sales_funnel_id"] ?? SalesFunnel::first()->id;
-        $sales_stage = SalesStage::where("sales_funnel_id", $sales_funnel_id)->first();
+        $sales_funnel_id = $dealData['sales_funnel_id'] ?? SalesFunnel::first()->id;
+        $sales_stage = SalesStage::where('sales_funnel_id', $sales_funnel_id)->first();
         $user = Auth::user();
 
         $deal = Deal::query()->create([
-            "title" => $dealData["title"] ?? $this->generateDealTitle(),
-            "sales_funnel_id" => $sales_funnel_id,
-            "sales_stage_id" => $dealData["sales_stage_id"] ?? $sales_stage->id,
-            "creator_id" => $user->id,
-            "responsible_id" => $dealData["responsible_id"] ?? $user->id,
-            "note" => $dealData["note"] ?? '',
-            "amount" => $dealData["amount"] ?? 0,
-            "client" => $dealData["client_id"] ?? null
+            'title' => $dealData['title'] ?? $this->generateDealTitle(),
+            'sales_funnel_id' => $sales_funnel_id,
+            'sales_stage_id' => $dealData['sales_stage_id'] ?? $sales_stage->id,
+            'creator_id' => $user->id,
+            'responsible_id' => $dealData['responsible_id'] ?? $user->id,
+            'note' => $dealData['note'] ?? '',
+            'amount' => $dealData['amount'] ?? 0,
+            'client' => $dealData['client_id'] ?? null,
         ]);
 
-        if (!empty($dealData['user_field_values'])) {
+        if (! empty($dealData['user_field_values'])) {
             $this->userFieldService->addUserFieldValues($deal->id, $dealData['user_field_values'], SectionFieldEntityEnum::DEALS);
         }
 
         return Deal::where('id', $deal->id)->with('userFieldValues')->first();
     }
 
-
     /**
-     * @param Deal $deal
-     * @param array $dealData
-     * @return Deal
      * @throws Exception
      */
     public function updateDeal(Deal $deal, array $dealData): Deal
@@ -112,48 +96,30 @@ class DealService
         return Deal::where('id', $deal->id)->with('userFieldValues')->first();
     }
 
-    /**
-     * @param Deal $deal
-     * @return void
-     */
     public function deleteDeal(Deal $deal): void
     {
         $deal->delete();
     }
 
-    /**
-     * @return string
-     */
     private function generateDealTitle(): string
     {
         $dealId = Deal::latest()->first()?->id + 1;
 
-        return "Сделка #" . $dealId;
+        return 'Сделка #'.$dealId;
     }
 
-
-    /**
-     * @param Deal $deal
-     * @param DealActivityFilter $filter
-     * @return LengthAwarePaginator
-     */
     public function getActivity(Deal $deal, DealActivityFilter $filter): LengthAwarePaginator
     {
         $activityMap = [
             DealEvent::class => ['type' => DealActivityEnum::EVENT, 'resource' => DealEventResource::class],
-            Comment::class   => ['type' => DealActivityEnum::COMMENT, 'resource' => CommentResource::class],
-            Task::class      => ['type' => DealActivityEnum::TASK, 'resource' => TaskResource::class],
+            Comment::class => ['type' => DealActivityEnum::COMMENT, 'resource' => CommentResource::class],
+            Task::class => ['type' => DealActivityEnum::TASK, 'resource' => TaskResource::class],
         ];
 
         return $this->activityService->getActivity($deal, $filter, $activityMap);
 
     }
 
-
-    /**
-     * @param Deal $deal
-     * @return array
-     */
     public function getMediaDocs(Deal $deal): array
     {
         $mediaFiles = $deal->getMedia('docs');
@@ -180,10 +146,6 @@ class DealService
         return ['files' => array_values($organizedFiles)];
     }
 
-    /**
-     * @param Media $media
-     * @return array
-     */
     public function getDocument(Media $media): array
     {
         $documents = Media::where([

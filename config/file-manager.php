@@ -10,56 +10,56 @@ return [
      *
      * Default - DefaultConfigRepository get config from this file
      */
-    'configRepository'  => DefaultConfigRepository::class,
+    'configRepository' => DefaultConfigRepository::class,
 
     /**
      * ACL rules repository
      *
      * Default - ConfigACLRepository (see rules in - aclRules)
      */
-    'aclRepository'     => UsersACLRepository::class,
+    'aclRepository' => UsersACLRepository::class,
 
-    //********* Default configuration for DefaultConfigRepository **************
+    // ********* Default configuration for DefaultConfigRepository **************
 
     /**
      * LFM Route prefix
      * !!! WARNING - if you change it, you should compile frontend with new prefix(baseUrl) !!!
      */
-    'routePrefix'       => 'api/file-manager',
+    'routePrefix' => 'api/file-manager',
 
     /**
      * List of disk_entities names that you want to use
      * (from config/filesystems)
      */
-    'diskList'          => ['public'],
+    'diskList' => ['public'],
 
     /**
      * Default disk_entities for left manager
      *
      * null - auto select the first disk_entities in the disk_entities list
      */
-    'leftDisk'          => 'public',
+    'leftDisk' => 'public',
 
     /**
      * Default disk_entities for right manager
      *
      * null - auto select the first disk_entities in the disk_entities list
      */
-    'rightDisk'         => null,
+    'rightDisk' => null,
 
     /**
      * Default path for left manager
      *
      * null - root directory
      */
-    'leftPath'          => null,
+    'leftPath' => null,
 
     /**
      * Default path for right manager
      *
      * null - root directory
      */
-    'rightPath'         => null,
+    'rightPath' => null,
 
     /**
      * Image cache ( Intervention Image Cache )
@@ -67,7 +67,7 @@ return [
      * set null, 0 - if you don't need cache (default)
      * if you want use cache - set the number of minutes for which the value should be cached
      */
-    'cache'             => null,
+    'cache' => null,
 
     /**
      * File manager modules configuration
@@ -76,7 +76,7 @@ return [
      * 2 - one file manager window with directories tree module
      * 3 - two file manager windows
      */
-    'windowsConfig'     => 2,
+    'windowsConfig' => 2,
 
     /**
      * File upload - Max file size in KB
@@ -90,12 +90,12 @@ return [
      *
      * [] - no restrictions
      */
-    'allowFileTypes'    => [],
+    'allowFileTypes' => [],
 
     /**
      * Show / Hide system files and folders
      */
-    'hiddenFiles'       => true,
+    'hiddenFiles' => true,
 
     /***************************************************************************
      * Middleware
@@ -103,21 +103,21 @@ return [
      * Add your middleware name to array -> ['web', 'auth', 'admin']
      * !!!! RESTRICT ACCESS FOR NON ADMIN USERS !!!!
      */
-    'middleware'        => ['api', 'auth'],
+    'middleware' => ['api', 'auth'],
 
     /***************************************************************************
      * ACL mechanism ON/OFF
      *
      * default - false(OFF)
      */
-    'acl'               => true,
+    'acl' => true,
 
     /**
      * Hide files and folders from file-manager if user doesn't have access
      *
      * ACL access level = 0
      */
-    'aclHideFromFM'     => true,
+    'aclHideFromFM' => true,
 
     /**
      * ACL strategy
@@ -126,17 +126,16 @@ return [
      *
      * whitelist - Deny anything(access - 0 - deny), that not allowed by the ACL rules list
      */
-    'aclStrategy'       => "whitelist",
+    'aclStrategy' => 'whitelist',
 
     /**
      * ACL Rules cache
      *
      * null or value in minutes
      */
-    'aclRulesCache'     => null,
+    'aclRulesCache' => null,
 
-    //********* Default configuration for DefaultConfigRepository END **********
-
+    // ********* Default configuration for DefaultConfigRepository END **********
 
     /***************************************************************************
      * ACL rules list - used for default ACL repository (ConfigACLRepository)
@@ -156,19 +155,18 @@ return [
      *
      * access: 0 - deny, 1 - read, 2 - read/write
      */
-    'aclRules'          => [
+    'aclRules' => [
         null => [
-            //['disk_entities' => 'public', 'path' => '/', 'access' => 2],
+            // ['disk_entities' => 'public', 'path' => '/', 'access' => 2],
         ],
-        1    => [
-            //['disk_entities' => 'public', 'path' => 'images/arch*.jpg', 'access' => 2],
-            //['disk_entities' => 'public', 'path' => 'files/*', 'access' => 1],
+        1 => [
+            // ['disk_entities' => 'public', 'path' => 'images/arch*.jpg', 'access' => 2],
+            // ['disk_entities' => 'public', 'path' => 'files/*', 'access' => 1],
         ],
     ],
 
     /**
      * Enable slugification of filenames of uploaded files.
-     *
      */
-    'slugifyNames'      => false,
+    'slugifyNames' => false,
 ];

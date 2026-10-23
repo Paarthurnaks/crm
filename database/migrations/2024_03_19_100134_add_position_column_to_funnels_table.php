@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('sales_funnels', function (Blueprint $table) {
-            $table->integer("position")->nullable();
+            $table->integer('position')->nullable();
         });
     }
 
@@ -22,7 +22,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('sales_funnels', function (Blueprint $table) {
-            $table->dropColumn("position");
+            $table->dropColumn('position');
         });
     }
 };

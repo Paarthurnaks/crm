@@ -8,6 +8,6 @@ class FileManagerController extends Controller
 {
     public function index(): View
     {
-        return view("filemanager");
+        return view('filemanager');
     }
 }

@@ -4,15 +4,15 @@ namespace App\Enums;
 
 enum TaskStatusEnum: string
 {
-    case NEW = "new";
-    case PENDING = "pending";
-    case PAUSED = "paused";
-    case CLOSED = "closed";
-    case EXPIRED = "expired";
+    case NEW = 'new';
+    case PENDING = 'pending';
+    case PAUSED = 'paused';
+    case CLOSED = 'closed';
+    case EXPIRED = 'expired';
 
     public function getTitle(): string
     {
-        return match($this) {
+        return match ($this) {
             self::NEW => 'Новая',
             self::PENDING => 'В работе',
             self::PAUSED => 'Приостановлена',
@@ -25,24 +25,24 @@ enum TaskStatusEnum: string
     {
         return [
             [
-                "title" => self::NEW->getTitle(),
-                "option" => self::NEW,
+                'title' => self::NEW->getTitle(),
+                'option' => self::NEW,
             ],
             [
-                "title" => self::PENDING->getTitle(),
-                "option" => self::PENDING,
+                'title' => self::PENDING->getTitle(),
+                'option' => self::PENDING,
             ],
             [
-                "title" => self::PAUSED->getTitle(),
-                "option" => self::PAUSED,
+                'title' => self::PAUSED->getTitle(),
+                'option' => self::PAUSED,
             ],
             [
-                "title" => self::CLOSED->getTitle(),
-                "option" => self::CLOSED,
+                'title' => self::CLOSED->getTitle(),
+                'option' => self::CLOSED,
             ],
             [
-                "title" => self::EXPIRED->getTitle(),
-                "option" => self::EXPIRED,
+                'title' => self::EXPIRED->getTitle(),
+                'option' => self::EXPIRED,
             ],
         ];
     }

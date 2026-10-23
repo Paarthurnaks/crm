@@ -21,8 +21,8 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
-class ChatService {
-
+class ChatService
+{
     private const ERROR_MESSAGES = [
         'chatCreatorError' => 'Пользователь не является создателем чата',
         'singleChatAlreadyExists' => 'Чат между данными пользователями уже существует',
@@ -31,22 +31,15 @@ class ChatService {
 
     public function __construct(
         private readonly ChatMemberService $chatMemberService
-    )
-    {
-    }
+    ) {}
 
-    /**
-     * @param array $data
-     * @param ChatFilter $filter
-     * @return LengthAwarePaginator
-     */
     public function getChatsList(array $data, ChatFilter $filter): LengthAwarePaginator
     {
         $limit = $data['limit'] ?? config('constants.paginator.limit');
 
         return Chat::query()
             ->filter($filter)
-            ->when(!isset($data['category_id']), function ($query) {
+            ->when(! isset($data['category_id']), function ($query) {
                 $query->whereDoesntHave('categories', function ($query) {
                     $query->whereHas('chatCategoryMappings', function ($query) {
                         $query->where('user_id', auth()->id());
@@ -60,17 +53,14 @@ class ChatService {
     }
 
     /**
-     * @param array $data
-     * @param int|null $userId
-     * @return Chat
      * @throws Exception
      */
-    public function create(array $data, int $userId = null): Chat
+    public function create(array $data, ?int $userId = null): Chat
     {
         return DB::transaction(function () use ($data, $userId) {
             $userId = $userId ?? auth()->id();
 
-            if($data['type'] === ChatTypeEnum::SINGLE->value) {
+            if ($data['type'] === ChatTypeEnum::SINGLE->value) {
                 // проверка существует ли чат между двумя пользователями
                 $isChatExists = Chat::with('members')
                     ->where('type', ChatTypeEnum::SINGLE->value)
@@ -82,22 +72,26 @@ class ChatService {
                     })
                     ->exists();
 
-                if($isChatExists) throw new Exception(self::ERROR_MESSAGES['singleChatAlreadyExists']);
+                if ($isChatExists) {
+                    throw new Exception(self::ERROR_MESSAGES['singleChatAlreadyExists']);
+                }
 
                 $chat = Chat::create([
-                    'type' => $data['type']
+                    'type' => $data['type'],
                 ]);
-            } else if($data['type'] === ChatTypeEnum::GROUP->value) {
+            } elseif ($data['type'] === ChatTypeEnum::GROUP->value) {
                 $chat = Chat::create($data);
 
-                if(isset($data['avatar'])) {
+                if (isset($data['avatar'])) {
                     $chat->addMedia($data['avatar'])->toMediaCollection();
                 }
-            } else if($data['type'] === ChatTypeEnum::PARTNER->value) {
+            } elseif ($data['type'] === ChatTypeEnum::PARTNER->value) {
                 $chat = Chat::create($data);
             }
 
-            if(is_null($chat)) throw new Exception(self::ERROR_MESSAGES['chatCreatorError']);
+            if (is_null($chat)) {
+                throw new Exception(self::ERROR_MESSAGES['chatCreatorError']);
+            }
 
             $this->chatMemberService->create($data, $chat, $userId);
 
@@ -106,16 +100,15 @@ class ChatService {
     }
 
     /**
-     * @param Chat $chat
-     * @param array $data
-     * @return Chat
      * @throws Exception
      */
     public function update(Chat $chat, array $data): Chat
     {
-        if(!auth()->user()->isCreatorOfChat($chat->id)) throw new Exception(self::ERROR_MESSAGES['chatCreatorError']);
+        if (! auth()->user()->isCreatorOfChat($chat->id)) {
+            throw new Exception(self::ERROR_MESSAGES['chatCreatorError']);
+        }
 
-        if(isset($data['avatar'])) {
+        if (isset($data['avatar'])) {
             $chat->addMedia($data['avatar'])->toMediaCollection();
         }
 
@@ -126,15 +119,10 @@ class ChatService {
         return $chat;
     }
 
-    /**
-     * @param Chat $chat
-     * @param bool $sendCurrentUser
-     * @return void
-     */
     private function broadcastUpdateToGlobal(Chat $chat, bool $sendCurrentUser = true): void
     {
-        $chat->members->each(function($member) use ($chat, $sendCurrentUser) {
-            if($member->user_id !== auth()->id() || $sendCurrentUser) {
+        $chat->members->each(function ($member) use ($chat, $sendCurrentUser) {
+            if ($member->user_id !== auth()->id() || $sendCurrentUser) {
                 broadcast(
                     new GlobalChatUpdateBroadcast(
                         ChatResource::make($chat, $member->user_id),
@@ -145,21 +133,22 @@ class ChatService {
         });
     }
 
-
     /**
-     * @param Chat $chat
-     * @return void
      * @throws Exception
      */
     public function delete(Chat $chat): void
     {
         switch ($chat->type) {
             case ChatTypeEnum::GROUP->value:
-                if(!auth()->user()->isCreatorOfChat($chat)) throw new Exception(self::ERROR_MESSAGES['chatCreatorError']);
+                if (! auth()->user()->isCreatorOfChat($chat)) {
+                    throw new Exception(self::ERROR_MESSAGES['chatCreatorError']);
+                }
                 break;
 
             case ChatTypeEnum::SINGLE->value:
-                if($chat->members()->count() !== 1) throw new Exception(self::ERROR_MESSAGES['forbiddenAction']);
+                if ($chat->members()->count() !== 1) {
+                    throw new Exception(self::ERROR_MESSAGES['forbiddenAction']);
+                }
                 break;
 
             case ChatTypeEnum::PARTNER->value:
@@ -167,7 +156,9 @@ class ChatService {
                     return $query->where('original_title', DefaultRolesEnum::PARTNER->value);
                 })->exists();
 
-                if($partnerExists) throw new Exception(self::ERROR_MESSAGES['forbiddenAction']);
+                if ($partnerExists) {
+                    throw new Exception(self::ERROR_MESSAGES['forbiddenAction']);
+                }
                 break;
 
             case ChatTypeEnum::CLIENT->value:
@@ -179,7 +170,9 @@ class ChatService {
                     return $query->where('original_title', DefaultRolesEnum::PARTNER->value);
                 })->exists();
 
-                if($clientExists && $partnerExists) throw new Exception(self::ERROR_MESSAGES['forbiddenAction']);
+                if ($clientExists && $partnerExists) {
+                    throw new Exception(self::ERROR_MESSAGES['forbiddenAction']);
+                }
                 break;
         }
 
@@ -188,24 +181,15 @@ class ChatService {
         $chat->delete();
     }
 
-
-    /**
-     * @param Chat $chat
-     * @param bool $sendCurrenUser
-     * @return void
-     */
     public function broadcastDeleteToGlobal(Chat $chat, bool $sendCurrenUser = false): void
     {
-        $chat->members->each(function($member) use ($chat, $sendCurrenUser) {
-            if($member->user_id !== auth()->id() || $sendCurrenUser) {
+        $chat->members->each(function ($member) use ($chat, $sendCurrenUser) {
+            if ($member->user_id !== auth()->id() || $sendCurrenUser) {
                 broadcast(new GlobalChatDeleteBroadcast($chat->id, $member->user_id));
             }
         });
     }
 
-    /**
-     * @return array
-     */
     private function getUsersWithPartnerChatAccess(): array
     {
         return User::whereHas('role.permissions', function ($query) {
@@ -216,30 +200,24 @@ class ChatService {
             ->toArray();
     }
 
-    /**
-     * @param User $user
-     * @return void
-     */
     public function setupChats(User $user): void
     {
-        if(!$user->hasRole(DefaultRolesEnum::havePersonalAccount())) {
+        if (! $user->hasRole(DefaultRolesEnum::havePersonalAccount())) {
             $this->deleteChatMembersExcept($user, ChatTypeEnum::systemTypes());
             $this->setupDefaultChat($user);
             $this->createSingleUserChats($user);
 
-            if($user->hasAccess(PermissionEntityEnum::PARTNERS_CHATS->value, 'view', PermissionTypeEnum::ALL->value)) {
+            if ($user->hasAccess(PermissionEntityEnum::PARTNERS_CHATS->value, 'view', PermissionTypeEnum::ALL->value)) {
                 $this->setupSystemPartnerChats();
             }
 
             $this->setupSystemCategories($user);
-        }
-        else if($user->hasRole(DefaultRolesEnum::PARTNER->value)) {
+        } elseif ($user->hasRole(DefaultRolesEnum::PARTNER->value)) {
             $user->chatCategories()->detach();
 
             $this->deleteChatMembersExcept($user, []);
             $this->setupPartnerChat($user);
-        }
-        else if($user->hasRole(DefaultRolesEnum::CLIENT->value)) {
+        } elseif ($user->hasRole(DefaultRolesEnum::CLIENT->value)) {
             $user->chatCategories()->detach();
 
             $this->deleteChatMembersExcept($user, [ChatTypeEnum::CLIENT->value]);
@@ -253,15 +231,11 @@ class ChatService {
             $query->where('original_title', DefaultRolesEnum::PARTNER->value);
         })
             ->get()
-            ->each(function($user) {
+            ->each(function ($user) {
                 $this->setupPartnerChat($user);
             });
     }
 
-    /**
-     * @param User $user
-     * @return void
-     */
     public function setupSystemCategories(User $user): void
     {
         $user->chatCategories()->detach();
@@ -271,7 +245,7 @@ class ChatService {
 
         $data = collect();
 
-        if($user->hasAccess(PermissionEntityEnum::PARTNERS_CHATS->value, 'view', PermissionTypeEnum::ALL->value)) {
+        if ($user->hasAccess(PermissionEntityEnum::PARTNERS_CHATS->value, 'view', PermissionTypeEnum::ALL->value)) {
 
             $partnerChats = $user->chats()
                 ->withoutGlobalScopes()
@@ -305,11 +279,6 @@ class ChatService {
         ChatCategoryMapping::insert($data->toArray());
     }
 
-    /**
-     * @param User $user
-     * @param array $excludedTypes
-     * @return void
-     */
     private function deleteChatMembersExcept(User $user, array $excludedTypes): void
     {
         $chatMemberIds = ChatMember::whereHas('chat', function ($query) use ($excludedTypes) {
@@ -326,29 +295,25 @@ class ChatService {
             $query->withTrashed()->whereIn('id', $chatMemberIds);
         })
             ->get()
-            ->each(function ($chat) use ($user) {
+            ->each(function ($chat) {
                 $this->broadcastUpdateToGlobal($chat);
             });
     }
 
-    /**
-     * @param User $user
-     * @return void
-     */
     private function createChatWithPartner(User $user): void
     {
         $clientPartner = $user->partner;
 
-        if($clientPartner) {
+        if ($clientPartner) {
             $partnerChat = Chat::withoutGlobalScopes()
                 ->where('type', ChatTypeEnum::CLIENT->value)
                 ->whereHas('members', function ($query) use ($user) {
                     $query->withTrashed()->where('user_id', $user->id);
                 })->first();
 
-            if(!$partnerChat) {
+            if (! $partnerChat) {
                 $partnerChat = Chat::create([
-                     'type' => ChatTypeEnum::CLIENT->value,
+                    'type' => ChatTypeEnum::CLIENT->value,
                 ]);
             }
 
@@ -372,10 +337,6 @@ class ChatService {
         }
     }
 
-    /**
-     * @param User $user
-     * @return void
-     */
     private function setupPartnerChat(User $user): void
     {
         $partnerChat = $user->chats()
@@ -386,10 +347,10 @@ class ChatService {
             ->where('type', ChatTypeEnum::PARTNER->value)
             ->first();
 
-        if($partnerChat) {
+        if ($partnerChat) {
             $userIds = $this->getUsersWithPartnerChatAccess();
 
-            if($userIds) {
+            if ($userIds) {
                 try {
                     $this->chatMemberService->create([
                         'user_ids' => $userIds,
@@ -406,9 +367,9 @@ class ChatService {
 
         } else {
             $userIds = User::whereHas('role.permissions', function ($query) {
-                    $query->where('entity', PermissionEntityEnum::PARTNERS_CHATS->value)
-                        ->where('view', PermissionTypeEnum::ALL->value);
-                })
+                $query->where('entity', PermissionEntityEnum::PARTNERS_CHATS->value)
+                    ->where('view', PermissionTypeEnum::ALL->value);
+            })
                 ->pluck('id')
                 ->toArray();
 
@@ -425,14 +386,10 @@ class ChatService {
         }
     }
 
-    /**
-     * @param User $user
-     * @return void
-     */
     private function setupDefaultChat(User $user): void
     {
         $defaultChat = Chat::withoutGlobalScopes()->firstOrCreate([
-            'type' => ChatTypeEnum::DEFAULT->value
+            'type' => ChatTypeEnum::DEFAULT->value,
         ]);
 
         $defaultChatMember = ChatMember::onlyTrashed()
@@ -440,8 +397,9 @@ class ChatService {
             ->where('user_id', $user->id)
             ->first();
 
-        if($defaultChatMember) {
+        if ($defaultChatMember) {
             $defaultChatMember->restore();
+
             return;
         }
 
@@ -455,10 +413,6 @@ class ChatService {
         }
     }
 
-    /**
-     * @param User $user
-     * @return void
-     */
     private function createSingleUserChats(User $user): void
     {
         $chatIds = Chat::query()
@@ -481,11 +435,11 @@ class ChatService {
                 ->where('chats.type', 'single');
         })->pluck('user_id')->toArray();
 
-        $usersWithoutSingleIds = User::where(function($query) {
+        $usersWithoutSingleIds = User::where(function ($query) {
             $query->whereHas('role', function ($query) {
-                    $query->whereNotIn('original_title', DefaultRolesEnum::havePersonalAccount())
-                        ->orWhereNull('original_title');
-                })
+                $query->whereNotIn('original_title', DefaultRolesEnum::havePersonalAccount())
+                    ->orWhereNull('original_title');
+            })
                 ->orWhereNull('role_id');
         })->whereNotIn('id', $usersWithChats)
             ->where('id', '!=', $userId)

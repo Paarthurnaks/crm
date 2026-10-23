@@ -11,36 +11,21 @@ use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 trait HasChats
 {
-    /**
-     * @param $chatId
-     * @return bool
-     */
     public function isCreatorOfChat($chatId): bool
     {
         return ChatMember::where('user_id', auth()->id())->where('chat_id', $chatId)->where('is_creator', true)->exists();
     }
 
-    /**
-     * @param $chatId
-     * @return bool
-     */
     public function isMemberOfChat($chatId): bool
     {
         return ChatMember::where('user_id', auth()->id())->where('chat_id', $chatId)->exists();
     }
 
-    /**
-     * @param $messageId
-     * @return bool
-     */
     public function isAuthorOfChatMessage($messageId): bool
     {
         return ChatMessage::where('id', $messageId)->where('user_id', auth()->id())->exists();
     }
 
-    /**
-     * @return HasManyThrough
-     */
     public function chats(): HasManyThrough
     {
         return $this->hasManyThrough(

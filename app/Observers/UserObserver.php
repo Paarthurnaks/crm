@@ -22,48 +22,40 @@ class UserObserver
 {
     public function __construct(
         private readonly ChatService $chatService,
-    )
-    {
-    }
+    ) {}
 
-    /**
-     * @param User $user
-     * @return void
-     */
     public function created(User $user): void
     {
-        $fields = Field::where("is_required", true)->get();
+        $fields = Field::where('is_required', true)->get();
 
         $enumsArr = EntityTypeEnum::cases();
-        $entities = array_column($enumsArr, "value");
+        $entities = array_column($enumsArr, 'value');
 
-        foreach ($entities as $entity)
-        {
+        foreach ($entities as $entity) {
             $section = Section::create([
-                "user_id" => $user->id,
-                "entity" => $entity,
-                "title" => "Общее",
-                "position" => 1,
-                "is_template" => true,
-                "main_section" => true
+                'user_id' => $user->id,
+                'entity' => $entity,
+                'title' => 'Общее',
+                'position' => 1,
+                'is_template' => true,
+                'main_section' => true,
             ]);
 
-            $entityFields = array_values(array_filter($fields->toArray(), function($field) use ($entity) {
-                return $field["entity"] == $entity;
+            $entityFields = array_values(array_filter($fields->toArray(), function ($field) use ($entity) {
+                return $field['entity'] == $entity;
             }));
 
-            for ($i = 0; $i < count($entityFields); $i++)
-            {
+            for ($i = 0; $i < count($entityFields); $i++) {
                 SectionField::create([
-                    "section_id" => $section->id,
-                    "field_id" => $entityFields[$i]["id"],
-                    "position" => $i+1
+                    'section_id' => $section->id,
+                    'field_id' => $entityFields[$i]['id'],
+                    'position' => $i + 1,
                 ]);
             }
         }
 
         // привязка клиента к партнеру
-        if(Auth::check() && Auth::user()->hasRole(DefaultRolesEnum::PARTNER->value)) {
+        if (Auth::check() && Auth::user()->hasRole(DefaultRolesEnum::PARTNER->value)) {
             PartnerClient::create([
                 'partner_id' => Auth::id(),
                 'client_id' => $user->id,
@@ -86,7 +78,7 @@ class UserObserver
                 'position' => 1,
                 'is_template' => true,
                 'main_section' => true,
-                'sales_funnel_id' => $funnel->id
+                'sales_funnel_id' => $funnel->id,
             ]);
 
             $fieldIds = $funnel->fields()->pluck('fields.id');
@@ -112,23 +104,15 @@ class UserObserver
         $this->chatService->setupChats($user);
     }
 
-    /**
-     * @param User $user
-     * @return void
-     */
     public function updated(User $user): void
     {
-        if($user->isDirty('role_id')) {
+        if ($user->isDirty('role_id')) {
             $this->chatService->setupChats($user);
 
             broadcast(new RoleChangeBroadcast(UserResource::make($user)));
         }
     }
 
-    /**
-     * @param User $user
-     * @return void
-     */
     public function deleting(User $user): void
     {
         // отправка событий об удалении связанных с юзером чатов
@@ -140,9 +124,9 @@ class UserObserver
                 ->when($user->hasRole(DefaultRolesEnum::PARTNER->value), function ($query) {
                     $query->orWhere('type', ChatTypeEnum::PARTNER->value);
                 });
-            })
-            ->whereHas("members", function ($query) use ($user) {
-                $query->where("user_id", $user->id);
+        })
+            ->whereHas('members', function ($query) use ($user) {
+                $query->where('user_id', $user->id);
             })
             ->get();
 

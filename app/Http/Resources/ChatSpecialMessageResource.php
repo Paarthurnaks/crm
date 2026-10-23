@@ -13,6 +13,7 @@ use Illuminate\Support\Str;
 class ChatSpecialMessageResource extends JsonResource
 {
     private int $userId;
+
     public function __construct($resource, $userId = null)
     {
         parent::__construct($resource);
@@ -32,17 +33,17 @@ class ChatSpecialMessageResource extends JsonResource
             'created_at' => $this->created_at,
             'attachments' => MediaResource::collection($this->getMedia()),
             'status' => $this->status,
-            'user' => UserResource::make($this->user)
+            'user' => UserResource::make($this->user),
         ];
 
-        if ($this->chat->type === ChatTypeEnum::PARTNER->value){
+        if ($this->chat->type === ChatTypeEnum::PARTNER->value) {
             $user = User::find($this->userId);
 
             if ($user && $user->hasRole(DefaultRolesEnum::PARTNER->value)) {
                 $res['user'] = [
                     'name' => 'ЕСБ',
                     'surname' => 'Система',
-                    'avatar' => Storage::url("avatars/esb_logo.png"),
+                    'avatar' => Storage::url('avatars/esb_logo.png'),
                 ];
             }
         }

@@ -20,9 +20,7 @@ class ChangeMessageStatusBroadcast implements ShouldBroadcast
     public function __construct(
         private readonly ChatMessageResource $message,
         private readonly ChatResource $chat,
-    )
-    {
-    }
+    ) {}
 
     /**
      * Get the channels the event should broadcast on.
@@ -38,7 +36,7 @@ class ChangeMessageStatusBroadcast implements ShouldBroadcast
 
     public function broadcastAs(): string
     {
-            return 'ChangeMessageStatus';
+        return 'ChangeMessageStatus';
     }
 
     public function broadcastWith(): array

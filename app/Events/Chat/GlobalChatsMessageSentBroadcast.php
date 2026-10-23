@@ -22,9 +22,7 @@ class GlobalChatsMessageSentBroadcast implements ShouldBroadcast
         private readonly ChatMessageResource $message,
         private readonly ChatResource $chat,
         private readonly string $userId
-    )
-    {
-    }
+    ) {}
 
     /**
      * Get the channels the event should broadcast on.
@@ -34,7 +32,7 @@ class GlobalChatsMessageSentBroadcast implements ShouldBroadcast
     public function broadcastOn(): array
     {
         return [
-            new PrivateChannel('global-chats.' . $this->userId),
+            new PrivateChannel('global-chats.'.$this->userId),
         ];
     }
 
@@ -42,7 +40,6 @@ class GlobalChatsMessageSentBroadcast implements ShouldBroadcast
     {
         return 'GlobalChatsMessageSent';
     }
-
 
     public function broadcastWith(): array
     {

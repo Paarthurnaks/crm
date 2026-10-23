@@ -23,28 +23,23 @@ use Illuminate\Support\Facades\DB;
 class TaskService
 {
     private const ERROR_MESSAGES = [
-        'createError' => 'Произошла ошибка во время создания задачи. Проверьте переданные вами поля'
+        'createError' => 'Произошла ошибка во время создания задачи. Проверьте переданные вами поля',
     ];
 
-    /**
-     * @param TaskFilter $filter
-     * @param array $queryParams
-     * @return LengthAwarePaginator
-     */
     public function getList(TaskFilter $filter, array $queryParams = []): LengthAwarePaginator
     {
         $user = auth()->user();
-        $limit = $queryParams["limit"] ?? config("constants.paginator.limit");
+        $limit = $queryParams['limit'] ?? config('constants.paginator.limit');
 
         $taskScopes = [
-            PermissionTypeEnum::ALL->value    => 'allTasks',
-            PermissionTypeEnum::OWN->value    => 'ownTasks',
-            PermissionTypeEnum::OPENED->value => 'openedTasks'
+            PermissionTypeEnum::ALL->value => 'allTasks',
+            PermissionTypeEnum::OWN->value => 'ownTasks',
+            PermissionTypeEnum::OPENED->value => 'openedTasks',
         ];
 
         foreach ($taskScopes as $type => $scopeMethod) {
             // для судебных дел
-            if(isset($queryParams['type']) &&
+            if (isset($queryParams['type']) &&
                 $queryParams['type'] === TaskTypeEnum::DOCKET->value &&
                 $user->hasAccess(PermissionEntityEnum::DOCKET->value, 'view', $type)) {
                 return Task::$scopeMethod()
@@ -53,7 +48,7 @@ class TaskService
             }
 
             // для всех остальных задач
-            if($user->hasAccess(PermissionEntityEnum::TASKS->value, 'view', $type)) {
+            if ($user->hasAccess(PermissionEntityEnum::TASKS->value, 'view', $type)) {
                 return Task::$scopeMethod()->filter($filter)->paginate($limit);
             }
         }
@@ -62,8 +57,6 @@ class TaskService
     }
 
     /**
-     * @param array $data
-     * @return Task
      * @throws Exception
      */
     public function create(array $data): Task
@@ -88,12 +81,12 @@ class TaskService
                 $fields['deadline'] = isset($data['deadline']) ? Carbon::parse($data['deadline'])->format('Y-m-d H:i:s') : null;
                 $fields['start_time'] = isset($data['start_time']) ? Carbon::parse($data['start_time'])->format('Y-m-d H:i:s') : null;
 
-                if(Carbon::parse($fields['deadline'])->isPast()) {
+                if (Carbon::parse($fields['deadline'])->isPast()) {
                     $fields['status'] = TaskStatusEnum::EXPIRED->value;
                 }
             }
 
-            if($type === TaskTypeEnum::HELPDESK->value) {
+            if ($type === TaskTypeEnum::HELPDESK->value) {
                 $data['executors'] = User::whereHas('role', function ($query) {
                     $query->whereHas('permissions', function ($subQuery) {
                         $subQuery->where('entity', PermissionEntityEnum::HELPDESK)
@@ -110,22 +103,22 @@ class TaskService
             return DB::transaction(function () use ($fields, $data) {
                 $task = Task::create($fields);
 
-                if (!$task) {
+                if (! $task) {
                     throw new Exception($this::ERROR_MESSAGES['createError']);
                 }
 
-                if(isset($data['executors'])) {
+                if (isset($data['executors'])) {
                     $task->executors()->sync($data['executors']);
                     $this->sendTaskEventNotifications($task, $data['executors']);
                 }
 
-                if(isset($data['observers'])) {
+                if (isset($data['observers'])) {
                     $task->observers()->sync($data['observers']);
                     $this->sendTaskEventNotifications($task, $data['observers']);
                 }
 
-                if (isset($data["attachments"])) {
-                    foreach ($data["attachments"] as $attachment) {
+                if (isset($data['attachments'])) {
+                    foreach ($data['attachments'] as $attachment) {
                         $task->addMedia($attachment)->toMediaCollection();
                     }
                 }
@@ -137,30 +130,18 @@ class TaskService
         }
     }
 
-
-    /**
-     * @param Task $task
-     * @param array $executors
-     * @return void
-     */
     public function sendTaskEventNotifications(Task $task, array $executors): void
     {
         $users = User::find($executors);
         $taskEvent = $task->events()->latest()->first();
 
-        if($taskEvent) {
+        if ($taskEvent) {
             foreach ($users as $user) {
                 $user->notify(new TaskEventNotification($taskEvent));
             }
         }
     }
 
-
-    /**
-     * @param Task $task
-     * @param array $data
-     * @return Task
-     */
     public function update(Task $task, array $data): Task
     {
         $task->update($data);
@@ -176,10 +157,6 @@ class TaskService
         return $task;
     }
 
-    /**
-     * @param Task $task
-     * @return void
-     */
     public function delete(Task $task): void
     {
         $task->delete();
@@ -192,7 +169,7 @@ class TaskService
 
         $result = [];
 
-        if (!empty($comments)) {
+        if (! empty($comments)) {
             $result = collect($result)->merge($comments->map(function ($comment) {
                 return [
                     'type' => TaskActivityEnum::COMMENT->value,
@@ -201,7 +178,7 @@ class TaskService
             }));
         }
 
-        if (!empty($events)) {
+        if (! empty($events)) {
             $result = collect($result)->merge($events->map(function ($event) {
                 return [
                     'type' => TaskActivityEnum::EVENT->value,

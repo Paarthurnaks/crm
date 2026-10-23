@@ -15,18 +15,18 @@ return new class extends Migration
         Schema::create('deal_events', function (Blueprint $table) {
             $table->id();
             $table->foreignIdFor(Deal::class)
-                    ->cascadeOnDelete()
-                    ->constrained();
+                ->cascadeOnDelete()
+                ->constrained();
 
-            $table->foreignId("initiator_id")
-                    ->nullOnDelete()
-                    ->nullable()
-                    ->constrained("users");
+            $table->foreignId('initiator_id')
+                ->nullOnDelete()
+                ->nullable()
+                ->constrained('users');
 
-            $table->string("type");
-            $table->string("changed_field")->nullable();
-            $table->string("old_value")->nullable();
-            $table->string("new_value")->nullable();
+            $table->string('type');
+            $table->string('changed_field')->nullable();
+            $table->string('old_value')->nullable();
+            $table->string('new_value')->nullable();
             $table->timestamps();
         });
     }

@@ -29,12 +29,12 @@ class UpdateRequest extends FormRequest
         $types = UserFieldTypeEnum::values();
 
         return [
-            "entity" => ['string', new Enum(EntityTypeEnum::class)],
-            "name" => ['string'],
-            "type" => [ "string", Rule::in($types)],
-            "options" => [
-                'required_if:type,' . UserFieldTypeEnum::ENUM->value,
-                'array'
+            'entity' => ['string', new Enum(EntityTypeEnum::class)],
+            'name' => ['string'],
+            'type' => ['string', Rule::in($types)],
+            'options' => [
+                'required_if:type,'.UserFieldTypeEnum::ENUM->value,
+                'array',
             ],
             'options.*.id' => ['integer'],
             'options.*.option' => ['required', 'string'],

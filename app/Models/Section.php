@@ -9,12 +9,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
 
 /**
  * @OA\Schema(
  *     title="Section",
  *     description="Раздел",
+ *
  *     @OA\Xml(
  *         name="Section"
  *     )
@@ -22,19 +22,19 @@ use Illuminate\Support\Facades\Log;
  */
 class Section extends Model
 {
-    use HasFactory, Filterable;
+    use Filterable, HasFactory;
 
     protected $fillable = [
-        "entity",
-        "title",
-        "user_id",
-        "position",
-        "deal_id",
-        "sales_funnel_id",
-        "is_template",
-        "main_section",
-        "type",
-        "is_customized",
+        'entity',
+        'title',
+        'user_id',
+        'position',
+        'deal_id',
+        'sales_funnel_id',
+        'is_template',
+        'main_section',
+        'type',
+        'is_customized',
     ];
 
     /**
@@ -48,6 +48,7 @@ class Section extends Model
      * @var bigInteger
      */
     private $id;
+
     /**
      * @OA\Property(
      *      title="entity",
@@ -58,6 +59,7 @@ class Section extends Model
      * @var string
      */
     private $entity;
+
     /**
      * @OA\Property(
      *      title="title",
@@ -68,6 +70,7 @@ class Section extends Model
      * @var string
      */
     private $title;
+
     /**
      * @OA\Property(
      *     title="user_id",
@@ -79,6 +82,7 @@ class Section extends Model
      * @var bigInteger
      */
     private $user_id;
+
     /**
      * @OA\Property(
      *     title="sales_funnel_id",
@@ -90,6 +94,7 @@ class Section extends Model
      * @var bigInteger
      */
     private $sales_funnel_id;
+
     /**
      * @OA\Property(
      *     title="is_customized",
@@ -101,6 +106,7 @@ class Section extends Model
      * @var bool
      */
     private $is_customized;
+
     /**
      * @OA\Property(
      *      title="position",
@@ -108,15 +114,16 @@ class Section extends Model
      *      example=1
      * )
      *
-     * @var integer
+     * @var int
      */
-
     private $position;
+
     /**
      * @OA\Property(
      *      title="fields",
      *      description="поля раздела",
      *      type="array",
+     *
      *      @OA\Items(
      *          ref="#/components/schemas/SectionField"
      *      )
@@ -138,16 +145,16 @@ class Section extends Model
 
     public function fields(): HasMany
     {
-        return $this->hasMany(SectionField::class)->orderBy("position");
+        return $this->hasMany(SectionField::class)->orderBy('position');
     }
 
     public function availableFields(): HasMany
     {
         return $this->hasMany(SectionField::class)
-            ->orderBy("position")
-            ->where(function($query) {
-                $query->whereIn("user_field_id", Auth::user()->role->userFields()->wherePivot("type", "view")->get()->pluck("id"))
-                    ->orWhereIn("field_id", Auth::user()->role->fields()->wherePivot("type", "view")->get()->pluck("id"))
+            ->orderBy('position')
+            ->where(function ($query) {
+                $query->whereIn('user_field_id', Auth::user()->role->userFields()->wherePivot('type', 'view')->get()->pluck('id'))
+                    ->orWhereIn('field_id', Auth::user()->role->fields()->wherePivot('type', 'view')->get()->pluck('id'))
                     ->get();
             });
     }
@@ -155,10 +162,10 @@ class Section extends Model
     public function availableFieldsView(): HasMany
     {
         return $this->hasMany(SectionField::class)
-            ->orderBy("position")
-            ->where(function($query) {
-                $query->whereIn("user_field_id", Auth::user()->role->userFields()->wherePivot("type", "view")->get()->pluck("id"))
-                    ->orWhereIn("field_id", Auth::user()->role->fields()->wherePivot("type", "view")->get()->pluck("id"))
+            ->orderBy('position')
+            ->where(function ($query) {
+                $query->whereIn('user_field_id', Auth::user()->role->userFields()->wherePivot('type', 'view')->get()->pluck('id'))
+                    ->orWhereIn('field_id', Auth::user()->role->fields()->wherePivot('type', 'view')->get()->pluck('id'))
                     ->get();
             });
     }
@@ -166,13 +173,13 @@ class Section extends Model
     public function availableFieldsCreate(): HasMany
     {
         return $this->hasMany(SectionField::class)
-            ->orderBy("position")
+            ->orderBy('position')
             ->whereDoesntHave('field', function ($query) {
                 $query->whereIn('code', ProhibitedFieldEnum::values());
             })
-            ->where(function($query) {
-                $query->whereIn("user_field_id", Auth::user()->role->userFields()->wherePivot("type", "create")->get()->pluck("id"))
-                    ->orWhereIn("field_id", Auth::user()->role->fields()->wherePivot("type", "create")->get()->pluck("id"))
+            ->where(function ($query) {
+                $query->whereIn('user_field_id', Auth::user()->role->userFields()->wherePivot('type', 'create')->get()->pluck('id'))
+                    ->orWhereIn('field_id', Auth::user()->role->fields()->wherePivot('type', 'create')->get()->pluck('id'))
                     ->get();
             });
     }
@@ -180,13 +187,13 @@ class Section extends Model
     public function availableFieldsUpdate(): HasMany
     {
         return $this->hasMany(SectionField::class)
-            ->orderBy("position")
+            ->orderBy('position')
             ->whereDoesntHave('field', function ($query) {
                 $query->whereIn('code', ProhibitedFieldEnum::values());
             })
-            ->where(function($query) {
-                $query->whereIn("user_field_id", Auth::user()->role->userFields()->wherePivot("type", "update")->get()->pluck("id"))
-                    ->orWhereIn("field_id", Auth::user()->role->fields()->wherePivot("type", "update")->get()->pluck("id"))
+            ->where(function ($query) {
+                $query->whereIn('user_field_id', Auth::user()->role->userFields()->wherePivot('type', 'update')->get()->pluck('id'))
+                    ->orWhereIn('field_id', Auth::user()->role->fields()->wherePivot('type', 'update')->get()->pluck('id'))
                     ->get();
             });
     }

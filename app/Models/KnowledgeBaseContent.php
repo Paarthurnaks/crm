@@ -18,6 +18,7 @@ use Spatie\MediaLibrary\InteractsWithMedia;
  * @OA\Schema(
  *     title="KnowledgeBaseContent",
  *     description="Контент базы знаний",
+ *
  *     @OA\Xml(
  *         name="KnowledgeBaseContent"
  *     )
@@ -41,8 +42,6 @@ class KnowledgeBaseContent extends Model implements HasMedia
      *     format="int64",
      *     example=1
      * )
-     *
-     * @var int $id
      */
     private int $id;
 
@@ -52,8 +51,6 @@ class KnowledgeBaseContent extends Model implements HasMedia
      *     format="string",
      *     example="ccontent of base"
      * )
-     *
-     * @var string $content
      */
     private string $content;
 
@@ -63,8 +60,6 @@ class KnowledgeBaseContent extends Model implements HasMedia
      *     format="string",
      *     example="pdf"
      * )
-     *
-     * @var string $type
      */
     private string $type;
 
@@ -74,8 +69,6 @@ class KnowledgeBaseContent extends Model implements HasMedia
      *     format="integer",
      *     example="2"
      * )
-     *
-     * @var int $content
      */
     private int $order;
 

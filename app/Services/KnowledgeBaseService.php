@@ -8,7 +8,6 @@ use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Exception;
 use Spatie\MediaLibrary\MediaCollections\Exceptions\FileDoesNotExist;
 use Spatie\MediaLibrary\MediaCollections\Exceptions\FileIsTooBig;
-use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class KnowledgeBaseService
 {
@@ -18,8 +17,6 @@ class KnowledgeBaseService
     ];
 
     /**
-     * @param array $data
-     * @return KnowledgeBase
      * @throws FileDoesNotExist
      * @throws FileIsTooBig
      */
@@ -32,11 +29,11 @@ class KnowledgeBaseService
                     'description' => $data['description'] ?? null,
                 ]);
 
-                if(isset($data['preview']) && $data['preview']) {
+                if (isset($data['preview']) && $data['preview']) {
                     $knowledgeBase->addMedia($data['preview'])->toMediaCollection('preview');
                 }
 
-                foreach($data['contents'] as $index => $contentData) {
+                foreach ($data['contents'] as $index => $contentData) {
                     $type = isset($contentData['file']) ? 'file' : 'text';
                     $order = $index + 1;
 
@@ -48,7 +45,7 @@ class KnowledgeBaseService
 
                     $knowledgeBase->contents()->save($knowledgeBaseContent);
 
-                    if(isset($contentData['file']) && $contentData['file']) {
+                    if (isset($contentData['file']) && $contentData['file']) {
                         $knowledgeBaseContent->addMedia($contentData['file'])->toMediaCollection('file');
                     }
                 }
@@ -60,12 +57,6 @@ class KnowledgeBaseService
         }
     }
 
-
-    /**
-     * @param KnowledgeBase $knowledgeBase
-     * @param array $data
-     * @return void
-     */
     public function update(KnowledgeBase $knowledgeBase, array $data): void
     {
         try {
@@ -89,13 +80,17 @@ class KnowledgeBaseService
                         $type = isset($contentData['content']) ? 'text' : (isset($contentData['file']) ? 'file' : null);
                         $content = $contentData['content'] ?? null;
 
-                        if (!$type) continue;
+                        if (! $type) {
+                            continue;
+                        }
 
                         $knowledgeBaseContent = isset($contentData['id'])
                             ? $knowledgeBase->contents()->find($contentData['id'])
-                            : new KnowledgeBaseContent();
+                            : new KnowledgeBaseContent;
 
-                        if (!$knowledgeBaseContent) continue;
+                        if (! $knowledgeBaseContent) {
+                            continue;
+                        }
 
                         $knowledgeBaseContent->fill([
                             'type' => $type,

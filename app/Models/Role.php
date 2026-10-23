@@ -11,9 +11,11 @@ use OpenApi\Annotations as OA;
 
 /**
  * @property int $id
+ *
  * @OA\Schema(
  *     title="Role",
  *     description="Роль",
+ *
  *     @OA\Xml(
  *         name="Role"
  *     )
@@ -21,13 +23,13 @@ use OpenApi\Annotations as OA;
  */
 class Role extends Model
 {
-    use HasFactory, Filterable;
+    use Filterable, HasFactory;
 
     const COMMON = 1;
 
     protected $fillable = [
-        "title",
-        "original_title",
+        'title',
+        'original_title',
     ];
 
     /**
@@ -41,6 +43,7 @@ class Role extends Model
      * @var bigInteger
      */
     private $id;
+
     /**
      * @OA\Property(
      *      title="title",
@@ -51,11 +54,13 @@ class Role extends Model
      * @var string
      */
     private $title;
+
     /**
      * @OA\Property(
      *      title="permissions",
      *      description="разрешения роли",
      *      type="array",
+     *
      *      @OA\Items(
      *          ref="#/components/schemas/Permission"
      *      )
@@ -77,46 +82,46 @@ class Role extends Model
 
     public function availableDiskEntities(): BelongsToMany
     {
-        return $this->belongsToMany(DiskEntity::class, "role_disk_entities", "role_id", "disk_entity_id");
+        return $this->belongsToMany(DiskEntity::class, 'role_disk_entities', 'role_id', 'disk_entity_id');
     }
 
     public function fields(): BelongsToMany
     {
-        return $this->belongsToMany(Field::class, "role_fields", "role_id", "field_id");
+        return $this->belongsToMany(Field::class, 'role_fields', 'role_id', 'field_id');
     }
 
     public function userFields(): BelongsToMany
     {
-        return $this->belongsToMany(UserField::class, "role_user_fields", "role_id", "user_field_id");
+        return $this->belongsToMany(UserField::class, 'role_user_fields', 'role_id', 'user_field_id');
     }
 
     public function fieldsView(): BelongsToMany
     {
-        return $this->belongsToMany(Field::class, "role_fields", "role_id", "field_id")->wherePivot("type", "view");
+        return $this->belongsToMany(Field::class, 'role_fields', 'role_id', 'field_id')->wherePivot('type', 'view');
     }
 
     public function userFieldsView(): BelongsToMany
     {
-        return $this->belongsToMany(UserField::class, "role_user_fields", "role_id", "user_field_id")->wherePivot("type", "view");
+        return $this->belongsToMany(UserField::class, 'role_user_fields', 'role_id', 'user_field_id')->wherePivot('type', 'view');
     }
 
     public function fieldsCreate(): BelongsToMany
     {
-        return $this->belongsToMany(Field::class, "role_fields", "role_id", "field_id")->wherePivot("type", "create");
+        return $this->belongsToMany(Field::class, 'role_fields', 'role_id', 'field_id')->wherePivot('type', 'create');
     }
 
     public function userFieldsCreate(): BelongsToMany
     {
-        return $this->belongsToMany(UserField::class, "role_user_fields", "role_id", "user_field_id")->wherePivot("type", "create");
+        return $this->belongsToMany(UserField::class, 'role_user_fields', 'role_id', 'user_field_id')->wherePivot('type', 'create');
     }
 
     public function fieldsUpdate(): BelongsToMany
     {
-        return $this->belongsToMany(Field::class, "role_fields", "role_id", "field_id")->wherePivot("type", "update");
+        return $this->belongsToMany(Field::class, 'role_fields', 'role_id', 'field_id')->wherePivot('type', 'update');
     }
 
     public function userFieldsUpdate(): BelongsToMany
     {
-        return $this->belongsToMany(UserField::class, "role_user_fields", "role_id", "user_field_id")->wherePivot("type", "update");
+        return $this->belongsToMany(UserField::class, 'role_user_fields', 'role_id', 'user_field_id')->wherePivot('type', 'update');
     }
 }

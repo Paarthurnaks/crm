@@ -22,17 +22,17 @@ class ReportStoreRequest extends FormRequest
     public function rules(): array
     {
         return [
-            "title" => ["required", "string"],
-            "description" => ["string"],
-            "period_from" => ["nullable", "date_format:Y-m-d H:i:s"],
-            "period_to" => ["nullable", "date_format:Y-m-d H:i:s"],
-            "filter" => ["required"],
-            "user_access" => ["array"],
-            "user_access.*" => ["integer", "exists:users,id"],
-            "report_fields" => ["array"],
-            "report_fields.*.field_id" => ["integer"],
-            "report_fields.*.user_field_id" => ["integer"],
-            "report_fields.*.position" => ["integer"]
+            'title' => ['required', 'string'],
+            'description' => ['string'],
+            'period_from' => ['nullable', 'date_format:Y-m-d H:i:s'],
+            'period_to' => ['nullable', 'date_format:Y-m-d H:i:s'],
+            'filter' => ['required'],
+            'user_access' => ['array'],
+            'user_access.*' => ['integer', 'exists:users,id'],
+            'report_fields' => ['array'],
+            'report_fields.*.field_id' => ['integer'],
+            'report_fields.*.user_field_id' => ['integer'],
+            'report_fields.*.position' => ['integer'],
         ];
     }
 }

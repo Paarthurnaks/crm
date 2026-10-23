@@ -32,26 +32,23 @@ class CreateCommonSectionForUsers extends Command
         $users = User::all();
         $sales_funnels = SalesFunnel::all();
 
-        foreach($users as $user)
-        {
-            foreach ($sales_funnels as $sales_funnel) 
-            {
+        foreach ($users as $user) {
+            foreach ($sales_funnels as $sales_funnel) {
                 $section = Section::create([
-                    "entity" => "deals",
-                    "user_id" => $user->id,
-                    "title" => "Общее",
-                    "sales_funnel_id" => $sales_funnel->id,
-                    "position" => 1
+                    'entity' => 'deals',
+                    'user_id' => $user->id,
+                    'title' => 'Общее',
+                    'sales_funnel_id' => $sales_funnel->id,
+                    'position' => 1,
                 ]);
 
                 $fieldIds = [1, 2, 3, 4, 5, 6, 7, 8];
 
-                for($i = 0; $i < count($fieldIds); $i++)
-                {
+                for ($i = 0; $i < count($fieldIds); $i++) {
                     SectionField::create([
-                        "section_id" => $section->id,
-                        "field_id" => $fieldIds[$i],
-                        "position" => $i+1
+                        'section_id' => $section->id,
+                        'field_id' => $fieldIds[$i],
+                        'position' => $i + 1,
                     ]);
                 }
             }

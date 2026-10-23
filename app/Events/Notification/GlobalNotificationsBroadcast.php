@@ -23,14 +23,10 @@ class GlobalNotificationsBroadcast implements ShouldBroadcast
     public function __construct(
         private readonly DatabaseNotification $notification,
         private readonly int $userId
-    )
-    {
+    ) {
         $this->init();
     }
 
-    /**
-     * @return void
-     */
     public function init(): void
     {
         $this->totalUnreadNotifications = User::find($this->userId)->unreadNotifications()->count();
@@ -44,7 +40,7 @@ class GlobalNotificationsBroadcast implements ShouldBroadcast
     public function broadcastOn(): array
     {
         return [
-            new PrivateChannel('global-notifications.' . $this->userId),
+            new PrivateChannel('global-notifications.'.$this->userId),
         ];
     }
 
@@ -52,7 +48,6 @@ class GlobalNotificationsBroadcast implements ShouldBroadcast
     {
         return 'GlobalNotifications';
     }
-
 
     public function broadcastWith(): array
     {

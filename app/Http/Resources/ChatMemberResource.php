@@ -13,6 +13,7 @@ class ChatMemberResource extends JsonResource
      * @OA\Schema(
      *     schema="ChatMemberResource",
      *     type="object",
+     *
      *     @OA\Property(
      *         property="id",
      *         type="integer",

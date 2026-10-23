@@ -31,7 +31,7 @@ class AttachDetachRequest extends FormRequest
         $validator->after(function ($validator) {
             $clientId = $this->input('client_id');
 
-            if (!auth()->user()->clients()->where('client_id', $clientId)->exists()) {
+            if (! auth()->user()->clients()->where('client_id', $clientId)->exists()) {
                 $validator->errors()->add('client_id', 'Пользователь не является вашим клиентом');
             }
         });

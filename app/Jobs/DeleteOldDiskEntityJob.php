@@ -20,10 +20,7 @@ class DeleteOldDiskEntityJob implements ShouldQueue
     public function __construct(
         private readonly DiskEntity $diskEntity,
         private readonly FileSystemService $service
-    )
-    {
-
-    }
+    ) {}
 
     /**
      * Execute the job.

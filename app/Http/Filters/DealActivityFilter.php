@@ -8,10 +8,6 @@ use BeyondCode\Comments\Comment;
 
 class DealActivityFilter extends QueryFilter
 {
-    /**
-     * @param string $search
-     * @return void
-     */
     public function search(string $search): void
     {
         $this->builder->where(function ($query) use ($search) {
@@ -27,10 +23,6 @@ class DealActivityFilter extends QueryFilter
         });
     }
 
-    /**
-     * @param int $author_id
-     * @return void
-     */
     public function author_id(int $author_id): void
     {
         $this->builder->whereHasMorph('activityable', [Comment::class, Task::class], function ($query, $type) use ($author_id) {
@@ -42,19 +34,11 @@ class DealActivityFilter extends QueryFilter
         });
     }
 
-    /**
-     * @param string $date_from
-     * @return void
-     */
     public function date_from(string $date_from): void
     {
         $this->builder->whereDate('created_at', '>=', $date_from);
     }
 
-    /**
-     * @param string $date_to
-     * @return void
-     */
     public function date_to(string $date_to): void
     {
         $this->builder->whereDate('created_at', '<=', $date_to);

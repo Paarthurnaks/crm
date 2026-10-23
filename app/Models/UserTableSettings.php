@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
  * @OA\Schema(
  *     title="UserTableSettings",
  *     description="Настройка таблиц у пользователя",
+ *
  *     @OA\Xml(
  *         name="UserTableSettings"
  *     )
@@ -17,17 +18,17 @@ use Illuminate\Database\Eloquent\Model;
 class UserTableSettings extends Model
 {
     use HasFactory;
-    
+
     protected $fillable = [
-        "entity",
-        "user_id",
-        "settings"
+        'entity',
+        'user_id',
+        'settings',
     ];
 
     protected $casts = [
-        "settings" => "array"
+        'settings' => 'array',
     ];
-    
+
     /**
      * @OA\Property(
      *     title="ID",
@@ -35,20 +36,18 @@ class UserTableSettings extends Model
      *     format="int64",
      *     example=1
      * )
-     *
-     * @var int
      */
     private int $id;
+
     /**
      * @OA\Property(
      *     title="entity",
      *     description="сущность (deals, tasks, users, accounts, documents)",
      *     example="deal"
      * )
-     *
-     * @var string
      */
     private string $entity;
+
     /**
      * @OA\Property(
      *     title="settings",
@@ -64,5 +63,4 @@ class UserTableSettings extends Model
      * @var array
      */
     private string $settings;
-
 }

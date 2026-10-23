@@ -12,10 +12,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('sales_tunnels', function (Blueprint $table) {
-            $table->dropForeign(["from_stage_id"]);
-            $table->foreign('from_stage_id')->references("id")->on('sales_stages')->onDelete("cascade");
-            $table->dropForeign(["to_stage_id"]);
-            $table->foreign('to_stage_id')->references("id")->on('sales_stages')->onDelete("cascade");
+            $table->dropForeign(['from_stage_id']);
+            $table->foreign('from_stage_id')->references('id')->on('sales_stages')->onDelete('cascade');
+            $table->dropForeign(['to_stage_id']);
+            $table->foreign('to_stage_id')->references('id')->on('sales_stages')->onDelete('cascade');
         });
     }
 
@@ -25,10 +25,10 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('sales_tunnels', function (Blueprint $table) {
-            $table->dropForeign(["from_stage_id"]);
-            $table->foreign('from_stage_id')->references("id")->on('sales_stages');
-            $table->dropForeign(["to_stage_id"]);
-            $table->foreign('to_stage_id')->references("id")->on('sales_stages');
+            $table->dropForeign(['from_stage_id']);
+            $table->foreign('from_stage_id')->references('id')->on('sales_stages');
+            $table->dropForeign(['to_stage_id']);
+            $table->foreign('to_stage_id')->references('id')->on('sales_stages');
         });
     }
 };

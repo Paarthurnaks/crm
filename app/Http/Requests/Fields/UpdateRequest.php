@@ -30,11 +30,11 @@ class UpdateRequest extends FormRequest
                 function ($attribute, $value, $fail) {
                     $isUserfield = $this->input('is_userfield');
                     if ($isUserfield) {
-                        if (!UserField::where('id', $value)->exists()) {
+                        if (! UserField::where('id', $value)->exists()) {
                             $fail('The selected id is invalid in user_fields.');
                         }
                     } else {
-                        if (!Field::where('id', $value)->exists()) {
+                        if (! Field::where('id', $value)->exists()) {
                             $fail('The selected id is invalid in fields.');
                         }
                     }

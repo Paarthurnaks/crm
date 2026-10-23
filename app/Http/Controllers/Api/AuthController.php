@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Enums\DefaultRolesEnum;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ChangePasswordRequest;
 use App\Http\Requests\LoginRequest;
@@ -15,16 +14,13 @@ use App\Services\ResponseService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use PHPOpenSourceSaver\JWTAuth\Exceptions\TokenExpiredException;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use PHPOpenSourceSaver\JWTAuth\Exceptions\TokenExpiredException;
 
 class AuthController extends Controller
 {
-    public function __construct(private AuthService $authService)
-    {
-
-    }
+    public function __construct(private AuthService $authService) {}
 
     /**
      * @OA\Post(
@@ -33,20 +29,28 @@ class AuthController extends Controller
      *     tags={"Auth"},
      *     description="Метод для авторизации пользователя",
      *     summary="Метод для авторизации пользователя",
+     *
      *     @OA\RequestBody(
+     *
      *       @OA\MediaType(
      *           mediaType="application/json",
+     *
      *           @OA\Schema(
+     *
      *              @OA\Property(property="email",type="string",example="example@242_test.com"),
      *              @OA\Property(property="password",type="string",example="242_test"),
      *           ),
      *       ),
      *     ),
+     *
      *     @OA\Response(response="200",
      *          description="OK",
+     *
      *          @OA\MediaType(
      *              mediaType="application/json",
+     *
      *              @OA\Schema(
+     *
      *                 @OA\Property(
      *                     property="token",
      *                     type="string",
@@ -60,29 +64,29 @@ class AuthController extends Controller
      *              )
      *          )
      *      ),
+     *
      *      @OA\Response(
      *          response="401",
      *          description="Unauthorized",
      *      )
      * )
-     *
-     * @param LoginRequest $request
-     * @return JsonResponse
      */
     public function login(LoginRequest $request): JsonResponse
     {
         $validated = $request->validated();
         $credentials = [
-            "email" => $validated["email"],
-            "password" => $validated["password"]
+            'email' => $validated['email'],
+            'password' => $validated['password'],
         ];
 
         $token = Auth::attempt($credentials);
-        if (!$token) return ResponseService::unauthorized();
+        if (! $token) {
+            return ResponseService::unauthorized();
+        }
 
         $user = Auth::user();
 
-        $user->update(["active" => true, "last_login" => now()]);
+        $user->update(['active' => true, 'last_login' => now()]);
 
         return ResponseService::success(
             AuthResource::make(UserResource::make($user), $token)
@@ -97,6 +101,7 @@ class AuthController extends Controller
      *     description="Метод для выхода из системы",
      *     summary="Метод для выхода из системы",
      *     security={{"bearer_token":{}}},
+     *
      *     @OA\Response(
      *          response="200",
      *          description="OK",
@@ -106,12 +111,10 @@ class AuthController extends Controller
      *          description="Unauthorized",
      *      )
      * )
-     *
-     * @return JsonResponse
      */
     public function logout(): JsonResponse
     {
-        Auth::user()->update(["active" => false]);
+        Auth::user()->update(['active' => false]);
         Auth::logout();
 
         return ResponseService::success();
@@ -125,11 +128,15 @@ class AuthController extends Controller
      *     description="Метод для обновления jwt токенов пользователя",
      *     summary="Метод для обновления jwt токенов пользователя",
      *     security={{"bearer_token":{}}},
+     *
      *     @OA\Response(response="200",
      *          description="OK",
+     *
      *          @OA\MediaType(
      *              mediaType="application/json",
+     *
      *              @OA\Schema(
+     *
      *                 @OA\Property(
      *                     property="user",
      *                     ref="#/components/schemas/User"
@@ -137,13 +144,12 @@ class AuthController extends Controller
      *              )
      *          )
      *      ),
+     *
      *      @OA\Response(
      *          response="401",
      *          description="Unauthorized",
      *      )
      * )
-     *
-     * @return JsonResponse
      */
     public function refresh(): JsonResponse
     {
@@ -163,11 +169,15 @@ class AuthController extends Controller
      *     description="Метод для получения информации о текущем авторизованном пользователе/проверки авторизации",
      *     summary="Метод для получения информации о текущем авторизованном пользователе/проверки авторизации",
      *     security={{"bearer_token":{}}},
+     *
      *     @OA\Response(response="200",
      *          description="OK",
+     *
      *          @OA\MediaType(
      *              mediaType="application/json",
+     *
      *              @OA\Schema(
+     *
      *                 @OA\Property(
      *                     property="user",
      *                     ref="#/components/schemas/User"
@@ -175,13 +185,12 @@ class AuthController extends Controller
      *              )
      *          )
      *      ),
+     *
      *      @OA\Response(
      *          response="401",
      *          description="Unauthorized",
      *      )
      * )
-     *
-     * @return JsonResponse
      */
     public function me(): JsonResponse
     {
@@ -201,13 +210,17 @@ class AuthController extends Controller
      *     summary="Метод для отправки письма со ссылкой на смену пароля",
      *
      *     @OA\RequestBody(
+     *
      *       @OA\MediaType(
      *           mediaType="application/json",
+     *
      *           @OA\Schema(
+     *
      *              @OA\Property(property="email",type="string",example="example@242_test.com"),
      *           ),
      *       ),
      *     ),
+     *
      *     @OA\Response(response="200",
      *          description="Ссылка на смену пароля отправлена на почту",
      *      ),
@@ -215,16 +228,13 @@ class AuthController extends Controller
      *          description="Пользователь с таким email не существует",
      *      )
      * )
-     *
-     * @param SendLinkChangePasswordRequest $request
-     * @return JsonResponse
      */
     public function sendLinkChangePassword(SendLinkChangePasswordRequest $request): JsonResponse
     {
         $validated = $request->validated();
-        $this->authService->sendLinkChangePassword($validated["email"]);
+        $this->authService->sendLinkChangePassword($validated['email']);
 
-        return ResponseService::success(message: "Ссылка на смену пароля отправлена на почту");
+        return ResponseService::success(message: 'Ссылка на смену пароля отправлена на почту');
     }
 
     /**
@@ -234,16 +244,21 @@ class AuthController extends Controller
      *     tags={"Auth"},
      *     description="Метод для смены пароля",
      *     summary="Метод для смены пароля",
+     *
      *     @OA\RequestBody(
+     *
      *       @OA\MediaType(
      *           mediaType="application/json",
+     *
      *           @OA\Schema(
+     *
      *              @OA\Property(property="email",type="string",example="example@242_test.com"),
      *              @OA\Property(property="code",type="string",example="JIG4uMkrwX5FfcK6vIBFq29wvLojKobszO1QHXcjcMlSVw6HIduGR7mlDMB6nkAB"),
      *              @OA\Property(property="password",type="string",example="newPassword"),
      *           ),
      *       ),
      *     ),
+     *
      *     @OA\Response(response="200",
      *          description="Пароль успешно обновлён!",
      *      ),
@@ -257,25 +272,21 @@ class AuthController extends Controller
      *          description="Время кода подтверждения истекло"),
      *      ),
      * )
-     *
-     * @param ChangePasswordRequest $request
-     * @return JsonResponse
      */
     public function changePassword(ChangePasswordRequest $request): JsonResponse
     {
         try {
             $this->authService->changePassword($request->validated());
 
-            return ResponseService::success(message: "Пароль успешно обновлён!");
+            return ResponseService::success(message: 'Пароль успешно обновлён!');
         } catch (NotFoundHttpException $e) {
-            return ResponseService::notFound(message: "Пользователь с таким email не существует");
+            return ResponseService::notFound(message: 'Пользователь с таким email не существует');
         } catch (BadRequestHttpException $e) {
-            return ResponseService::badRequest(message: "Неправильный код подтверждения");
+            return ResponseService::badRequest(message: 'Неправильный код подтверждения');
         } catch (TokenExpiredException $e) {
-            return ResponseService::badRequest(message: "Время кода подтверждения истекло");
+            return ResponseService::badRequest(message: 'Время кода подтверждения истекло');
         }
     }
-
 
     /**
      * @OA\Post(
@@ -284,22 +295,24 @@ class AuthController extends Controller
      *     tags={"Auth"},
      *     description="Метод для смены пароля",
      *     summary="Метод для смены пароля",
+     *
      *     @OA\RequestBody(
+     *
      *       @OA\MediaType(
      *           mediaType="multipart/form-data",
+     *
      *           @OA\Schema(
+     *
      *              @OA\Property(property="avatar", type="binary"),
      *           ),
      *       ),
      *     ),
+     *
      *     @OA\Response(response="200",
      *          description="Аватарка успешно изменена!",
      *      ),
      * )
-     *
-     * @return JsonResponse
      */
-
     public function changeAvatar(Request $request): JsonResponse
     {
         if ($request->has('avatar')) {
@@ -307,6 +320,6 @@ class AuthController extends Controller
             Auth::user()->addMedia($request->avatar)->toMediaCollection();
         }
 
-        return ResponseService::success(message: "Аватар успешно изменен");
+        return ResponseService::success(message: 'Аватар успешно изменен');
     }
 }

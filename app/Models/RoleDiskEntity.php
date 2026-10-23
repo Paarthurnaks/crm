@@ -10,7 +10,7 @@ class RoleDiskEntity extends Model
     use HasFactory;
 
     protected $fillable = [
-        "role_id",
-        "disk_entity_id"
+        'role_id',
+        'disk_entity_id',
     ];
 }

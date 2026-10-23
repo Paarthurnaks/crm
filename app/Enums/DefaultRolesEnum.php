@@ -18,11 +18,10 @@ enum DefaultRolesEnum: string
 
     public function label(): string
     {
-        return match($this) {
+        return match ($this) {
             self::PARTNER => __('roles.Partner'),
             self::CLIENT => __('roles.Client'),
             self::SUPER_ADMIN => __('roles.Superadmin'),
         };
     }
 }
-

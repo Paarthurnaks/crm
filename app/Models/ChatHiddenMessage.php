@@ -12,7 +12,9 @@ use Illuminate\Database\Eloquent\Model;
  * @OA\Schema(
  *     title="ChatHiddenMessage",
  *     description="Модель для скрытых сообщений",
+ *
  *     @OA\Xml(name="ChatHiddenMessage"),
+ *
  *     @OA\Property(
  *         property="id",
  *         title="ID",
@@ -47,5 +49,4 @@ class ChatHiddenMessage extends Model
         'user_id',
         'chat_message_id',
     ];
-
 }

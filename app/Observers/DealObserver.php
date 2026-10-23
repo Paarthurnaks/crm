@@ -21,23 +21,21 @@ class DealObserver
 {
     public function __construct(
         private readonly UserFieldService $userFieldService
-    )
-    {
-    }
+    ) {}
 
     public function created(Deal $deal): void
     {
         $dealEvent = DealEvent::create([
-            "deal_id" => $deal->id,
-            "initiator_id" => $deal->creator_id,
-            "type" => DealEventTypeEnum::NEW_DEAL->value
+            'deal_id' => $deal->id,
+            'initiator_id' => $deal->creator_id,
+            'type' => DealEventTypeEnum::NEW_DEAL->value,
         ]);
 
         if (auth()->user()) {
-            $sections = Section::where("entity", "deals")
-                ->where("is_template", true)
-                ->where("sales_funnel_id", $deal->sales_funnel_id)
-                ->where("user_id", Auth::user()?->id)
+            $sections = Section::where('entity', 'deals')
+                ->where('is_template', true)
+                ->where('sales_funnel_id', $deal->sales_funnel_id)
+                ->where('user_id', Auth::user()?->id)
                 ->get();
 
             foreach ($sections as $section) {
@@ -55,39 +53,36 @@ class DealObserver
             }
         }
 
-
         $this->userFieldService->setupBooleanValues();
     }
 
     public function updated(Deal $deal): void
     {
-        if ($deal->isDirty("sales_stage_id"))
-        {
-            $salesTunnels = SalesTunnel::where("from_stage_id", $deal->sales_stage_id)->get();
-            foreach ($salesTunnels as $salesTunnel)
-            {
+        if ($deal->isDirty('sales_stage_id')) {
+            $salesTunnels = SalesTunnel::where('from_stage_id', $deal->sales_stage_id)->get();
+            foreach ($salesTunnels as $salesTunnel) {
                 $newDeal = $deal->replicate();
                 $newDeal->sales_funnel_id = $salesTunnel->toStage->salesFunnel->id;
                 $newDeal->sales_stage_id = $salesTunnel->to_stage_id;
                 $newDeal->save();
             }
 
-            $oldStageId = $deal->getOriginal("sales_stage_id");
+            $oldStageId = $deal->getOriginal('sales_stage_id');
             $oldStage = SalesStage::find($oldStageId);
 
             if (auth()->user()) {
                 $dealEvent = DealEvent::create([
-                    "deal_id" => $deal->id,
-                    "initiator_id" => Auth::user()->id,
-                    "type" => DealEventTypeEnum::CHANGE_STAGE->value,
-                    "changed_field" => trans("deals.sales_stage_id"),
-                    "old_value" => $oldStage->title,
-                    "new_value" => $deal->salesStage->title
+                    'deal_id' => $deal->id,
+                    'initiator_id' => Auth::user()->id,
+                    'type' => DealEventTypeEnum::CHANGE_STAGE->value,
+                    'changed_field' => trans('deals.sales_stage_id'),
+                    'old_value' => $oldStage->title,
+                    'new_value' => $deal->salesStage->title,
                 ]);
             }
 
             $defaultStageType = SalesStageEnum::DEFAULT->value;
-            if(($deal->salesStage->type === $defaultStageType) !== ($oldStage->type === $defaultStageType)) {
+            if (($deal->salesStage->type === $defaultStageType) !== ($oldStage->type === $defaultStageType)) {
                 $responsibleId = $deal->responsible()->whereHas('role', function ($query) {
                     $query->where('original_title', DefaultRolesEnum::PARTNER->value);
                 })->value('id');
@@ -109,59 +104,55 @@ class DealObserver
                     broadcast(new PartnerInProgressDealUpdateBroadcast($id, $count));
                 });
             }
-        }
-
-        else if ($deal->isDirty("responsible_id")) {
-            $oldResponsibleId = $deal->getOriginal("responsible_id");
+        } elseif ($deal->isDirty('responsible_id')) {
+            $oldResponsibleId = $deal->getOriginal('responsible_id');
             $oldResponsible = User::find($oldResponsibleId);
 
             if (auth()->user()) {
                 $dealEvent = DealEvent::create([
-                    "deal_id" => $deal->id,
-                    "initiator_id" => Auth::user()->id,
-                    "type" => DealEventTypeEnum::CHANGE_RESPONSIBLE->value,
-                    "changed_field" => trans("deals.responsible_id"),
-                    "old_value" => $oldResponsible->name . " " . $oldResponsible->surname,
-                    "new_value" => $deal->responsible->name . " " . $deal->responsible->surname
+                    'deal_id' => $deal->id,
+                    'initiator_id' => Auth::user()->id,
+                    'type' => DealEventTypeEnum::CHANGE_RESPONSIBLE->value,
+                    'changed_field' => trans('deals.responsible_id'),
+                    'old_value' => $oldResponsible->name.' '.$oldResponsible->surname,
+                    'new_value' => $deal->responsible->name.' '.$deal->responsible->surname,
                 ]);
             }
 
             $oldResponsible->notify(new DealEventNotification($dealEvent, compact('oldResponsibleId')));
-        }
-
-        else if ($deal->isDirty("client")) {
-            $oldClientData = $deal->getOriginal("client");
+        } elseif ($deal->isDirty('client')) {
+            $oldClientData = $deal->getOriginal('client');
 
             $deal = $deal->fresh();
 
-            $oldValue = $oldClientData instanceof User ? $oldClientData->name . " " . $oldClientData->surname : $oldClientData;
-            $newValue = $deal->client instanceof User ? $deal->client->name . " " . $deal->client->surname : $deal->client;
+            $oldValue = $oldClientData instanceof User ? $oldClientData->name.' '.$oldClientData->surname : $oldClientData;
+            $newValue = $deal->client instanceof User ? $deal->client->name.' '.$deal->client->surname : $deal->client;
 
             if (auth()->user()) {
                 DealEvent::create([
-                    "deal_id" => $deal->id,
-                    "initiator_id" => Auth::user()->id,
-                    "type" => DealEventTypeEnum::CHANGE_CLIENT->value,
-                    "changed_field" => trans("deals.client"),
-                    "old_value" => $oldValue,
-                    "new_value" => $newValue,
+                    'deal_id' => $deal->id,
+                    'initiator_id' => Auth::user()->id,
+                    'type' => DealEventTypeEnum::CHANGE_CLIENT->value,
+                    'changed_field' => trans('deals.client'),
+                    'old_value' => $oldValue,
+                    'new_value' => $newValue,
                 ]);
             }
 
-        }
-
-        else {
-            $values = Lang::get("deals");
+        } else {
+            $values = Lang::get('deals');
             foreach ($values as $key => $value) {
-                if ($key == "responsible_id" || $key == "sales_stage_id" || $key == 'client') continue;
+                if ($key == 'responsible_id' || $key == 'sales_stage_id' || $key == 'client') {
+                    continue;
+                }
                 if ($deal->isDirty($key) && auth()->user()) {
                     DealEvent::create([
-                        "deal_id" => $deal->id,
-                        "initiator_id" => Auth::user()->id,
-                        "type" => DealEventTypeEnum::CHANGE_FIELD->value,
-                        "changed_field" => trans("deals." . $key),
-                        "old_value" => $deal->getOriginal($key),
-                        "new_value" => $deal->{$key}
+                        'deal_id' => $deal->id,
+                        'initiator_id' => Auth::user()->id,
+                        'type' => DealEventTypeEnum::CHANGE_FIELD->value,
+                        'changed_field' => trans('deals.'.$key),
+                        'old_value' => $deal->getOriginal($key),
+                        'new_value' => $deal->{$key},
                     ]);
                 }
             }
@@ -172,5 +163,4 @@ class DealObserver
     {
         $deal->activities()->delete();
     }
-
 }

@@ -17,13 +17,9 @@ class FileSystemService
         'noFilesError' => 'Папка пустая',
     ];
 
-    /**
-     * @param DiskEntity $diskEntity
-     * @return void
-     */
     public function deleteDiskEntity(DiskEntity $diskEntity): void
     {
-        $diskEntityPath = rtrim($diskEntity->path, '/') . "/$diskEntity->title";
+        $diskEntityPath = rtrim($diskEntity->path, '/')."/$diskEntity->title";
 
         DiskEntity::query()
             ->where(function ($query) use ($diskEntityPath, $diskEntity) {
@@ -32,8 +28,8 @@ class FileSystemService
                     ->orWhere('id', $diskEntity->id);
             })
             ->get()
-            ->each(function($entity) use ($diskEntity, $diskEntityPath) {
-                if($diskEntity->deleted) {
+            ->each(function ($entity) use ($diskEntity, $diskEntityPath) {
+                if ($diskEntity->deleted) {
                     $entity->delete();
                 } else {
                     $path = is_null($entity->original_path) ? $entity->path : $entity->original_path;
@@ -48,8 +44,9 @@ class FileSystemService
                 }
             });
 
-        if($diskEntity->deleted) {
+        if ($diskEntity->deleted) {
             $this->deleteByPath($diskEntity);
+
             return;
         }
 
@@ -57,23 +54,15 @@ class FileSystemService
         $this->startDeletionJob($diskEntity);
     }
 
-    /**
-     * @param DiskEntity $diskEntity
-     * @return void
-     */
     private function startDeletionJob(DiskEntity $diskEntity): void
     {
         $deletionDays = config('constants.disk_entity.deletion_days');
         DeleteOldDiskEntityJob::dispatch($diskEntity, app(FileSystemService::class))->delay(now()->addDays($deletionDays));
     }
 
-    /**
-     * @param DiskEntity $entity
-     * @return void
-     */
     private function moveToTrash(DiskEntity $entity): void
     {
-        $entityPath = rtrim($entity->original_path, '/') . "/$entity->title";
+        $entityPath = rtrim($entity->original_path, '/')."/$entity->title";
 
         $duplicateInTrash = DiskEntity::query()
             ->where('original_path', $entity->original_path)
@@ -82,19 +71,19 @@ class FileSystemService
             ->where('deleted', true)
             ->first();
 
-        $sourcePath = 'entities/available' . $entityPath;
+        $sourcePath = 'entities/available'.$entityPath;
 
-        $destinationPath = 'entities/trash' . ($duplicateInTrash ?
-            rtrim($duplicateInTrash->path, '/') . "/$duplicateInTrash->id" . '_' . $duplicateInTrash->title :
-            rtrim($entity->path, '/') . "/$entity->id" . '_' . $entity->title);
+        $destinationPath = 'entities/trash'.($duplicateInTrash ?
+            rtrim($duplicateInTrash->path, '/')."/$duplicateInTrash->id".'_'.$duplicateInTrash->title :
+            rtrim($entity->path, '/')."/$entity->id".'_'.$entity->title);
 
         if ($duplicateInTrash && $entity->type->value === DiskEntityTypeEnum::FILE->value) {
-            $fileDestinationPath = 'entities/trash' . rtrim($entity->path, '/') . "/$entity->id" . '_' . $entity->title;
+            $fileDestinationPath = 'entities/trash'.rtrim($entity->path, '/')."/$entity->id".'_'.$entity->title;
             // для уникальности и предотвращения коллизий в файловой системе
-            $destinationPath = Str::beforeLast($fileDestinationPath, '.') . '_' . $entity->id . '.' . Str::afterLast($fileDestinationPath, '.');
+            $destinationPath = Str::beforeLast($fileDestinationPath, '.').'_'.$entity->id.'.'.Str::afterLast($fileDestinationPath, '.');
 
             $entity->update([
-                'title' => Str::before($entity->title, '.') . '_' . $entity->id . '.' . Str::afterLast($fileDestinationPath, '.'),
+                'title' => Str::before($entity->title, '.').'_'.$entity->id.'.'.Str::afterLast($fileDestinationPath, '.'),
             ]);
         }
 
@@ -103,24 +92,25 @@ class FileSystemService
             ->where('deleted', true)
             ->get();
 
-        $entityFirstLevelSubDirs->each(function($dir) use ($destinationPath) {
-            $dirPath = 'entities/trash' . '/' . $dir->id . '_' . $dir->title;
-            $parentDir = $destinationPath . "/$dir->title";
+        $entityFirstLevelSubDirs->each(function ($dir) use ($destinationPath) {
+            $dirPath = 'entities/trash'.'/'.$dir->id.'_'.$dir->title;
+            $parentDir = $destinationPath."/$dir->title";
 
             Storage::move($dirPath, $parentDir);
         });
 
-        if($duplicateInTrash && $entity->type->value !== DiskEntityTypeEnum::FILE->value) {
+        if ($duplicateInTrash && $entity->type->value !== DiskEntityTypeEnum::FILE->value) {
             $entity->delete();
         }
 
         if (Storage::exists($sourcePath)) {
-            if(!is_dir(Storage::path($destinationPath))) {
+            if (! is_dir(Storage::path($destinationPath))) {
                 Storage::move($sourcePath, $destinationPath);
+
                 return;
             }
 
-            if (!Storage::exists($destinationPath)) {
+            if (! Storage::exists($destinationPath)) {
                 Storage::makeDirectory($destinationPath);
             }
 
@@ -128,11 +118,6 @@ class FileSystemService
         }
     }
 
-    /**
-     * @param string $sourcePath
-     * @param string $destinationPath
-     * @return void
-     */
     private function moveEntities(string $sourcePath, string $destinationPath): void
     {
         $allFilesAndDirs = Storage::allFiles($sourcePath);
@@ -144,7 +129,7 @@ class FileSystemService
 
         foreach ($allDirectories as $directory) {
             $newPath = str_replace(ltrim($sourcePath, '/'), $destinationPath, $directory);
-            if (!Storage::exists($newPath)) {
+            if (! Storage::exists($newPath)) {
                 Storage::makeDirectory($newPath);
             }
             Storage::deleteDirectory($directory);
@@ -153,13 +138,9 @@ class FileSystemService
         Storage::deleteDirectory($sourcePath);
     }
 
-    /**
-     * @param DiskEntity $entity
-     * @return void
-     */
     private function restoreFromTrash(DiskEntity $entity): void
     {
-        $entityPath = rtrim($entity->original_path, '/') . "/$entity->title";
+        $entityPath = rtrim($entity->original_path, '/')."/$entity->title";
 
         $duplicateInDisk = DiskEntity::query()
             ->where('path', $entity->original_path)
@@ -168,35 +149,35 @@ class FileSystemService
             ->where('deleted', false)
             ->first();
 
-        $sourcePath = 'entities/trash' . '/' . $entity->id . '_' . $entity->title;
+        $sourcePath = 'entities/trash'.'/'.$entity->id.'_'.$entity->title;
 
-        $destinationPath = 'entities/available' . ($duplicateInDisk ?
-             rtrim($duplicateInDisk->path, '/') . '/' . $duplicateInDisk->title :
+        $destinationPath = 'entities/available'.($duplicateInDisk ?
+             rtrim($duplicateInDisk->path, '/').'/'.$duplicateInDisk->title :
              $entityPath);
 
-        if($duplicateInDisk && $entity->type->value === DiskEntityTypeEnum::FILE->value) {
-            $filePath = 'entities/available' . rtrim($entity->original_path, '/') . "/$entity->id" . '_' . $entity->title;
-            $fileDestinationPath = Str::beforeLast($filePath, '/') . '/' . ltrim(Str::afterLast($filePath, '/'), $entity->id . '_');
+        if ($duplicateInDisk && $entity->type->value === DiskEntityTypeEnum::FILE->value) {
+            $filePath = 'entities/available'.rtrim($entity->original_path, '/')."/$entity->id".'_'.$entity->title;
+            $fileDestinationPath = Str::beforeLast($filePath, '/').'/'.ltrim(Str::afterLast($filePath, '/'), $entity->id.'_');
             // для уникальности и предотвращения коллизий в файловой системе
-            $destinationPath = Str::beforeLast(ltrim($fileDestinationPath, $entity->id . '_'), '.') . '_' . $entity->id . '.' . Str::afterLast($fileDestinationPath, '.');
+            $destinationPath = Str::beforeLast(ltrim($fileDestinationPath, $entity->id.'_'), '.').'_'.$entity->id.'.'.Str::afterLast($fileDestinationPath, '.');
 
             $entity->update([
-                'title' => Str::before($entity->title, '.') . '_' . $entity->id . '.' . Str::afterLast($fileDestinationPath, '.'),
+                'title' => Str::before($entity->title, '.').'_'.$entity->id.'.'.Str::afterLast($fileDestinationPath, '.'),
             ]);
         }
-        if($entity->path !== '/') {
+        if ($entity->path !== '/') {
             $dirs = $this->getEntityHierarchy($entity, true);
 
             foreach ($dirs as $dir) {
-                $path = '/entities/trash' . '/' . $dir->id . '_' . $dir->title;
-                if(Storage::exists($path)) {
+                $path = '/entities/trash'.'/'.$dir->id.'_'.$dir->title;
+                if (Storage::exists($path)) {
                     $availableDirIsExists = DiskEntity::query()
                         ->where('path', $dir->original_path)
                         ->where('deleted', false)
                         ->exists();
 
                     // Создание новой иерархии родителей в бд при восстановлении
-                    if(!$availableDirIsExists) {
+                    if (! $availableDirIsExists) {
                         DiskEntity::create([
                             'path' => $dir->original_path,
                             'title' => $dir->title,
@@ -206,12 +187,12 @@ class FileSystemService
                         ]);
                     }
 
-                    $sourcePath = $path . Str::afterFirst($entity->path, '/' . $dir->title) . '/' . $entity->title;
+                    $sourcePath = $path.Str::afterFirst($entity->path, '/'.$dir->title).'/'.$entity->title;
                 }
             }
         }
 
-        if($duplicateInDisk && $entity->type->value !== DiskEntityTypeEnum::FILE->value) {
+        if ($duplicateInDisk && $entity->type->value !== DiskEntityTypeEnum::FILE->value) {
             $entity->delete();
         }
 
@@ -220,9 +201,9 @@ class FileSystemService
             ->where('deleted', true)
             ->get();
 
-        $entityFirstLevelSubDirs->each(function($dir) use ($destinationPath) {
-            $dirPath = 'entities/available' . '/' . $dir->id . '_' . $dir->title;
-            $parentDir = $destinationPath . "/$dir->title";
+        $entityFirstLevelSubDirs->each(function ($dir) use ($destinationPath) {
+            $dirPath = 'entities/available'.'/'.$dir->id.'_'.$dir->title;
+            $parentDir = $destinationPath."/$dir->title";
 
             if (Storage::exists($dirPath)) {
                 Storage::move($dirPath, $parentDir);
@@ -230,12 +211,13 @@ class FileSystemService
         });
 
         if (Storage::exists($sourcePath)) {
-            if(!is_dir(Storage::path($sourcePath))) {
+            if (! is_dir(Storage::path($sourcePath))) {
                 Storage::move($sourcePath, $destinationPath);
+
                 return;
             }
 
-            if (!Storage::exists($destinationPath)) {
+            if (! Storage::exists($destinationPath)) {
                 Storage::makeDirectory($destinationPath);
             }
 
@@ -248,15 +230,15 @@ class FileSystemService
         $this->restoreFromTrash($entity);
 
         DiskEntity::query()
-            ->where("original_path", "like", "$entity->original_path/$entity->title%")
+            ->where('original_path', 'like', "$entity->original_path/$entity->title%")
             ->orWhere('id', $entity->id)
             ->where('deleted', true)
             ->get()
             ->each(function ($entity) {
                 $entity->update([
-                    "deleted" => false,
-                    "path" => $entity->original_path,
-                    "original_path" => null,
+                    'deleted' => false,
+                    'path' => $entity->original_path,
+                    'original_path' => null,
                 ]);
             });
     }
@@ -265,23 +247,23 @@ class FileSystemService
     {
         $trimmedPath = rtrim($path, '/');
 
-        $diskEntities = DiskEntity::where("path", 'like', "$trimmedPath%")->where("deleted", false)->get();
+        $diskEntities = DiskEntity::where('path', 'like', "$trimmedPath%")->where('deleted', false)->get();
 
         if ($diskEntities->isEmpty()) {
             throw new \Exception(self::ERROR_MESSAGES['noFilesError']);
         }
 
-        $zipFileName = $trimmedPath === '' ? 'root.zip' : Str::afterLast($trimmedPath, '/') . ".zip";
+        $zipFileName = $trimmedPath === '' ? 'root.zip' : Str::afterLast($trimmedPath, '/').'.zip';
 
-        $zip = new ZipArchive();
+        $zip = new ZipArchive;
         $zipFilePath = public_path("storage/$zipFileName");
 
-        if ($zip->open($zipFilePath, ZipArchive::CREATE) !== TRUE) {
+        if ($zip->open($zipFilePath, ZipArchive::CREATE) !== true) {
             throw new \Exception(self::ERROR_MESSAGES['zipCreateError']);
         }
 
         foreach ($diskEntities as $entity) {
-            $localPath = storage_path("app/public/entities/available" . "{$entity->path}/{$entity->title}");
+            $localPath = storage_path('app/public/entities/available'."{$entity->path}/{$entity->title}");
             $relativePath = trim(Str::replaceFirst($trimmedPath, '', "{$entity->path}/{$entity->title}"), '/');
 
             if (is_dir($localPath)) {
@@ -296,49 +278,36 @@ class FileSystemService
         return $zipFilePath;
     }
 
-    /**
-     * @param DiskEntity $entity
-     * @return void
-     */
     private function deleteByPath(DiskEntity $entity): void
     {
-        if($entity->path !== '/') {
+        if ($entity->path !== '/') {
             $dirs = $this->getEntityHierarchy($entity, true);
             foreach ($dirs as $dir) {
-                if(Storage::exists('/entities/trash' . '/' . $dir->id . '_' . $dir->title)) {
-                    $path = '/' . $dir->id . '_' . $dir->title . '/' . $entity->title;
+                if (Storage::exists('/entities/trash'.'/'.$dir->id.'_'.$dir->title)) {
+                    $path = '/'.$dir->id.'_'.$dir->title.'/'.$entity->title;
                     $this->deleteEntityFromStorage($path);
+
                     return;
                 }
             }
         }
 
-        $path = rtrim($entity->path) . $entity->id . '_' . $entity->title;
+        $path = rtrim($entity->path).$entity->id.'_'.$entity->title;
 
         $this->deleteEntityFromStorage($path);
     }
 
-    /**
-     * @param string $path
-     * @return void
-     */
     private function deleteEntityFromStorage(string $path): void
     {
-        $fullPath = '/entities/trash' . $path;
+        $fullPath = '/entities/trash'.$path;
 
-        if(Storage::exists($fullPath)) {
+        if (Storage::exists($fullPath)) {
             is_dir(Storage::path($fullPath)) ?
                 Storage::deleteDirectory($fullPath) :
                 Storage::delete($fullPath);
         }
     }
 
-
-    /**
-     * @param DiskEntity $entity
-     * @param bool $deleted
-     * @return Collection
-     */
     private function getEntityHierarchy(DiskEntity $entity, bool $deleted): Collection
     {
         $trimmedPath = trim($entity->original_path, '/');
@@ -348,7 +317,7 @@ class FileSystemService
         $conditions[] = ['title' => $entity->title, 'path' => $entity->original_path];
 
         for ($i = count($parts) - 1; $i >= 0; $i--) {
-            $subPath = '/' . implode('/', array_slice($parts, 0, $i));
+            $subPath = '/'.implode('/', array_slice($parts, 0, $i));
             $title = $parts[$i];
             $conditions[] = ['path' => $subPath ?: '/', 'title' => $title];
         }
@@ -356,7 +325,7 @@ class FileSystemService
         $query = DiskEntity::query();
 
         foreach ($conditions as $condition) {
-            $query->orWhere(function($subQuery) use ($condition) {
+            $query->orWhere(function ($subQuery) use ($condition) {
                 $subQuery->where('original_path', $condition['path'])
                     ->where('title', $condition['title']);
             })->where('deleted', $deleted);

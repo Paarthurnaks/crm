@@ -7,13 +7,13 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Facades\Log;
 use OpenApi\Annotations as OA;
 
 /**
  * @OA\Schema(
  *     title="SalesStage",
  *     description="Стадия продажи",
+ *
  *     @OA\Xml(
  *         name="SalesStage"
  *     )
@@ -21,20 +21,20 @@ use OpenApi\Annotations as OA;
  */
 class SalesStage extends Model
 {
-    use HasFactory, Filterable;
+    use Filterable, HasFactory;
 
     const COMMON = 1;
 
     protected $fillable = [
-        "title",
-        "color",
-        "position",
-        "type",
-        "sales_funnel_id"
+        'title',
+        'color',
+        'position',
+        'type',
+        'sales_funnel_id',
     ];
 
     protected $appends = [
-        "metrics"
+        'metrics',
     ];
 
     /**
@@ -48,6 +48,7 @@ class SalesStage extends Model
      * @var bigInteger
      */
     private $id;
+
     /**
      * @OA\Property(
      *      title="title",
@@ -58,6 +59,7 @@ class SalesStage extends Model
      * @var string
      */
     private $title;
+
     /**
      * @OA\Property(
      *      title="color",
@@ -68,6 +70,7 @@ class SalesStage extends Model
      * @var string
      */
     private $color;
+
     /**
      * @OA\Property(
      *      title="positon",
@@ -75,9 +78,10 @@ class SalesStage extends Model
      *      example=1
      * )
      *
-     * @var integer
+     * @var int
      */
     private $positon;
+
     /**
      * @OA\Property(
      *      title="type",
@@ -88,6 +92,7 @@ class SalesStage extends Model
      * @var string
      */
     private $type;
+
     /**
      * @OA\Property(
      *     title="sales_funnel_id",
@@ -99,12 +104,15 @@ class SalesStage extends Model
      * @var bigInteger
      */
     private $sales_funnel_id;
+
     /**
      * @OA\Property(
      *      title="metrics",
      *      description="метрики",
      *      type="array",
+     *
      *      @OA\Items(
+     *
      *          @OA\Property(property="count", format="int64", example=10),
      *          @OA\Property(property="totalAmount", format="float", example=189.3)
      *      )
@@ -113,7 +121,7 @@ class SalesStage extends Model
     private $metrics;
 
     protected function getMetricsAttribute()
-    {   
+    {
         return $this->metrics;
     }
 
@@ -134,6 +142,6 @@ class SalesStage extends Model
 
     public function salesTunnels(): HasMany
     {
-        return $this->hasMany(SalesTunnel::class, "from_stage_id", "id");
+        return $this->hasMany(SalesTunnel::class, 'from_stage_id', 'id');
     }
 }

@@ -7,8 +7,6 @@ use App\Enums\SectionFieldEntityEnum;
 use App\Models\Field;
 use App\Models\Role;
 use App\Models\RoleField;
-use Database\Factories\RoleFactory;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class FieldSeeder extends Seeder
@@ -26,47 +24,47 @@ class FieldSeeder extends Seeder
 
     private function dealFieldsSeed(): void
     {
-        $codes = ["title", "sales_stage", "sales_funnel", "creator", "responsible", "note", "amount", "client", "created_at", "updated_at"];
-        $names = ["Заголовок", "Стадия", "Воронка", "Создатель", "Ответственный", "Комментарий", "Сумма", "Клиент", "Дата создания", "Дата обновления"];
-        $types = ["string", "stage", "funnel", "user", "user", "string", "float", "user", "datetime", "datetime"];
+        $codes = ['title', 'sales_stage', 'sales_funnel', 'creator', 'responsible', 'note', 'amount', 'client', 'created_at', 'updated_at'];
+        $names = ['Заголовок', 'Стадия', 'Воронка', 'Создатель', 'Ответственный', 'Комментарий', 'Сумма', 'Клиент', 'Дата создания', 'Дата обновления'];
+        $types = ['string', 'stage', 'funnel', 'user', 'user', 'string', 'float', 'user', 'datetime', 'datetime'];
         $is_required = [true, false, true, false, true, true, true, true, false, false];
 
-        for ($i = 0; $i < count($codes); $i++)
-        {
+        for ($i = 0; $i < count($codes); $i++) {
             Field::create([
-                "entity" => SectionFieldEntityEnum::DEALS->value,
-                "code" => $codes[$i],
-                "name" => $names[$i],
-                "type" => $types[$i],
-                "is_required" => $is_required[$i]
+                'entity' => SectionFieldEntityEnum::DEALS->value,
+                'code' => $codes[$i],
+                'name' => $names[$i],
+                'type' => $types[$i],
+                'is_required' => $is_required[$i],
             ]);
         }
     }
 
     private function taskFieldSeed(): void
     {
-        $codes = ["title", "description", "status", "deadline", "type", "deal", "creator", "created_at", "updated_at"];
-        $names = ["Заголовок", "Описание", "Статус", "Крайний срок", "Тип", "Сделка", "Постановщик", "Дата создания", "Дата обновления"];
-        $types = ["string", "string", "enum", "datetime", "enum", "deal", "user", "datetime", "datetime"];
+        $codes = ['title', 'description', 'status', 'deadline', 'type', 'deal', 'creator', 'created_at', 'updated_at'];
+        $names = ['Заголовок', 'Описание', 'Статус', 'Крайний срок', 'Тип', 'Сделка', 'Постановщик', 'Дата создания', 'Дата обновления'];
+        $types = ['string', 'string', 'enum', 'datetime', 'enum', 'deal', 'user', 'datetime', 'datetime'];
         $is_required = [true, true, true, true, true, true, false, false, false];
 
-        for ($i = 0; $i < count($codes); $i++)
-        {
+        for ($i = 0; $i < count($codes); $i++) {
             $field = Field::create([
-                "entity" => SectionFieldEntityEnum::TASKS->value,
-                "code" => $codes[$i],
-                "name" => $names[$i],
-                "type" => $types[$i],
-                "is_required" => $is_required[$i]
+                'entity' => SectionFieldEntityEnum::TASKS->value,
+                'code' => $codes[$i],
+                'name' => $names[$i],
+                'type' => $types[$i],
+                'is_required' => $is_required[$i],
             ]);
 
-            $roleFieldTypes = ["view", "create", "update"];
+            $roleFieldTypes = ['view', 'create', 'update'];
             $partnerRoleId = Role::where('original_title', DefaultRolesEnum::PARTNER->value)->value('id');
 
-            $prohibited = ["creator", "created_at", "updated_at"];
+            $prohibited = ['creator', 'created_at', 'updated_at'];
 
             foreach ($roleFieldTypes as $roleFieldType) {
-                if(in_array($field->code, $prohibited) && $roleFieldType !== "view") continue;
+                if (in_array($field->code, $prohibited) && $roleFieldType !== 'view') {
+                    continue;
+                }
 
                 RoleField::create([
                     'role_id' => $partnerRoleId,
@@ -79,38 +77,36 @@ class FieldSeeder extends Seeder
 
     private function userFieldSeed(): void
     {
-        $codes = ["name", "surname", "email", "role", "active", "last_login", "created_at", "updated_at"];
-        $names = ["Имя", "Фамилия", "Почта", "Роль", "Активный", "Последний вход", "Дата создания", "Дата обновления"];
-        $types = ["string", "string", "string", "role", "boolean", "datetime", "datetime", "datetime"];
+        $codes = ['name', 'surname', 'email', 'role', 'active', 'last_login', 'created_at', 'updated_at'];
+        $names = ['Имя', 'Фамилия', 'Почта', 'Роль', 'Активный', 'Последний вход', 'Дата создания', 'Дата обновления'];
+        $types = ['string', 'string', 'string', 'role', 'boolean', 'datetime', 'datetime', 'datetime'];
         $is_required = [true, true, true, true, false, false, false, false];
 
-        for ($i = 0; $i < count($codes); $i++)
-        {
+        for ($i = 0; $i < count($codes); $i++) {
             Field::create([
-                "entity" => SectionFieldEntityEnum::USERS->value,
-                "code" => $codes[$i],
-                "name" => $names[$i],
-                "type" => $types[$i],
-                "is_required" => $is_required[$i]
+                'entity' => SectionFieldEntityEnum::USERS->value,
+                'code' => $codes[$i],
+                'name' => $names[$i],
+                'type' => $types[$i],
+                'is_required' => $is_required[$i],
             ]);
         }
     }
 
     private function documentTemplateFieldSeed(): void
     {
-        $codes = ["entity", "title", "creator", "created_at", "updated_at"];
-        $names = ["Сущность", "Название", "Создатель", "Дата создания", "Дата обновления"];
-        $types = ["string", "string", "user", "datetime", "datetime"];
+        $codes = ['entity', 'title', 'creator', 'created_at', 'updated_at'];
+        $names = ['Сущность', 'Название', 'Создатель', 'Дата создания', 'Дата обновления'];
+        $types = ['string', 'string', 'user', 'datetime', 'datetime'];
         $is_required = [true, true, false, false, false, false];
 
-        for ($i = 0; $i < count($codes); $i++)
-        {
+        for ($i = 0; $i < count($codes); $i++) {
             Field::create([
-                "entity" => SectionFieldEntityEnum::TEMPLATES->value,
-                "code" => $codes[$i],
-                "name" => $names[$i],
-                "type" => $types[$i],
-                "is_required" => $is_required[$i]
+                'entity' => SectionFieldEntityEnum::TEMPLATES->value,
+                'code' => $codes[$i],
+                'name' => $names[$i],
+                'type' => $types[$i],
+                'is_required' => $is_required[$i],
             ]);
         }
     }

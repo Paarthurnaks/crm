@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @OA\Schema(
  *     title="Permission",
  *     description="Объект разрешений",
+ *
  *     @OA\Xml(
  *         name="Permission"
  *     )
@@ -20,16 +21,15 @@ class Permission extends Model
     use HasFactory;
 
     protected $fillable = [
-        "role_id",
-        "entity",
-        "view",
-        "create",
-        "update",
-        "delete",
-        "import",
-        "export"
+        'role_id',
+        'entity',
+        'view',
+        'create',
+        'update',
+        'delete',
+        'import',
+        'export',
     ];
-
 
     /**
      * @OA\Property(
@@ -42,6 +42,7 @@ class Permission extends Model
      * @var bigInteger
      */
     private $id;
+
     /**
      * @OA\Property(
      *      title="entity",
@@ -52,6 +53,7 @@ class Permission extends Model
      * @var string
      */
     private $entity;
+
     /**
      * @OA\Property(
      *     title="view",
@@ -63,6 +65,7 @@ class Permission extends Model
      * @var string
      */
     private $view;
+
     /**
      * @OA\Property(
      *     title="create",
@@ -74,6 +77,7 @@ class Permission extends Model
      * @var string
      */
     private $create;
+
     /**
      * @OA\Property(
      *     title="update",
@@ -85,6 +89,7 @@ class Permission extends Model
      * @var string
      */
     private $update;
+
     /**
      * @OA\Property(
      *     title="delete",
@@ -96,6 +101,7 @@ class Permission extends Model
      * @var string
      */
     private $delete;
+
     /**
      * @OA\Property(
      *     title="delete",
@@ -107,6 +113,7 @@ class Permission extends Model
      * @var string
      */
     private $import;
+
     /**
      * @OA\Property(
      *     title="delete",

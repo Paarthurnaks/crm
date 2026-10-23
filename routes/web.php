@@ -18,6 +18,4 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-Route::get("/filemanager", [FileManagerController::class, "index"]);
-
-
+Route::get('/filemanager', [FileManagerController::class, 'index']);

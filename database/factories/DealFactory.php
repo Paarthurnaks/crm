@@ -22,15 +22,16 @@ class DealFactory extends Factory
         $salesFunnel = SalesFunnel::first();
         $salesStage = SalesStage::first();
         $user = User::first();
+
         return [
-            "title" => fake()->sentence(),
-            "sales_funnel_id" => $salesFunnel->id,
-            "sales_stage_id" => $salesStage->id,
-            "creator_id" => $user->id,
-            "responsible_id" => $user->id,
-            "note" => fake()->text(),
-            "amount" => fake()->randomFloat(2, 1000, 100000),
-            "client" => fake()->sentence()
+            'title' => fake()->sentence(),
+            'sales_funnel_id' => $salesFunnel->id,
+            'sales_stage_id' => $salesStage->id,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'note' => fake()->text(),
+            'amount' => fake()->randomFloat(2, 1000, 100000),
+            'client' => fake()->sentence(),
         ];
     }
 }

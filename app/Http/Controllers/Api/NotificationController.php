@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api;
 
-
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Notification\IndexRequest;
 use App\Http\Requests\Notification\MarkAsReadRequest;
@@ -11,16 +10,11 @@ use App\Services\ResponseService;
 use Illuminate\Http\JsonResponse;
 use OpenApi\Attributes as OA;
 
-
 class NotificationController extends Controller
 {
     public function __construct(
         private readonly NotificationService $service
-    )
-    {
-    }
-
-
+    ) {}
 
     #[OA\Get(
         path: '/api/notifications',
@@ -46,7 +40,7 @@ class NotificationController extends Controller
                 required: false,
                 example: 'Важное',
                 schema: new OA\Schema(type: 'string')
-            )
+            ),
         ],
         responses: [
             new OA\Response(
@@ -65,18 +59,17 @@ class NotificationController extends Controller
                             property: 'total_unread_notifications',
                             type: 'integer',
                             description: 'Total number of unread notifications'
-                        )
+                        ),
                     ]
                 )
             ),
             new OA\Response(
                 response: 401,
                 description: 'Unauthorized'
-            )
+            ),
         ],
         security: [['bearer_token' => []]]
     )]
-
     public function index(IndexRequest $request): JsonResponse
     {
         $validated = $request->validated();
@@ -100,7 +93,7 @@ class NotificationController extends Controller
                         property: 'notification_ids',
                         type: 'array',
                         items: new OA\Items(type: 'string', example: '443b815c-4afe-47c0-8924-0d3f4f5d160e')
-                    )
+                    ),
                 ]
             )
         ),
@@ -112,11 +105,10 @@ class NotificationController extends Controller
             new OA\Response(
                 response: 401,
                 description: 'Unauthorized'
-            )
+            ),
         ],
         security: [['bearer_token' => []]]
     )]
-
     public function markAsRead(MarkAsReadRequest $request): JsonResponse
     {
         $validated = $request->validated();
@@ -138,7 +130,7 @@ class NotificationController extends Controller
                 description: 'ID уведомления для удаления',
                 required: true,
                 schema: new OA\Schema(type: 'string', format: 'uuid', example: '443b815c-4afe-47c0-8924-0d3f4f5d160e')
-            )
+            ),
         ],
         responses: [
             new OA\Response(
@@ -152,19 +144,18 @@ class NotificationController extends Controller
             new OA\Response(
                 response: 401,
                 description: 'Unauthorized'
-            )
+            ),
         ],
-        security: [[ "bearer_token" => [] ]]
+        security: [['bearer_token' => []]]
     )]
-
     public function delete($id): JsonResponse
     {
         $notification = auth()->user()
-                            ->notifications()
-                            ->where('id', $id)
-                            ->first();
+            ->notifications()
+            ->where('id', $id)
+            ->first();
 
-        if(!$notification) {
+        if (! $notification) {
             return ResponseService::notFound(
                 message: __('Уведомление не найдено.')
             );
@@ -188,11 +179,10 @@ class NotificationController extends Controller
             new OA\Response(
                 response: 401,
                 description: 'Unauthorized'
-            )
+            ),
         ],
         security: [['bearer_token' => []]]
     )]
-
     public function markAsReadAll(): JsonResponse
     {
         $this->service->markAsReadAll();

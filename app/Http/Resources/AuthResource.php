@@ -6,9 +6,9 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 class AuthResource extends JsonResource
-{   
+{
     private string $token;
-    
+
     public function __construct($resource, string $token)
     {
         parent::__construct($resource);
@@ -19,8 +19,8 @@ class AuthResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            "token" => $this->token,
-            "expires_in" => auth()->factory()->getTTL() * 60
+            'token' => $this->token,
+            'expires_in' => auth()->factory()->getTTL() * 60,
         ];
     }
 }

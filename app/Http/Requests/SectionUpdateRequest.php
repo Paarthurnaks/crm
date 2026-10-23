@@ -22,13 +22,13 @@ class SectionUpdateRequest extends FormRequest
     public function rules(): array
     {
         return [
-            "title" => ["string"],
-            "position" => ["integer"],
-            "section_fields" => ["array"],
-            "section_fields.*.id" => ["integer"],
-            "section_fields.*.field_id" => ["integer", "exists:fields,id"],
-            "section_fields.*.user_field_id" => ["integer", "exists:user_fields,id"],
-            "section_fields.*.position" => ["integer"]
+            'title' => ['string'],
+            'position' => ['integer'],
+            'section_fields' => ['array'],
+            'section_fields.*.id' => ['integer'],
+            'section_fields.*.field_id' => ['integer', 'exists:fields,id'],
+            'section_fields.*.user_field_id' => ['integer', 'exists:user_fields,id'],
+            'section_fields.*.position' => ['integer'],
         ];
     }
 }

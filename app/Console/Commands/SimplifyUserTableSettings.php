@@ -24,21 +24,19 @@ class SimplifyUserTableSettings extends Command
     private function simplifyColumns(array $columns): array
     {
         $uniqueColumns = collect($columns)->unique(function ($column) {
-            return $column['id'] . '-' . $column['is_userfield'];
+            return $column['id'].'-'.$column['is_userfield'];
         });
 
         return $uniqueColumns->map(function ($column) {
             return [
                 'id' => $column['id'],
-                'is_userfield' => $column['is_userfield']
+                'is_userfield' => $column['is_userfield'],
             ];
         })->values()->toArray();
     }
 
     /**
      * Урезает все лишнее, кроме is_userfield и id
-     * @param array $settings
-     * @return array
      */
     private function simplifySettings(array $settings): array
     {
@@ -59,7 +57,9 @@ class SimplifyUserTableSettings extends Command
 
         foreach ($userTableSettingsRecords as $record) {
             $settings = $record->settings;
-            if(empty($settings)) continue;
+            if (empty($settings)) {
+                continue;
+            }
             $simplifiedSettings = $this->simplifySettings($settings);
             $record->settings = $simplifiedSettings;
             $record->save();

@@ -6,5 +6,5 @@ return [
     'responsible_id' => 'Ответственный',
     'note' => 'Комментарий',
     'amount' => 'Сумма',
-    'client' => 'Клиент'
+    'client' => 'Клиент',
 ];

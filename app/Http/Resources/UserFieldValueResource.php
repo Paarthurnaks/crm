@@ -16,15 +16,16 @@ class UserFieldValueResource extends JsonResource
     {
         $attachments = collect($this->getMedia())->map(function ($attachment) {
             return [
-                "id" => $attachment->id,
-                "url" => $attachment->original_url
+                'id' => $attachment->id,
+                'url' => $attachment->original_url,
             ];
         });
+
         return [
-            "id" => $this->id,
-            "field" => UserFieldResource::make($this->userField),
-            "entity_id" => $this->entity_id,
-            "value" => $this->userField->type == "file" ? $attachments : $this->value,
+            'id' => $this->id,
+            'field' => UserFieldResource::make($this->userField),
+            'entity_id' => $this->entity_id,
+            'value' => $this->userField->type == 'file' ? $attachments : $this->value,
         ];
     }
 }

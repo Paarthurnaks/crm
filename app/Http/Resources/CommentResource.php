@@ -13,9 +13,11 @@ use OpenApi\Annotations as OA;
  *     title="Comment",
  *     description="Комментарий",
  *     type="object",
+ *
  *     @OA\Xml(
  *         name="Comment"
  *     ),
+ *
  *     @OA\Property(
  *        property="id",
  *        type="int",
@@ -63,13 +65,14 @@ class CommentResource extends JsonResource
     public function toArray(Request $request): array
     {
         $user = User::find($this->user_id);
+
         return [
-            "id" => $this->id,
-            "comment" => $this->comment,
-            "attachments" => $this->resource?->getMedia() ? MediaResource::collection($this->resource->getMedia()) : null,
-            "user" => UserResource::make($user),
-            "created_at" => $this->created_at,
-            "updated_at" => $this->updated_at
+            'id' => $this->id,
+            'comment' => $this->comment,
+            'attachments' => $this->resource?->getMedia() ? MediaResource::collection($this->resource->getMedia()) : null,
+            'user' => UserResource::make($user),
+            'created_at' => $this->created_at,
+            'updated_at' => $this->updated_at,
         ];
     }
 }

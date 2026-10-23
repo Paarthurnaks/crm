@@ -19,7 +19,7 @@ return new class extends Migration
             $table->foreignIdFor(Report::class)->nullable()->constrained()->cascadeOnDelete();
             $table->foreignIdFor(Field::class)->nullable()->constrained()->nullOnDelete();
             $table->foreignIdFor(UserField::class)->nullable()->constrained()->nullOnDelete();
-            $table->integer("position")->nullable();
+            $table->integer('position')->nullable();
             $table->timestamps();
         });
     }

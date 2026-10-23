@@ -11,10 +11,8 @@ enum ProhibitedFieldEnum: string
     case UPDATED_AT = 'updated_at';
     case WHO_CHANGED = 'who_changed';
 
-    /**
-     * @return array
-     */
-    #[Pure] public static function values(): array
+    #[Pure]
+    public static function values(): array
     {
         return array_column(self::cases(), 'value');
     }

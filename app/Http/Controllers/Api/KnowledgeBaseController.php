@@ -16,9 +16,7 @@ class KnowledgeBaseController extends Controller
 {
     public function __construct(
         private readonly KnowledgeBaseService $service
-    )
-    {
-    }
+    ) {}
 
     /**
      * @OA\Get(
@@ -26,14 +24,18 @@ class KnowledgeBaseController extends Controller
      *     tags={"KnowledgeBase"},
      *     summary="Получить список баз знаний",
      *     security={{"bearer_token":{}}},
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Успешная операция",
+     *
      *         @OA\JsonContent(
      *             type="array",
+     *
      *             @OA\Items(ref="#/components/schemas/KnowledgeBaseResource")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=400,
      *         description="Ошибка запроса"
@@ -59,15 +61,20 @@ class KnowledgeBaseController extends Controller
      *     tags={"KnowledgeBase"},
      *     summary="Создать новую базу знаний",
      *     security={{"bearer_token":{}}},
+     *
      *     @OA\RequestBody(
      *         required=true,
+     *
      *         @OA\JsonContent(ref="#/components/schemas/KnowledgeBaseStoreRequest")
      *     ),
+     *
      *     @OA\Response(
      *         response=201,
      *         description="Ресурс создан",
+     *
      *         @OA\JsonContent(ref="#/components/schemas/KnowledgeBaseResource")
      *     ),
+     *
      *     @OA\Response(
      *         response=400,
      *         description="Ошибка запроса"
@@ -95,20 +102,25 @@ class KnowledgeBaseController extends Controller
      *     tags={"KnowledgeBase"},
      *     summary="Получить одну базу знаний",
      *     security={{"bearer_token":{}}},
+     *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
      *         description="ID базы знаний",
      *         required=true,
+     *
      *         @OA\Schema(
      *             type="string"
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Успешная операция",
+     *
      *         @OA\JsonContent(ref="#/components/schemas/KnowledgeBaseResource")
      *     ),
+     *
      *     @OA\Response(
      *         response=404,
      *         description="Ресурс не найден"
@@ -119,7 +131,7 @@ class KnowledgeBaseController extends Controller
     {
         $knowledgeBase = KnowledgeBase::find($id);
 
-        if(!$knowledgeBase) {
+        if (! $knowledgeBase) {
             return ResponseService::notFound();
         }
 
@@ -134,24 +146,31 @@ class KnowledgeBaseController extends Controller
      *     tags={"KnowledgeBase"},
      *     summary="Обновить базу знаний",
      *     security={{"bearer_token":{}}},
+     *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
      *         description="ID базы знаний",
      *         required=true,
+     *
      *         @OA\Schema(
      *             type="string"
      *         )
      *     ),
+     *
      *     @OA\RequestBody(
      *         required=true,
+     *
      *         @OA\JsonContent(ref="#/components/schemas/KnowledgeBaseUpdateRequest")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Успешная операция",
+     *
      *         @OA\JsonContent(ref="#/components/schemas/KnowledgeBaseResource")
      *     ),
+     *
      *     @OA\Response(
      *         response=400,
      *         description="Ошибка запроса"
@@ -166,7 +185,7 @@ class KnowledgeBaseController extends Controller
     {
         $knowledgeBase = KnowledgeBase::find($id);
 
-        if(!$knowledgeBase) {
+        if (! $knowledgeBase) {
             return ResponseService::notFound();
         }
 
@@ -189,15 +208,18 @@ class KnowledgeBaseController extends Controller
      *     tags={"KnowledgeBase"},
      *     summary="Удалить базу знаний",
      *     security={{"bearer_token":{}}},
+     *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
      *         description="ID базы знаний",
      *         required=true,
+     *
      *         @OA\Schema(
      *             type="string"
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Успешная операция"
@@ -212,7 +234,7 @@ class KnowledgeBaseController extends Controller
     {
         $knowledgeBase = KnowledgeBase::find($id);
 
-        if(!$knowledgeBase) {
+        if (! $knowledgeBase) {
             return ResponseService::notFound();
         }
 

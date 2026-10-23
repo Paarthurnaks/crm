@@ -25,20 +25,20 @@ class DealStoreUpdateRequest extends FormRequest
     public function rules(Request $request): array
     {
         return [
-            "title" => ["string"],
-            "sales_funnel_id" => ["integer", "exists:sales_funnels,id"],
-            "sales_stage_id" => ["integer", "exists:sales_stages,id"],
-            "responsible_id" => ["integer", "exists:users,id"],
-            "creator_id" => ["prohibited"],
-            "note" => ["string", "nullable"],
+            'title' => ['string'],
+            'sales_funnel_id' => ['integer', 'exists:sales_funnels,id'],
+            'sales_stage_id' => ['integer', 'exists:sales_stages,id'],
+            'responsible_id' => ['integer', 'exists:users,id'],
+            'creator_id' => ['prohibited'],
+            'note' => ['string', 'nullable'],
             'amount' => ['nullable', 'numeric', function ($attribute, $value, $fail) {
-                $valueWithoutDot = str_replace('.', '', (string)$value);
+                $valueWithoutDot = str_replace('.', '', (string) $value);
                 if (strlen($valueWithoutDot) > 50) {
-                    $fail($attribute . ' must not exceed 50 characters excluding the decimal point.');
+                    $fail($attribute.' must not exceed 50 characters excluding the decimal point.');
                 }
             }],
-            "client_id" => ["nullable", new ValidateClient($request)],
-            "user_field_values" => ['array'],
+            'client_id' => ['nullable', new ValidateClient($request)],
+            'user_field_values' => ['array'],
         ];
     }
 }

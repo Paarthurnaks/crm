@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('sales_stages', function (Blueprint $table) {
-            $table->dropForeign(["sales_funnel_id"]);
+            $table->dropForeign(['sales_funnel_id']);
             $table->foreign('sales_funnel_id')->references('id')->on('sales_funnels')->onDelete('cascade');
         });
     }
@@ -23,7 +23,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('sales_stages', function (Blueprint $table) {
-            $table->dropForeign(["sales_funnel_id"]);
+            $table->dropForeign(['sales_funnel_id']);
             $table->foreign('sales_funnel_id')->references('id')->on('sales_funnels');
         });
     }

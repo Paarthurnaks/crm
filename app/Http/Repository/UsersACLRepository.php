@@ -19,19 +19,17 @@ class UsersACLRepository implements ACLRepository
 
     /**
      * Get ACL rules list for user
-     *
-     * @return array
      */
     public function getRules(): array
     {
-        $userFullName = Auth::user()->name."_".Auth::user()->surname;
+        $userFullName = Auth::user()->name.'_'.Auth::user()->surname;
 
         return [
             ['disk_entities' => 'public', 'path' => '/', 'access' => 1],
             ['disk_entities' => 'public', 'path' => '/*', 'access' => 1],
             ['disk_entities' => 'public', 'path' => 'users', 'access' => 1],
             ['disk_entities' => 'public', 'path' => 'users/'.$userFullName, 'access' => 1],
-            ['disk_entities' => 'public', 'path' => 'users/'.$userFullName .'/*', 'access' => 2],
+            ['disk_entities' => 'public', 'path' => 'users/'.$userFullName.'/*', 'access' => 2],
         ];
     }
 }

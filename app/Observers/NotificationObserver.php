@@ -13,5 +13,4 @@ class NotificationObserver
 
         broadcast(new GlobalNotificationsBroadcast($databaseNotification, $userId));
     }
-
 }

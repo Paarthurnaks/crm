@@ -14,11 +14,12 @@ class ReportFieldsResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        $field = $this->userField ? UserFieldResource::make($this->userField) : FieldResource::make($this->field); 
+        $field = $this->userField ? UserFieldResource::make($this->userField) : FieldResource::make($this->field);
+
         return [
-            "id" => $this->id,
-            "field" => $field,
-            "position" => $this->position
+            'id' => $this->id,
+            'field' => $field,
+            'position' => $this->position,
         ];
     }
 }

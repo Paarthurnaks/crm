@@ -13,8 +13,7 @@ use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
 class SalesTunnelController extends Controller
 {
-    public function __construct(private SalesTunnelService $salesTunnelService)
-    {  }
+    public function __construct(private SalesTunnelService $salesTunnelService) {}
 
     /**
      * @OA\Post(
@@ -24,20 +23,28 @@ class SalesTunnelController extends Controller
      *     description="Метод для создания нового тунеля",
      *     summary="Метод для создания нового тунеля",
      *     security={{"bearer_token":{}}},
+     *
      *     @OA\RequestBody(
+     *
      *       @OA\MediaType(
      *           mediaType="application/json",
+     *
      *           @OA\Schema(
+     *
      *              @OA\Property(property="from_stage_id", type="int64", example=4),
      *              @OA\Property(property="to_stage_id", type="int64", example=7),
      *           ),
      *       ),
      *     ),
+     *
      *     @OA\Response(response="200",
      *          description="OK",
+     *
      *          @OA\MediaType(
      *              mediaType="application/json",
+     *
      *              @OA\Schema(
+     *
      *                 @OA\Property(
      *                     property="data",
      *                     ref="#/components/schemas/SalesTunnel"
@@ -45,13 +52,13 @@ class SalesTunnelController extends Controller
      *              )
      *          )
      *      ),
+     *
      *      @OA\Response(response="403",
      *          description="FORBIDDEN"
      *     ),
      * )
      *
-     * @param SalesTunnelStoreUpdateRequest $request
-     * @return JsonResponse
+     * @param  SalesTunnelStoreUpdateRequest  $request
      */
     public function store(SalesTunnelStoreRequest $request): JsonResponse
     {
@@ -76,15 +83,18 @@ class SalesTunnelController extends Controller
      *     description="Метод для удаления тунеля",
      *     summary="Метод для удаления тунеля",
      *     security={{"bearer_token":{}}},
+     *
      *     @OA\Parameter(
      *          name="id",
      *          description="id тунеля",
      *          required=true,
      *          in="path",
+     *
      *          @OA\Schema(
      *              type="string"
      *          )
      *      ),
+     *
      *     @OA\Response(response="200",
      *          description="OK",
      *     ),
@@ -95,14 +105,11 @@ class SalesTunnelController extends Controller
      *          description="FORBIDDEN"
      *     ),
      * )
-     *
-     * @param SalesTunnel $salesTunnel
-     * @return JsonResponse
      */
     public function destroy(SalesTunnel $salesTunnel): JsonResponse
     {
         $this->salesTunnelService->deleteSalesTunnel($salesTunnel);
 
-        return ResponseService::success(message: "Тунель успешно удален");
+        return ResponseService::success(message: 'Тунель успешно удален');
     }
 }

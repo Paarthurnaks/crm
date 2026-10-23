@@ -22,10 +22,10 @@ class AccountFactory extends Factory
         $deal = Deal::first();
 
         return [
-            "sum" => fake()->randomFloat(2, 0, 100000),
-            "author_id" => $user->id,
-            "deal_id" => $deal->id,
-            "invoice_date" => fake()->date('Y-m-d'),
+            'sum' => fake()->randomFloat(2, 0, 100000),
+            'author_id' => $user->id,
+            'deal_id' => $deal->id,
+            'invoice_date' => fake()->date('Y-m-d'),
         ];
     }
 }

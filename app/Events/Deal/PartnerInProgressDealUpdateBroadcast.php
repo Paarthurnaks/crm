@@ -18,8 +18,7 @@ class PartnerInProgressDealUpdateBroadcast implements ShouldBroadcast
     public function __construct(
         private readonly int $userId,
         private readonly int $count,
-    )
-    {
+    ) {
         //
     }
 
@@ -31,13 +30,10 @@ class PartnerInProgressDealUpdateBroadcast implements ShouldBroadcast
     public function broadcastOn(): array
     {
         return [
-            new PrivateChannel('partner.' . $this->userId),
+            new PrivateChannel('partner.'.$this->userId),
         ];
     }
 
-    /**
-     * @return string
-     */
     public function broadcastAs(): string
     {
         return 'PartnerInProgressDealsUpdate';

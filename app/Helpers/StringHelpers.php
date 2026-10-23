@@ -6,10 +6,6 @@ class StringHelpers
 {
     /**
      * Возвращает часть строки после первого вхождения указанной подстроки.
-     *
-     * @param string $subject
-     * @param string $search
-     * @return string
      */
     public static function afterFirst(string $subject, string $search): string
     {
@@ -28,10 +24,6 @@ class StringHelpers
 
     /**
      * Возвращает часть строки до первого вхождения указанной подстроки.
-     *
-     * @param string $subject
-     * @param string $search
-     * @return string
      */
     public static function beforeFirst(string $subject, string $search): string
     {

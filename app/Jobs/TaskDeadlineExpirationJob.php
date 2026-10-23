@@ -17,14 +17,8 @@ class TaskDeadlineExpirationJob implements ShouldQueue
 
     public function __construct(
         private readonly Task $task
-    )
-    {
+    ) {}
 
-    }
-
-    /**
-     * @return void
-     */
     public function handle(): void
     {
         if ($this->task->deadline && Carbon::parse($this->task->deadline)->isPast()) {

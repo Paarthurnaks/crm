@@ -4,18 +4,16 @@ namespace App\Models;
 
 use App\Enums\SalesStageEnum;
 use App\Http\Filters\Traits\Filterable;
-use App\Http\Resources\FieldResource;
-use App\Http\Resources\UserFieldResource;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Collection;
 
 /**
  * @OA\Schema(
  *     title="SalesFunnel",
  *     description="Направление продажи",
+ *
  *     @OA\Xml(
  *         name="SalesFunnel"
  *     )
@@ -23,13 +21,13 @@ use Illuminate\Support\Collection;
  */
 class SalesFunnel extends Model
 {
-    use HasFactory, Filterable;
+    use Filterable, HasFactory;
 
     const COMMON = 1;
 
     protected $fillable = [
-        "title",
-        "position"
+        'title',
+        'position',
     ];
 
     /**
@@ -43,6 +41,7 @@ class SalesFunnel extends Model
      * @var bigInteger
      */
     private $id;
+
     /**
      * @OA\Property(
      *      title="title",
@@ -53,11 +52,13 @@ class SalesFunnel extends Model
      * @var string
      */
     private $title;
+
     /**
      * @OA\Property(
      *      title="stages",
      *      description="стадии воронки",
      *      type="array",
+     *
      *      @OA\Items(
      *          ref="#/components/schemas/SalesStage"
      *      )
@@ -75,7 +76,7 @@ class SalesFunnel extends Model
     public function sortedSalesStages()
     {
 
-        $sortedByPosition = $this->salesStages->sortBy("position");
+        $sortedByPosition = $this->salesStages->sortBy('position');
 
         $sortedByType = $sortedByPosition->sortBy(function ($stage) {
             switch ($stage->type) {
@@ -108,6 +109,4 @@ class SalesFunnel extends Model
     {
         return $this->belongsToMany(UserField::class, 'sales_funnel_fields', 'sales_funnel_id', 'user_field_id');
     }
-
-
 }

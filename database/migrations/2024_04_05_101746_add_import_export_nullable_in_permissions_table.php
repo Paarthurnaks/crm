@@ -12,8 +12,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('permissions', function (Blueprint $table) {
-            $table->string("import")->change()->nullable();
-            $table->string("export")->change()->nullable();
+            $table->string('import')->change()->nullable();
+            $table->string('export')->change()->nullable();
         });
     }
 

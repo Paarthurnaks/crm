@@ -18,6 +18,7 @@ use OpenApi\Annotations as OA;
  * @OA\Schema(
  *     title="Account",
  *     description="Счет",
+ *
  *     @OA\Xml(
  *         name="Account"
  *     )
@@ -25,13 +26,13 @@ use OpenApi\Annotations as OA;
  */
 class Account extends Model
 {
-    use HasFactory, Filterable;
+    use Filterable, HasFactory;
 
     protected $fillable = [
-        "deal_id",
-        "sum",
-        "invoice_date",
-        "author_id"
+        'deal_id',
+        'sum',
+        'invoice_date',
+        'author_id',
     ];
 
     /**
@@ -41,8 +42,6 @@ class Account extends Model
      *     type="int",
      *     example=15
      * )
-     *
-     * @var int $id
      */
     private int $id;
 
@@ -53,8 +52,6 @@ class Account extends Model
      *      type="double",
      *      example=15000
      * )
-     *
-     * @var float $sum
      */
     private float $sum;
 
@@ -65,8 +62,6 @@ class Account extends Model
      *     type="int",
      *     example=1
      * )
-     *
-     * @var int $deal_id
      */
     private int $deal_id;
 
@@ -77,8 +72,6 @@ class Account extends Model
      *     type="string",
      *     example="2024-02-01"
      * )
-     *
-     * @var string
      */
     private string $invoice_date;
 
@@ -89,18 +82,16 @@ class Account extends Model
      *     type="int",
      *     example=12
      * )
-     *
-     * @var int
      */
     private int $author_id;
 
     public function author(): BelongsTo
     {
-        return $this->belongsTo(User::class, "author_id");
+        return $this->belongsTo(User::class, 'author_id');
     }
 
     public function deal(): BelongsTo
     {
-        return $this->belongsTo(Deal::class, "deal_id");
+        return $this->belongsTo(Deal::class, 'deal_id');
     }
 }

@@ -2,7 +2,6 @@
 
 namespace App\Http\Resources;
 
-use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 class MediaResource extends JsonResource
@@ -13,6 +12,7 @@ class MediaResource extends JsonResource
      *     type="object",
      *     title="Chat Media Resource",
      *     description="Represents a media attachment in the chat message.",
+     *
      *     @OA\Property(
      *         property="file_name",
      *         type="string",

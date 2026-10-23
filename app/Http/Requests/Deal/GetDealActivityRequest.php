@@ -23,10 +23,10 @@ class GetDealActivityRequest extends FormRequest
     public function rules(): array
     {
         return [
-            "search" => [ 'string'],
-            "author_id" => ["integer", "exists:deals,id"],
-            "date_from" => ["datetime"],
-            "date_to" => ["datetime"]
+            'search' => ['string'],
+            'author_id' => ['integer', 'exists:deals,id'],
+            'date_from' => ['datetime'],
+            'date_to' => ['datetime'],
         ];
     }
 }

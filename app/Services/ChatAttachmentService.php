@@ -12,9 +12,9 @@ class ChatAttachmentService
     /**
      * Retrieve media based on MIME type pattern and chat ID.
      *
-     * @param int $id Chat ID
-     * @param string $mimeType MIME type to filter by
-     * @param string $operator The operator for the MIME type comparison
+     * @param  int  $id  Chat ID
+     * @param  string  $mimeType  MIME type to filter by
+     * @param  string  $operator  The operator for the MIME type comparison
      * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator
      */
     private function getMediaByType(int $id, string $mimeType, string $operator = 'like'): LengthAwarePaginator
@@ -29,6 +29,7 @@ class ChatAttachmentService
 
         $chatMediaMessages->getCollection()->transform(function ($media) {
             $mediaModel = Media::find($media->id);
+
             return $mediaModel ? $mediaModel->model : null;
         });
 
@@ -38,8 +39,7 @@ class ChatAttachmentService
     /**
      * Get all media that are images for a specific chat.
      *
-     * @param int $id Chat ID
-     * @return LengthAwarePaginator
+     * @param  int  $id  Chat ID
      */
     public function getAllChatMediaImages(int $id): LengthAwarePaginator
     {
@@ -49,18 +49,13 @@ class ChatAttachmentService
     /**
      * Get all media that are documents for a specific chat.
      *
-     * @param int $id Chat ID
-     * @return LengthAwarePaginator
+     * @param  int  $id  Chat ID
      */
     public function getAllChatMediaDocuments(int $id): LengthAwarePaginator
     {
         return $this->getMediaByType($id, 'image/%', 'not like');
     }
 
-    /**
-     * @param int $id
-     * @return LengthAwarePaginator
-     */
     public function getAllChatLinks(int $id): LengthAwarePaginator
     {
         return ChatMessage::where('chat_id', $id)

@@ -15,13 +15,13 @@ class DealEventResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            "id" => $this->id,
-            "initiator" => UserResource::make($this->initiator),
-            "type" => $this->type,
-            "changed_field" => $this->changed_field,
-            "old_value" => $this->old_value,
-            "new_value" => $this->new_value,
-            "created_at" => $this->created_at
+            'id' => $this->id,
+            'initiator' => UserResource::make($this->initiator),
+            'type' => $this->type,
+            'changed_field' => $this->changed_field,
+            'old_value' => $this->old_value,
+            'new_value' => $this->new_value,
+            'created_at' => $this->created_at,
         ];
     }
 }

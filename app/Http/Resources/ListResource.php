@@ -7,10 +7,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 class ListResource extends JsonResource
 {
-
-    public function __construct(public $resourceType, public $resource, public $total)
-    {
-    }
+    public function __construct(public $resourceType, public $resource, public $total) {}
 
     /**
      * Transform the resource into an array.
@@ -20,8 +17,8 @@ class ListResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            "total" => $this->total,
-            "data" => $this->resourceType::collection($this->resource)
+            'total' => $this->total,
+            'data' => $this->resourceType::collection($this->resource),
         ];
     }
 }

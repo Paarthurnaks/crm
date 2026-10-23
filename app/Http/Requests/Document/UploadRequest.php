@@ -32,7 +32,7 @@ class UploadRequest extends FormRequest
                 'required',
                 'mimetypes:application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/docx,application/pdf',
             ],
-            "title" => ['required', 'string'],
+            'title' => ['required', 'string'],
         ];
     }
 }

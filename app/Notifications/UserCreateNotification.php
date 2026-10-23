@@ -18,8 +18,7 @@ class UserCreateNotification extends Notification implements ShouldQueue
     public function __construct(
         private readonly string $code,
         private readonly User $user,
-    )
-    {
+    ) {
         //
     }
 

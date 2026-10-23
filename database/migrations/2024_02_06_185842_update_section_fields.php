@@ -14,7 +14,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('section_fields', function (Blueprint $table) {
-            $table->dropColumn("code");
+            $table->dropColumn('code');
             $table->foreignIdFor(Field::class)->nullable()->constrained()->nullOnDelete();
             $table->foreignIdFor(UserField::class)->nullable()->constrained()->nullOnDelete();
         });
@@ -24,9 +24,9 @@ return new class extends Migration
      * Reverse the migrations.
      */
     public function down(): void
-    {   
+    {
         Schema::table('section_fields', function (Blueprint $table) {
-            $table->string("code");
+            $table->string('code');
             $table->dropForeignIdFor(Field::class);
         });
     }

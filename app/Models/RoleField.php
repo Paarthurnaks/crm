@@ -10,8 +10,8 @@ class RoleField extends Model
     use HasFactory;
 
     protected $fillable = [
-        "role_id",
-        "field_id",
-        "type"
+        'role_id',
+        'field_id',
+        'type',
     ];
 }

@@ -14,24 +14,24 @@ return new class extends Migration
     {
         Schema::create('divisions', function (Blueprint $table) {
             $table->id();
-            $table->string("title");
-            $table->foreignId("parent_id")
-                                ->nullable()
-                                ->constrained("divisions")
-                                ->cascadeOnDelete();
+            $table->string('title');
+            $table->foreignId('parent_id')
+                ->nullable()
+                ->constrained('divisions')
+                ->cascadeOnDelete();
             $table->timestamps();
         });
 
         Division::factory()->create([
-            "title" => "common"
+            'title' => 'common',
         ]);
 
         Schema::table('users', function (Blueprint $table) {
             $table->foreignIdFor(Division::class)
-                                ->default(Division::COMMON)
-                                ->nullable()
-                                ->constrained()
-                                ->nullOnDelete();
+                ->default(Division::COMMON)
+                ->nullable()
+                ->constrained()
+                ->nullOnDelete();
         });
     }
 

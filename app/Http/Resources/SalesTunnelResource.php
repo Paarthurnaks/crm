@@ -15,8 +15,8 @@ class SalesTunnelResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            "id" => $this->id,
-            "to_stage" => ToStageResource::make($this->toStage)
+            'id' => $this->id,
+            'to_stage' => ToStageResource::make($this->toStage),
         ];
     }
 }

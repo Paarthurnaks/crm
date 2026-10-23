@@ -10,13 +10,10 @@ use App\Models\ChatMember;
 use App\Services\ChatMemberService;
 use App\Services\ResponseService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 class ChatMemberController extends Controller
 {
-    public function __construct(private readonly ChatMemberService $service)
-    {
-    }
+    public function __construct(private readonly ChatMemberService $service) {}
 
     /**
      * @OA\Get(
@@ -25,18 +22,23 @@ class ChatMemberController extends Controller
      *     tags={"ChatMembers"},
      *     summary="Получить список участников чата",
      *     description="Возвращает список участников чата по указанному идентификатору чата.",
+     *
      *     @OA\Parameter(
      *         name="chatId",
      *         in="path",
      *         required=true,
      *         description="Идентификатор чата",
+     *
      *         @OA\Schema(type="string")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Список участников чата успешно получен",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(
      *                 property="success",
      *                 type="boolean",
@@ -45,8 +47,10 @@ class ChatMemberController extends Controller
      *             @OA\Property(
      *                 property="data",
      *                 type="array",
+     *
      *                 @OA\Items(
      *                     type="object",
+     *
      *                     @OA\Property(
      *                         property="id",
      *                         type="integer",
@@ -85,10 +89,13 @@ class ChatMemberController extends Controller
      *             )
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=404,
      *         description="Чат не найден",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(
      *                 property="success",
      *                 type="boolean",
@@ -107,7 +114,7 @@ class ChatMemberController extends Controller
     {
         $chat = Chat::find($chatId);
 
-        if(!$chat) {
+        if (! $chat) {
             return ResponseService::notFound(message: 'Чат не найден');
         }
 
@@ -118,8 +125,6 @@ class ChatMemberController extends Controller
         );
     }
 
-
-
     /**
      * @OA\Post(
      *     path="/api/chats/{chatId}/members",
@@ -127,22 +132,29 @@ class ChatMemberController extends Controller
      *     tags={"ChatMembers"},
      *     summary="Добавляет участника в чат",
      *     description="Добавляет нового участника в указанный чат.",
+     *
      *     @OA\Parameter(
      *         name="chatId",
      *         in="path",
      *         required=true,
      *         description="Идентификатор чата",
+     *
      *         @OA\Schema(type="string")
      *     ),
+     *
      *     @OA\RequestBody(
      *         required=true,
      *         description="Данные участника для добавления в чат",
+     *
      *         @OA\JsonContent(ref="#/components/schemas/StoreChatMemberRequest")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Участник успешно добавлен в чат",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(
      *                 property="success",
      *                 type="boolean",
@@ -151,10 +163,12 @@ class ChatMemberController extends Controller
      *             @OA\Property(
      *                 property="data",
      *                 type="array",
+     *
      *                 @OA\Items(ref="#/components/schemas/ChatMemberResource")
      *             )
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=400,
      *         description="Ошибка валидации данных запроса",
@@ -169,7 +183,7 @@ class ChatMemberController extends Controller
     {
         $chat = Chat::find($chatId);
 
-        if(!$chat) {
+        if (! $chat) {
             return ResponseService::notFound(message: 'Чат не найден');
         }
 
@@ -193,18 +207,23 @@ class ChatMemberController extends Controller
      *     tags={"ChatMembers"},
      *     summary="Получает информацию об участнике чата",
      *     description="Возвращает информацию об участнике чата по идентификатору участника.",
+     *
      *     @OA\Parameter(
      *         name="memberId",
      *         in="path",
      *         required=true,
      *         description="Идентификатор участника чата",
+     *
      *         @OA\Schema(type="string")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Информация об участнике чата",
+     *
      *         @OA\JsonContent(ref="#/components/schemas/ChatMemberResource")
      *     ),
+     *
      *     @OA\Response(
      *         response=404,
      *         description="Участник чата не найден",
@@ -215,7 +234,7 @@ class ChatMemberController extends Controller
     {
         $member = ChatMember::find($memberId);
 
-        if (!$member) {
+        if (! $member) {
             return ResponseService::notFound(
                 message: __('Участник не найден.')
             );
@@ -226,7 +245,6 @@ class ChatMemberController extends Controller
         );
     }
 
-
     /**
      * @OA\Delete(
      *     path="/api/chats/members/{memberId}",
@@ -234,17 +252,22 @@ class ChatMemberController extends Controller
      *     tags={"ChatMembers"},
      *     summary="Удаляет участника из чата",
      *     description="Удаляет участника чата по идентификатору участника.",
+     *
      *     @OA\Parameter(
      *         name="memberId",
      *         in="path",
      *         required=true,
      *         description="Идентификатор участника чата для удаления",
+     *
      *         @OA\Schema(type="string")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Участник чата успешно удален",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(
      *                 property="success",
      *                 type="boolean",
@@ -257,6 +280,7 @@ class ChatMemberController extends Controller
      *             )
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=404,
      *         description="Участник чата не найден",
@@ -267,14 +291,14 @@ class ChatMemberController extends Controller
     {
         $member = ChatMember::find($memberId);
 
-        if (!$member) {
+        if (! $member) {
             return ResponseService::notFound(message: __('Пользователь не найден в чате.'));
         }
 
         try {
             $this->service->delete($member);
 
-            return ResponseService::success(message: __("Пользователь удален из чата."));
+            return ResponseService::success(message: __('Пользователь удален из чата.'));
         } catch (\Throwable $e) {
             return ResponseService::badRequest($e->getMessage());
         }

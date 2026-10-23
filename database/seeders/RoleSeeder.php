@@ -2,8 +2,8 @@
 
 namespace Database\Seeders;
 
-use App\Enums\PermissionTypeEnum;
 use App\Enums\DefaultRolesEnum;
+use App\Enums\PermissionTypeEnum;
 use App\Models\Permission;
 use App\Models\Role;
 use Illuminate\Database\Seeder;
@@ -15,59 +15,59 @@ class RoleSeeder extends Seeder
     {
         DB::transaction(function () {
             $role = Role::updateOrCreate([
-                "title" => DefaultRolesEnum::SUPER_ADMIN->label(),
-            ],[
-                "original_title" => DefaultRolesEnum::SUPER_ADMIN->value,
+                'title' => DefaultRolesEnum::SUPER_ADMIN->label(),
+            ], [
+                'original_title' => DefaultRolesEnum::SUPER_ADMIN->value,
             ]);
 
-            $entities = ["deals", "users", "tasks", "analytics", "storage", "settings", "helpdesk", "partners_chats"];
+            $entities = ['deals', 'users', 'tasks', 'analytics', 'storage', 'settings', 'helpdesk', 'partners_chats'];
 
             foreach ($entities as $entity) {
                 Permission::updateOrCreate(
                     [
-                        "entity" => $entity,
-                        "role_id" => $role->id,
+                        'entity' => $entity,
+                        'role_id' => $role->id,
                     ],
                     [
-                        "view" => PermissionTypeEnum::ALL,
-                        "create" => PermissionTypeEnum::ALL,
-                        "update" => PermissionTypeEnum::ALL,
-                        "delete" => PermissionTypeEnum::ALL,
-                        "import" => PermissionTypeEnum::ALL,
-                        "export" => PermissionTypeEnum::ALL
+                        'view' => PermissionTypeEnum::ALL,
+                        'create' => PermissionTypeEnum::ALL,
+                        'update' => PermissionTypeEnum::ALL,
+                        'delete' => PermissionTypeEnum::ALL,
+                        'import' => PermissionTypeEnum::ALL,
+                        'export' => PermissionTypeEnum::ALL,
                     ]
                 );
             }
 
             $role = Role::updateOrCreate([
-                "title" => DefaultRolesEnum::PARTNER->label(),
-            ],[
-                "original_title" => DefaultRolesEnum::PARTNER->value,
+                'title' => DefaultRolesEnum::PARTNER->label(),
+            ], [
+                'original_title' => DefaultRolesEnum::PARTNER->value,
             ]);
 
-            $entities = ["deals", "docket", "clients"];
+            $entities = ['deals', 'docket', 'clients'];
 
             foreach ($entities as $entity) {
                 Permission::updateOrCreate(
                     [
-                        "entity" => $entity,
-                        "role_id" => $role->id,
+                        'entity' => $entity,
+                        'role_id' => $role->id,
                     ],
                     [
-                        "view" => PermissionTypeEnum::OWN,
-                        "create" => PermissionTypeEnum::ALL,
-                        "update" => PermissionTypeEnum::OWN,
-                        "delete" => PermissionTypeEnum::OWN,
-                        "import" => PermissionTypeEnum::ALL,
-                        "export" => PermissionTypeEnum::ALL,
+                        'view' => PermissionTypeEnum::OWN,
+                        'create' => PermissionTypeEnum::ALL,
+                        'update' => PermissionTypeEnum::OWN,
+                        'delete' => PermissionTypeEnum::OWN,
+                        'import' => PermissionTypeEnum::ALL,
+                        'export' => PermissionTypeEnum::ALL,
                     ]
                 );
             }
 
             $role = Role::updateOrCreate([
-                "title" => DefaultRolesEnum::CLIENT->label(),
-            ],[
-                "original_title" => DefaultRolesEnum::CLIENT->value,
+                'title' => DefaultRolesEnum::CLIENT->label(),
+            ], [
+                'original_title' => DefaultRolesEnum::CLIENT->value,
             ]);
         });
     }

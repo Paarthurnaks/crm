@@ -24,10 +24,10 @@ class TaskFactory extends Factory
 
         return [
             'title' => fake()->title,
-            "description" => fake()->text,
-            "creator_id" => $user->id,
-            "deal_id" => $deal->id,
-            "deadline" => fake()->date('Y-m-d H:i:s'),
+            'description' => fake()->text,
+            'creator_id' => $user->id,
+            'deal_id' => $deal->id,
+            'deadline' => fake()->date('Y-m-d H:i:s'),
         ];
     }
 

@@ -20,6 +20,7 @@ class StoreRequest extends FormRequest
      *     type="object",
      *     title="Запрос на создание базы знаний",
      *     required={"title", "preview", "contents"},
+     *
      *     @OA\Property(
      *         property="title",
      *         type="string",
@@ -39,8 +40,10 @@ class StoreRequest extends FormRequest
      *     @OA\Property(
      *         property="contents",
      *         type="array",
+     *
      *         @OA\Items(
      *             type="object",
+     *
      *             @OA\Property(
      *                 property="content",
      *                 type="string",

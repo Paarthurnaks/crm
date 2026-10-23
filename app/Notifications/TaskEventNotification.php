@@ -2,16 +2,12 @@
 
 namespace App\Notifications;
 
-use App\Enums\DealEventTypeEnum;
-use App\Enums\TaskEventTypeEnum;
 use App\Http\Resources\TaskEventResource;
 use App\Http\Resources\TaskResource;
 use App\Models\Task;
 use App\Models\TaskEvent;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\BroadcastMessage;
-use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\View;
 use ReflectionClass;
@@ -27,14 +23,10 @@ class TaskEventNotification extends Notification
      */
     public function __construct(
         private readonly TaskEvent $taskEvent
-    )
-    {
+    ) {
         $this->init();
     }
 
-    /**
-     * @return void
-     */
     public function init(): void
     {
         $name = $this->taskEvent->initiator?->name ?? 'System';
@@ -42,7 +34,7 @@ class TaskEventNotification extends Notification
         $id = $this->taskEvent->task->id;
         $title = $this->taskEvent->task->title;
 
-        $this->html = View::make('notification.task.' . $this->taskEvent->type, compact('name', 'surname', 'id', 'title'))->render();
+        $this->html = View::make('notification.task.'.$this->taskEvent->type, compact('name', 'surname', 'id', 'title'))->render();
     }
 
     /**
@@ -59,7 +51,7 @@ class TaskEventNotification extends Notification
     {
         return [
             'html' => $this->html,
-            'item' =>  TaskEventResource::make($this->taskEvent),
+            'item' => TaskEventResource::make($this->taskEvent),
             'model' => TaskResource::make($this->taskEvent->task),
             'model_name' => (new ReflectionClass(Task::class))->getShortName(),
             'event_type' => $this->taskEvent->type,
@@ -70,7 +62,7 @@ class TaskEventNotification extends Notification
     {
         return new BroadcastMessage([
             'html' => $this->html,
-            'item' =>  TaskEventResource::make($this->taskEvent),
+            'item' => TaskEventResource::make($this->taskEvent),
             'model' => TaskResource::make($this->taskEvent->task),
             'model_name' => (new ReflectionClass(Task::class))->getShortName(),
             'event_type' => $this->taskEvent->type,

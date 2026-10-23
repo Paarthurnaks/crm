@@ -2,9 +2,7 @@
 
 namespace App\Http\Requests;
 
-use App\Enums\UserTableSettingsEntityEnum;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rules\Enum;
 
 class UpdateUserTableSettingsRequest extends FormRequest
 {
@@ -24,8 +22,8 @@ class UpdateUserTableSettingsRequest extends FormRequest
     public function rules(): array
     {
         return [
-            "entity" => ["required", "string"],
-            "settings" => ["array"]
+            'entity' => ['required', 'string'],
+            'settings' => ['array'],
         ];
     }
 }

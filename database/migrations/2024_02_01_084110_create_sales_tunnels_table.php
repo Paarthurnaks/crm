@@ -13,8 +13,8 @@ return new class extends Migration
     {
         Schema::create('sales_tunnels', function (Blueprint $table) {
             $table->id();
-            $table->foreignId("from_stage_id")->constrained("sales_stages");
-            $table->foreignId("to_stage_id")->constrained("sales_stages");
+            $table->foreignId('from_stage_id')->constrained('sales_stages');
+            $table->foreignId('to_stage_id')->constrained('sales_stages');
             $table->timestamps();
         });
     }

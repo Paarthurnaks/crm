@@ -22,17 +22,17 @@ class SalesFunnelUpdateRequest extends FormRequest
     public function rules(): array
     {
         return [
-            "title" => ["string"],
-            "position" => ["integer"],
-            "stages" => ["array"],
-            "stages.*.id" => ["integer", "exists:sales_stages,id"],
-            "stages.*.title" => ["string"],
-            "stages.*.type" => ["string"],
-            "stages.*.position" => ["integer"],
-            "stages.*.color" => ["string"],
-            "fields" => ["array"],
-            "fields.*.field_id" => ["integer", "exists:fields,id"],
-            "fields.*.user_field_id" => ["integer", "exists:user_fields,id"],
+            'title' => ['string'],
+            'position' => ['integer'],
+            'stages' => ['array'],
+            'stages.*.id' => ['integer', 'exists:sales_stages,id'],
+            'stages.*.title' => ['string'],
+            'stages.*.type' => ['string'],
+            'stages.*.position' => ['integer'],
+            'stages.*.color' => ['string'],
+            'fields' => ['array'],
+            'fields.*.field_id' => ['integer', 'exists:fields,id'],
+            'fields.*.user_field_id' => ['integer', 'exists:user_fields,id'],
         ];
     }
 }

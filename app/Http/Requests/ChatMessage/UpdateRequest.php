@@ -2,7 +2,6 @@
 
 namespace App\Http\Requests\ChatMessage;
 
-
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Request;
 
@@ -22,6 +21,7 @@ class UpdateRequest extends FormRequest
      *     title="UpdateChatMessageRequest",
      *     description="Request schema for updating a chat message",
      *     required={"text"},
+     *
      *     @OA\Property(
      *         property="text",
      *         type="string",

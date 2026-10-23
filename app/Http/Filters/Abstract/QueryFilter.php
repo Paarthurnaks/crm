@@ -21,17 +21,11 @@ abstract class QueryFilter
      */
     protected $builder;
 
-    /**
-     * @param Request $request
-     */
     public function __construct(Request $request)
     {
         $this->request = $request;
     }
 
-    /**
-     * @param Builder $builder
-     */
     public function apply(Builder $builder): void
     {
         $this->builder = $builder;
@@ -65,7 +59,7 @@ abstract class QueryFilter
                 ];
 
                 if (in_array($orderBy, $fields)) {
-                    $orderBy = $orderBy . '_id';
+                    $orderBy = $orderBy.'_id';
                 }
 
                 // Проверим, что поле по которому сортируем есть в модели.
@@ -87,9 +81,6 @@ abstract class QueryFilter
         }
     }
 
-    /**
-     * @return array
-     */
     protected function fields(): array
     {
         $requestData = $this->request->all();
@@ -100,38 +91,35 @@ abstract class QueryFilter
         return $requestData;
     }
 
-    /**
-     * @return void
-     */
     protected function userFieldFilter(string $code, $value): void
     {
         if ($value !== null) {
             if (Str::endsWith($code, '_from')) {
-                $code = str_replace("_from", "", $code);
-                $userField = UserField::where("code", $code)->first();
+                $code = str_replace('_from', '', $code);
+                $userField = UserField::where('code', $code)->first();
 
                 if ($userField) {
-                    $value = $userField->type == "integer" ? (int)$value : $value;
-                    $this->builder->whereIn("id",
-                        UserFieldValue::where("field_id", $userField->id)->where("value", ">=",
-                            $value)->pluck("entity_id"));
+                    $value = $userField->type == 'integer' ? (int) $value : $value;
+                    $this->builder->whereIn('id',
+                        UserFieldValue::where('field_id', $userField->id)->where('value', '>=',
+                            $value)->pluck('entity_id'));
                 }
             } else {
-                if (Str::endsWith($code, "_to")) {
-                    $code = str_replace("_to", "", $code);
-                    $userField = UserField::where("code", $code)->first();
+                if (Str::endsWith($code, '_to')) {
+                    $code = str_replace('_to', '', $code);
+                    $userField = UserField::where('code', $code)->first();
 
                     if ($userField) {
-                        $value = $userField->type == "integer" ? (int)$value : $value;
-                        $this->builder->whereIn("id",
-                            UserFieldValue::where("field_id", $userField->id)->where("value", "<=",
-                                $value)->pluck("entity_id"));
+                        $value = $userField->type == 'integer' ? (int) $value : $value;
+                        $this->builder->whereIn('id',
+                            UserFieldValue::where('field_id', $userField->id)->where('value', '<=',
+                                $value)->pluck('entity_id'));
                     }
                 } else {
-                    $userField = UserField::where("code", $code)->first();
+                    $userField = UserField::where('code', $code)->first();
                     if ($userField) {
-                        $this->builder->whereIn("id", UserFieldValue::where("field_id", $userField->id)->where("value",
-                            $value)->pluck("entity_id"));
+                        $this->builder->whereIn('id', UserFieldValue::where('field_id', $userField->id)->where('value',
+                            $value)->pluck('entity_id'));
                     }
                 }
             }

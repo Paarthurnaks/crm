@@ -14,23 +14,23 @@ return new class extends Migration
         Schema::create('task_events', function (Blueprint $table) {
             $table->id();
 
-            $table->unsignedBigInteger("task_id");
-            $table->unsignedBigInteger("initiator_id")->nullable();
+            $table->unsignedBigInteger('task_id');
+            $table->unsignedBigInteger('initiator_id')->nullable();
 
-            $table->foreign("task_id")
-                    ->references("id")
-                    ->on("tasks")
-                    ->onDelete("cascade");
+            $table->foreign('task_id')
+                ->references('id')
+                ->on('tasks')
+                ->onDelete('cascade');
 
-            $table->foreign("initiator_id")
-                    ->references("id")
-                    ->on("users")
-                    ->onDelete("cascade");
+            $table->foreign('initiator_id')
+                ->references('id')
+                ->on('users')
+                ->onDelete('cascade');
 
-            $table->string("type");
-            $table->string("changed_field")->nullable();
-            $table->string("old_value")->nullable();
-            $table->string("new_value")->nullable();
+            $table->string('type');
+            $table->string('changed_field')->nullable();
+            $table->string('old_value')->nullable();
+            $table->string('new_value')->nullable();
             $table->timestamps();
         });
     }

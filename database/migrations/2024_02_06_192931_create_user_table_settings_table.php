@@ -14,9 +14,9 @@ return new class extends Migration
     {
         Schema::create('user_table_settings', function (Blueprint $table) {
             $table->id();
-            $table->string("entity");
+            $table->string('entity');
             $table->foreignIdFor(User::class)->constrained()->cascadeOnDelete();
-            $table->json("settings")->nullable();
+            $table->json('settings')->nullable();
             $table->timestamps();
         });
     }

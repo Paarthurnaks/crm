@@ -5,7 +5,6 @@ namespace App\Http\Resources;
 use App\Enums\ChatTypeEnum;
 use App\Enums\DefaultRolesEnum;
 use App\Models\Chat;
-use App\Models\ChatMember;
 use App\Models\ChatMessage;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -14,6 +13,7 @@ use Illuminate\Support\Facades\Auth;
 class ChatResource extends JsonResource
 {
     private int $userId;
+
     public function __construct($resource, $userId = null)
     {
         parent::__construct($resource);
@@ -26,6 +26,7 @@ class ChatResource extends JsonResource
      *     type="object",
      *     title="Chat Resource",
      *     description="Структура данных чата.",
+     *
      *     @OA\Property(
      *         property="id",
      *         type="integer",
@@ -66,10 +67,12 @@ class ChatResource extends JsonResource
      *         @OA\Property(
      *             property="attachments",
      *             type="array",
+     *
      *             @OA\Items(ref="#/components/schemas/MediaResource"),
      *             description="Array of attachments associated with the message."
      *         ),
      *     ),
+     *
      *     @OA\Property(
      *         property="unread_messages_count",
      *         type="integer",
@@ -122,11 +125,7 @@ class ChatResource extends JsonResource
         ];
     }
 
-    /**
-     * @param Chat $chat
-     * @return ChatMessage|null
-     */
-    private function firstUnreadMessage(Chat $chat): ChatMessage|null
+    private function firstUnreadMessage(Chat $chat): ?ChatMessage
     {
         $unreadMessage = $chat->unreadMessages
             ->where('user_id', $this->userId)
@@ -136,10 +135,6 @@ class ChatResource extends JsonResource
         return $unreadMessage?->message;
     }
 
-    /**
-     * @param Chat $chat
-     * @return bool
-     */
     private function canDelete(Chat $chat): bool
     {
         switch ($chat->type) {
@@ -153,7 +148,8 @@ class ChatResource extends JsonResource
                 $partnerExists = $chat->members->contains(function ($member) {
                     return $member->user->role->original_title === DefaultRolesEnum::PARTNER->value;
                 });
-                return !$partnerExists;
+
+                return ! $partnerExists;
 
             case ChatTypeEnum::CLIENT->value:
                 $clientExists = $chat->members->contains(function ($member) {
@@ -164,7 +160,7 @@ class ChatResource extends JsonResource
                     return $member->user->role->original_title === DefaultRolesEnum::PARTNER->value;
                 });
 
-                return !$clientExists || !$partnerExists;
+                return ! $clientExists || ! $partnerExists;
 
             default:
                 return false;

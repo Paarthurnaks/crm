@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Model;
  * @OA\Schema(
  *     title="ReportAccess",
  *     description="Кто имеет доступ к отчёту",
+ *
  *     @OA\Xml(
  *         name="ReportAccess"
  *     )
@@ -23,8 +24,8 @@ class ReportAccess extends Model
     use HasFactory;
 
     protected $fillable = [
-        "report_id",
-        "user_id"
+        'report_id',
+        'user_id',
     ];
 
     /**
@@ -34,8 +35,6 @@ class ReportAccess extends Model
      *     type="int",
      *     example=15
      * )
-     *
-     * @var int $id
      */
     private int $id;
 
@@ -46,8 +45,6 @@ class ReportAccess extends Model
      *      type="int",
      *      example=13
      * )
-     *
-     * @var float $report_id
      */
     private float $report_id;
 
@@ -58,8 +55,6 @@ class ReportAccess extends Model
      *     type="int",
      *     example=1
      * )
-     *
-     * @var int $user_id
      */
     private int $user_id;
 }

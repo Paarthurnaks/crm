@@ -18,15 +18,15 @@ class ValidateClient implements ValidationRule
 
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {
-        if (is_integer($value)) {
+        if (is_int($value)) {
             $responsibleId = $this->request->input('responsible_id');
             if ($responsibleId) {
                 $responsible = User::find($responsibleId);
-                if (!$responsible || !$responsible->clients()->where('users.id', $value)->exists()) {
-//                    $fail('The selected client is not a client of the responsible user.');
+                if (! $responsible || ! $responsible->clients()->where('users.id', $value)->exists()) {
+                    //                    $fail('The selected client is not a client of the responsible user.');
                 }
             } else {
-                if (!User::where('id', $value)->exists()) {
+                if (! User::where('id', $value)->exists()) {
                     $fail('The selected client does not exist.');
                 }
             }

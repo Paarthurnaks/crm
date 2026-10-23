@@ -13,8 +13,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('sections', function (Blueprint $table) {
-            $table->dropForeign(["sales_funnel_id"]);
-            $table->dropColumn("sales_funnel_id");
+            $table->dropForeign(['sales_funnel_id']);
+            $table->dropColumn('sales_funnel_id');
         });
     }
 

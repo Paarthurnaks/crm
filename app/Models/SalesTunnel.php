@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @OA\Schema(
  *     title="SalesFunnel",
  *     description="Направление продажи",
+ *
  *     @OA\Xml(
  *         name="SalesFunnel"
  *     )
@@ -20,8 +21,8 @@ class SalesTunnel extends Model
     use HasFactory;
 
     protected $fillable = [
-        "from_stage_id",
-        "to_stage_id"
+        'from_stage_id',
+        'to_stage_id',
     ];
 
     /**
@@ -35,6 +36,7 @@ class SalesTunnel extends Model
      * @var bigInteger
      */
     private $id;
+
     /**
      * @OA\Property(
      *     title="from_stage_id",
@@ -46,6 +48,7 @@ class SalesTunnel extends Model
      * @var bigInteger
      */
     private $from_stage_id;
+
     /**
      * @OA\Property(
      *     title="to_stage_id",

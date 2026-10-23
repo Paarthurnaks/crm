@@ -20,17 +20,12 @@ use Illuminate\Support\Facades\DB;
 class UserFieldService
 {
     private const ERROR_MESSAGES = [
-        'createError' => 'Произошла ошибка во время создания пользовательского поля'
+        'createError' => 'Произошла ошибка во время создания пользовательского поля',
     ];
 
-    /**
-     * @param UserFieldFilter $filter
-     * @param array $queryParams
-     * @return LengthAwarePaginator
-     */
     public function getList(UserFieldFilter $filter, array $queryParams = []): LengthAwarePaginator
     {
-        $limit = $queryParams["limit"] ?? config("constants.paginator.limit");
+        $limit = $queryParams['limit'] ?? config('constants.paginator.limit');
 
         return UserField::filter($filter)
             ->with('userFieldEnumValues')
@@ -40,7 +35,7 @@ class UserFieldService
 
     /**
      * @param array
-     * @return UserField
+     *
      * @throws Exception
      */
     public function create(array $data): UserField
@@ -48,16 +43,16 @@ class UserFieldService
         try {
             return DB::transaction(function () use ($data) {
                 $userField = UserField::create([
-                    "entity" => $data["entity"],
-                    "name" => $data["name"],
-                    "type" => $data["type"],
+                    'entity' => $data['entity'],
+                    'name' => $data['name'],
+                    'type' => $data['type'],
                 ]);
 
-                $code = 'uf_' . $data["entity"] . '_' . $userField->id;
+                $code = 'uf_'.$data['entity'].'_'.$userField->id;
                 $userField->update(['code' => $code]);
 
-                if ($data["type"] === UserFieldTypeEnum::ENUM->value) {
-                    $options = collect($data["options"])->map(function ($option) {
+                if ($data['type'] === UserFieldTypeEnum::ENUM->value) {
+                    $options = collect($data['options'])->map(function ($option) {
                         return new UserFieldEnumValue([
                             'option' => $option['option'],
                             'sort_order' => $option['sort_order'],
@@ -75,9 +70,6 @@ class UserFieldService
     }
 
     /**
-     * @param array $data
-     * @param UserField $userField
-     * @return UserField
      * @throws Exception
      */
     public function update(UserField $userField, array $data): UserField
@@ -85,13 +77,13 @@ class UserFieldService
         try {
             return DB::transaction(function () use ($data, $userField) {
                 $userField->update([
-                    "entity" => $data["entity"],
-                    "name" => $data["name"],
-                    "type" => $data["type"],
+                    'entity' => $data['entity'],
+                    'name' => $data['name'],
+                    'type' => $data['type'],
                 ]);
 
-                if ($data["type"] === UserFieldTypeEnum::ENUM->value) {
-                    $options = collect($data["options"])->map(function ($option) {
+                if ($data['type'] === UserFieldTypeEnum::ENUM->value) {
+                    $options = collect($data['options'])->map(function ($option) {
                         if (isset($option['id'])) {
                             $enumValue = UserFieldEnumValue::find($option['id']);
                             if ($enumValue) {
@@ -99,6 +91,7 @@ class UserFieldService
                                     'option' => $option['option'],
                                     'sort_order' => $option['sort_order'],
                                 ]);
+
                                 return $enumValue;
                             }
                         }
@@ -109,7 +102,7 @@ class UserFieldService
                         ]);
                     });
 
-                    $userField->userFieldEnumValues()->whereNotIn('id', collect($data["options"])
+                    $userField->userFieldEnumValues()->whereNotIn('id', collect($data['options'])
                         ->pluck('id')
                         ->filter())
                         ->delete();
@@ -123,35 +116,25 @@ class UserFieldService
         }
     }
 
-    /**
-     * @param UserField $field
-     * @return void
-     */
     public function delete(UserField $field): void
     {
         $field->delete();
     }
 
-    /**
-     * @param Model $model
-     * @param array $data
-     * @param SectionFieldEntityEnum $entityEnum
-     * @return void
-     */
     public function updateUserFieldEntity(Model $model, array $data, SectionFieldEntityEnum $entityEnum): void
     {
         foreach ($data as $key => $value) {
             if ($key === 'user_field_values') {
                 $this->addUserFieldValues($model->id, $value, $entityEnum);
-            } else if ($key === 'sales_funnel_id') {
+            } elseif ($key === 'sales_funnel_id') {
                 $model->sales_funnel_id = $value;
                 $salesFunnel = SalesFunnel::find($value);
-                $salesStage = $salesFunnel->salesStages()->where("position", 1)->first();
+                $salesStage = $salesFunnel->salesStages()->where('position', 1)->first();
                 $model->sales_stage_id = $salesStage->id ?? $salesFunnel->salesStages()->first()->id;
-            } else if ($key === 'responsible_id' && $model->client instanceof User && $model->client->partner && $value !== $model->client->partner->id) {
+            } elseif ($key === 'responsible_id' && $model->client instanceof User && $model->client->partner && $value !== $model->client->partner->id) {
                 $model->client = null;
-            } else if ($key === 'client_id') {
-                $client = is_integer($value) ? User::find($value) : null;
+            } elseif ($key === 'client_id') {
+                $client = is_int($value) ? User::find($value) : null;
 
                 if ($client && $client->partner?->id !== $model->responsible_id) {
                     $model->client = null;
@@ -164,12 +147,6 @@ class UserFieldService
         }
     }
 
-    /**
-     * @param int $entityId
-     * @param array $fieldValues
-     * @param SectionFieldEntityEnum $entityEnum
-     * @return void
-     */
     public function addUserFieldValues(int $entityId, array $fieldValues, SectionFieldEntityEnum $entityEnum): void
     {
         foreach ($fieldValues as $ufName => $ufValue) {
@@ -177,7 +154,7 @@ class UserFieldService
                 ->where('entity', $entityEnum->value)
                 ->first();
 
-            if (!$userField) {
+            if (! $userField) {
                 continue;
             }
 
@@ -185,15 +162,11 @@ class UserFieldService
                 'field_id' => $userField->id,
                 'entity_id' => $entityId,
             ], [
-                'value' => $ufValue
+                'value' => $ufValue,
             ]);
         }
     }
 
-    /**
-     * @param UserField|null $userField
-     * @return void
-     */
     public function setupBooleanValues(?UserField $userField = null): void
     {
         $userFields = $userField
@@ -223,7 +196,6 @@ class UserFieldService
                 ]);
             }
         }
-
 
         if ($newFieldValues->isNotEmpty()) {
             UserFieldValue::insert($newFieldValues->toArray());

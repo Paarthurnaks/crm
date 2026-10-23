@@ -15,12 +15,12 @@ class UserFieldEnumValuesResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            "id" => $this->id,
-            "field_id" => $this->field_id,
-            "option" => $this->option,
-            "sort_order" => $this->sort_order,
-            "created_at" => $this->created_at,
-            "updated_at" => $this->updated_at
+            'id' => $this->id,
+            'field_id' => $this->field_id,
+            'option' => $this->option,
+            'sort_order' => $this->sort_order,
+            'created_at' => $this->created_at,
+            'updated_at' => $this->updated_at,
         ];
     }
 }

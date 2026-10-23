@@ -15,14 +15,14 @@ class PermissionResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            "id" => $this->id,
-            "entity" => $this->entity,
-            "view" => $this->view,
-            "create" => $this->create,
-            "update" => $this->update,
-            "delete" => $this->delete,
-            "import" => $this->import,
-            "export" => $this->export
+            'id' => $this->id,
+            'entity' => $this->entity,
+            'view' => $this->view,
+            'create' => $this->create,
+            'update' => $this->update,
+            'delete' => $this->delete,
+            'import' => $this->import,
+            'export' => $this->export,
         ];
     }
 }
