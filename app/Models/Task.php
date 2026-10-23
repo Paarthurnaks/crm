@@ -1,0 +1,254 @@
+<?php
+
+namespace App\Models;
+
+use App\Enums\TaskStatusEnum;
+use App\Http\Filters\Traits\Filterable;
+use BeyondCode\Comments\Traits\HasComments;
+use Illuminate\Contracts\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Spatie\MediaLibrary\InteractsWithMedia;
+use OpenApi\Annotations as OA;
+use Spatie\MediaLibrary\HasMedia;
+
+/**
+ * @property int $id
+ * @property int $deal_id
+ * @property int $creator_id
+ * @property string $title
+ * @property string $description
+ * @property string $status
+ * @property string $deadline
+ * @property string $type
+ *
+ * @OA\Schema(
+ *     title="Task",
+ *     description="Задача",
+ *     @OA\Xml(
+ *         name="Task"
+ *     )
+ * )
+ */
+class Task extends Model implements HasMedia
+{
+    use HasFactory,
+        Filterable,
+        HasComments,
+        InteractsWithMedia;
+
+    protected $fillable = [
+        "deal_id",
+        "creator_id",
+        "title",
+        "description",
+        "status",
+        "deadline",
+        "start_time",
+        "type",
+        "email",
+        "client_full_name",
+        "service",
+        "docket_number",
+    ];
+
+    /**
+     * @OA\Property(
+     *     title="ID",
+     *     description="ID",
+     *     type="int",
+     *     example=15
+     * )
+     *
+     * @var int $id
+     */
+    private int $id;
+
+    /**
+     * @OA\Property(
+     *      title="creator_id",
+     *      description="постановщик задачи",
+     *      type="int",
+     *      example=150
+     * )
+     *
+     * @var float $sum
+     */
+    private float $creator_id;
+
+    /**
+     * @OA\Property(
+     *     title="deal_id",
+     *     description="id привязанной сделки",
+     *     type="int",
+     *     example=1
+     * )
+     *
+     * @var int $deal_id
+     */
+    private int $deal_id;
+    /**
+     * @OA\Property(
+     *     title="expired",
+     *     description="задача просрочена",
+     *     type="bool",
+     *     example="false"
+     * )
+     *
+     * @var bool
+     */
+    private bool $expired;
+    /**
+     * @OA\Property(
+     *     title="deadline",
+     *     description="крайний срок",
+     *     type="string",
+     *     example="2024-02-01 15:17"
+     * )
+     *
+     * @var string
+     */
+    private string $deadline;
+    /**
+     * @OA\Property(
+     *     title="start_time",
+     *     description="крайний срок",
+     *     type="string",
+     *     example="2024-02-01 15:17"
+     * )
+     *
+     * @var string
+     */
+    private string $start_time;
+    /**
+     * @OA\Property(
+     *     title="status",
+     *     description="статус задачи",
+     *     type="string",
+     *     example="new"
+     * )
+     *
+     * @var string
+     */
+    private string $status;
+    /**
+     * @OA\Property(
+     *     title="title",
+     *     description="название задачи",
+     *     type="string",
+     *     example="242_test"
+     * )
+     *
+     * @var string
+     */
+    private string $title;
+
+    /**
+     * @OA\Property(
+     *     title="description",
+     *     description="описание задачи",
+     *     type="string",
+     *     example="242_test description"
+     * )
+     *
+     * @var string
+     */
+    private string $description;
+
+    /**
+     * @OA\Property(
+     *     title="executors",
+     *     description="ответственные",
+     *     type="array",
+     *     @OA\Items(
+     *          ref="#/components/schemas/User"
+     *     )
+     * )
+     * @var array $executors
+     */
+    private array $executors;
+
+    /**
+     * @OA\Property(
+     *     title="$observers",
+     *     description="наблюдатели",
+     *     type="array",
+     *     @OA\Items(
+     *          ref="#/components/schemas/User"
+     *     )
+     * )
+     * @var array $observers
+     */
+    private array $observers;
+
+    /**
+     * @OA\Property(
+     *     title="type",
+     *     description="Тип задачи",
+     *     type="string",
+     *     example="helpdesk"
+     * )
+     * @var string $type
+     */
+    private string $type;
+
+    public function getDescriptionAttribute($value): string
+    {
+        return strip_tags($value);
+    }
+
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, "creator_id");
+    }
+
+    public function deal(): BelongsTo
+    {
+        return $this->belongsTo(Deal::class, "deal_id");
+    }
+
+    public function executors(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'task_executors','task_id', 'user_id');
+    }
+
+    public function observers(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'task_observers','task_id', 'user_id');
+    }
+
+    public function events(): HasMany
+    {
+        return $this->hasMany(TaskEvent::class, "task_id", "id");
+    }
+
+    public function activities(): MorphMany
+    {
+        return $this->morphMany(EntityActivity::class, 'activityable');
+    }
+
+    public function scopeOwnTasks($query): Builder
+    {
+        return $query->where('creator_id', auth()->id())
+            ->orWhereHas('executors', function ($query) {
+                $query->where('user_id', auth()->id());
+            })
+            ->orWhereHas('observers', function ($query) {
+                $query->where('user_id', auth()->id());
+            });
+    }
+
+    public function scopeOpenedTasks($query): Builder
+    {
+        return $query->where('status', '!=', TaskStatusEnum::CLOSED);
+    }
+
+    public function scopeAllTasks($query): Builder
+    {
+        return $query;
+    }
+}

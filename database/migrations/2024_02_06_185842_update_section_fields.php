@@ -1,0 +1,33 @@
+<?php
+
+use App\Models\Field;
+use App\Models\UserField;
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::table('section_fields', function (Blueprint $table) {
+            $table->dropColumn("code");
+            $table->foreignIdFor(Field::class)->nullable()->constrained()->nullOnDelete();
+            $table->foreignIdFor(UserField::class)->nullable()->constrained()->nullOnDelete();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {   
+        Schema::table('section_fields', function (Blueprint $table) {
+            $table->string("code");
+            $table->dropForeignIdFor(Field::class);
+        });
+    }
+};
