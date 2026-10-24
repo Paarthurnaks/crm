@@ -2,17 +2,17 @@
 
 namespace App\Services;
 
-use App\Enums\UserFieldTypeEnum;
+use App\Enums\EntityTypeEnum;
 use App\Http\Filters\DocumentTemplateFilter;
 use App\Models\Deal;
 use App\Models\DocumentTemplate;
 use App\Models\User;
 use App\Models\UserField;
+use App\Services\Document\TemplateValueFormatter;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-use InvalidArgumentException;
 use PhpOffice\PhpWord\Exception\CopyFileException;
 use PhpOffice\PhpWord\Exception\CreateTemporaryFileException;
 use PhpOffice\PhpWord\TemplateProcessor;
@@ -94,24 +94,109 @@ class DocumentService
      */
     public function generateDocumentFromTemplate(Deal $deal, DocumentTemplate $template): array
     {
-        // берём все юзерфилды и их значение у этой сделки, если ее нет - вернется пустой массив,
-        // а в доке будет "Не указано"
-        $userFieldValues = UserField::with(['fieldValues' => function ($query) use ($deal) {
+        $startedAt = microtime(true);
+        $formatter = new TemplateValueFormatter;
+        $media = $template->getMedia()->last();
+
+        if (! $media || ! is_file($media->getPath())) {
+            Log::error('Файл шаблона документа отсутствует', ['deal_id' => $deal->id, 'template_id' => $template->id]);
+
+            throw new RuntimeException('Файл шаблона не найден');
+        }
+
+        try {
+            $userFieldValues = $this->userFieldValues($deal, $formatter);
+            $tableRows = $formatter->tableRows($userFieldValues['table'] ?? null);
+            unset($userFieldValues['table']);
+
+            $values = array_merge($userFieldValues, $this->dealValues($deal));
+            $values = array_map($formatter->placeholder(...), $values);
+        } catch (\Throwable $exception) {
+            Log::error('Ошибка подготовки данных для шаблона документа', [
+                'deal_id' => $deal->id,
+                'template_id' => $template->id,
+                'error_type' => get_class($exception),
+            ]);
+
+            throw $exception;
+        }
+
+        Log::debug('Данные для шаблона документа подготовлены', [
+            'deal_id' => $deal->id,
+            'template_id' => $template->id,
+            'duration_ms' => (int) ((microtime(true) - $startedAt) * 1000),
+        ]);
+
+        try {
+            $templateProcessor = new TemplateProcessor($media->getPath());
+            $templateProcessor->setValues($values);
+
+            if ($tableRows !== null) {
+                $this->fillTable($templateProcessor, $tableRows);
+            }
+        } catch (\Throwable $exception) {
+            Log::error('Ошибка заполнения шаблона документа', [
+                'deal_id' => $deal->id,
+                'template_id' => $template->id,
+                'error_type' => get_class($exception),
+            ]);
+
+            throw $exception;
+        }
+
+        $fileBaseName = Str::random(15);
+        $fileDocxName = storage_path($fileBaseName.'.docx');
+        $filePdfName = storage_path($fileBaseName.'.pdf');
+
+        try {
+            $templateProcessor->saveAs($fileDocxName);
+            Log::debug('Шаблон документа заполнен', [
+                'deal_id' => $deal->id,
+                'template_id' => $template->id,
+                'duration_ms' => (int) ((microtime(true) - $startedAt) * 1000),
+            ]);
+
+            $filePdfName = $this->convertDocxToPdf($fileDocxName);
+
+            Log::debug('Документ подготовлен', [
+                'deal_id' => $deal->id,
+                'template_id' => $template->id,
+                'duration_ms' => (int) ((microtime(true) - $startedAt) * 1000),
+            ]);
+
+            return ['docx' => $fileDocxName, 'pdf' => $filePdfName];
+        } catch (\Throwable $exception) {
+            File::delete([$fileDocxName, $filePdfName]);
+            Log::error('Ошибка подготовки документа', [
+                'deal_id' => $deal->id,
+                'template_id' => $template->id,
+                'error_type' => get_class($exception),
+            ]);
+
+            throw $exception;
+        }
+    }
+
+    private function userFieldValues(Deal $deal, TemplateValueFormatter $formatter): array
+    {
+        return UserField::with(['fieldValues' => function ($query) use ($deal) {
             $query->where('entity_id', $deal->id);
         }])
+            ->where('entity', EntityTypeEnum::DEALS->value)
             ->get()
-            ->mapWithKeys(function ($userField) {
-                $userFieldValue = $userField->fieldValues->first();
+            ->mapWithKeys(function (UserField $field) use ($formatter) {
+                $value = $field->fieldValues->first()?->value;
 
-                if ($userField->type === UserFieldTypeEnum::BOOLEAN->value) {
-                    return [$userField->code => $userFieldValue?->value ? 'Да' : 'Нет'];
-                }
-
-                return [$userField->code => $userFieldValue?->value ?: 'Не указано'];
+                return [$field->code => $field->code === 'table'
+                    ? $value
+                    : $formatter->userField($field->type, $value)];
             })
             ->toArray();
+    }
 
-        $data = [
+    private function dealValues(Deal $deal): array
+    {
+        return [
             'title' => $deal->title,
             'sales_stage' => $deal->salesStage?->title ?? 'Не указано',
             'sales_funnel' => $deal->salesFunnel?->title ?? 'Не указано',
@@ -124,66 +209,11 @@ class DocumentService
             'updated_at' => $deal->updated_at->toDateTimeString(),
             'id' => $deal->id,
         ];
-
-        $media = $template->getMedia()->last();
-        if (! $media || ! is_file($media->getPath())) {
-            Log::warning('Document template file missing', ['template_id' => $template->id]);
-
-            throw new RuntimeException('Файл шаблона не найден');
-        }
-
-        $path = $media->getPath();
-        $templateProcessor = new TemplateProcessor($path);
-
-        $tableData = $userFieldValues['table'] ?? null;
-        unset($userFieldValues['table']);
-        $data = array_merge($userFieldValues, $data);
-        $data = array_map(function ($value) {
-            if (is_null($value)) {
-                return '';
-            }
-            if (is_array($value) || is_object($value)) {
-                return json_encode($value, JSON_UNESCAPED_UNICODE);
-            }
-
-            return (string) $value;
-        }, $data);
-        $templateProcessor->setValues($data);
-
-        if ($tableData !== null) {
-            if (is_string($tableData)) {
-                $tableData = json_decode($tableData, true);
-            }
-
-            if (! is_array($tableData) || $tableData === [] || ! is_string(array_key_first($tableData))) {
-                throw new InvalidArgumentException('Некорректные данные таблицы в шаблоне');
-            }
-
-            $this->fillTable($templateProcessor, $tableData);
-        }
-
-        $fileBaseName = Str::random(15);
-        $fileDocxName = storage_path($fileBaseName.'.docx');
-
-        $templateProcessor->saveAs($fileDocxName);
-
-        try {
-            $filePdfName = $this->convertDocxToPdf($fileDocxName);
-        } catch (\Throwable $exception) {
-            File::delete($fileDocxName);
-
-            throw $exception;
-        }
-
-        return [
-            'docx' => $fileDocxName,
-            'pdf' => $filePdfName,
-        ];
     }
 
-    private function fillTable(TemplateProcessor $templateProcessor, array $tableData): void
+    private function fillTable(TemplateProcessor $templateProcessor, array $rows): void
     {
-        $templateProcessor->cloneRowAndSetValues(current(array_keys($tableData)), $tableData);
+        $templateProcessor->cloneRowAndSetValues(array_key_first($rows[0]), $rows);
     }
 
     public function convertDocxToPdf(string $docxPath): string
@@ -202,7 +232,7 @@ class DocumentService
 
         try {
             $profileUrl = 'file:///'.str_replace('\\', '/', ltrim($profilePath, '\\/'));
-            $process = new Process([
+            $process = $this->conversionProcess([
                 'libreoffice',
                 '-env:UserInstallation='.$profileUrl,
                 '--headless',
@@ -227,5 +257,10 @@ class DocumentService
         } finally {
             File::deleteDirectory($profilePath);
         }
+    }
+
+    protected function conversionProcess(array $command): Process
+    {
+        return new Process($command);
     }
 }
