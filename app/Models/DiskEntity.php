@@ -38,6 +38,7 @@ class DiskEntity extends Model
 
     protected $casts = [
         'type' => DiskEntityTypeEnum::class,
+        'deleted' => 'boolean',
     ];
 
     /**
@@ -48,7 +49,7 @@ class DiskEntity extends Model
      *     example=1
      * )
      *
-     * @var bigInteger
+     * @var int
      */
     private $id;
 
@@ -72,7 +73,7 @@ class DiskEntity extends Model
      *     example=1
      * )
      *
-     * @var bigInteger
+     * @var int
      */
     private $who_created_id;
 
@@ -84,7 +85,7 @@ class DiskEntity extends Model
      *     example=1
      * )
      *
-     * @var bigInteger
+     * @var int
      */
     private $who_changed_id;
 
@@ -96,7 +97,7 @@ class DiskEntity extends Model
      *     example=4096
      * )
      *
-     * @var bigInteger
+     * @var int
      */
     private $size;
 

@@ -9,7 +9,10 @@ class DiskEntityObserver
 {
     public function updating(DiskEntity $diskEntity): void
     {
-        $diskEntity->who_changed_id = Auth::user()->id;
+        if (($actorId = Auth::id()) !== null) {
+            $diskEntity->who_changed_id = $actorId;
+        }
+
         $diskEntity->updated_at = now();
     }
 }
