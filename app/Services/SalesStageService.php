@@ -8,6 +8,8 @@ use App\Http\Filters\SalesStageFilter;
 use App\Models\SalesStage;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Log;
+use InvalidArgumentException;
 
 class SalesStageService
 {
@@ -75,16 +77,19 @@ class SalesStageService
 
     public function returnStageColor(array $stageData): string
     {
-        switch ($stageData['type']) {
-            case SalesStageEnum::DEFAULT->value:
-                return $stageData['color'] ?? config('constants.stages.default_color');
-                break;
-            case SalesStageEnum::SUCCESS->value:
-                return config('constants.stages.success_color');
-                break;
-            case SalesStageEnum::UNSUCCESS->value:
-                return config('constants.stages.unsuccess_color');
-                break;
+        $color = match ($stageData['type']) {
+            SalesStageEnum::DEFAULT->value => $stageData['color'] ?? config('constants.stages.default_color'),
+            SalesStageEnum::SUCCESS->value => config('constants.stages.success_color'),
+            SalesStageEnum::UNSUCCESS->value => config('constants.stages.unsuccess_color'),
+            default => null,
+        };
+
+        if ($color === null) {
+            Log::warning('Отклонён неподдерживаемый тип стадии продаж');
+
+            throw new InvalidArgumentException('Недопустимый тип стадии продаж');
         }
+
+        return (string) $color;
     }
 }

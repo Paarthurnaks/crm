@@ -75,12 +75,8 @@ class ChatController extends Controller
 
         $chats = $this->service->getChatsList($validated, $filter);
 
-        $userId = auth()->id();
-
         return ResponseService::success(
-            ChatResource::collection($chats->map(function ($chat) use ($userId) {
-                return new ChatResource($chat, $userId);
-            }))->response()->getData(true)
+            ChatResource::collection($chats)->response()->getData(true)
         );
     }
 

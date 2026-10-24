@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "d640d4cdecb23acb3d232363bf03c0a6",
+    "content-hash": "130ca303e8fe311334d5f9495a8bf0ad",
     "packages": [
         {
             "name": "alexusmai/laravel-file-manager",
@@ -8779,6 +8779,49 @@
             "time": "2025-04-30T06:54:44+00:00"
         },
         {
+            "name": "iamcal/sql-parser",
+            "version": "0.5.0",
+            "dist": {
+                "type": "zip",
+                "url": "https://codeload.github.com/iamcal/SQLParser/zip/644fd994de3b54e5d833aecf406150aa3b66ca88",
+                "reference": "644fd994de3b54e5d833aecf406150aa3b66ca88"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "iamcal\\": "src"
+                }
+            }
+        },
+        {
+            "name": "larastan/larastan",
+            "version": "2.11.2",
+            "dist": {
+                "type": "zip",
+                "url": "https://codeload.github.com/larastan/larastan/zip/1aae902a5851c03dc1a58cbd9010a0c3ef8def63",
+                "reference": "1aae902a5851c03dc1a58cbd9010a0c3ef8def63"
+            },
+            "require": {
+                "ext-json": "*",
+                "iamcal/sql-parser": "^0.5.0",
+                "illuminate/console": "^9.52.20 || ^10.48.28 || ^11.41.3",
+                "illuminate/container": "^9.52.20 || ^10.48.28 || ^11.41.3",
+                "illuminate/contracts": "^9.52.20 || ^10.48.28 || ^11.41.3",
+                "illuminate/database": "^9.52.20 || ^10.48.28 || ^11.41.3",
+                "illuminate/http": "^9.52.20 || ^10.48.28 || ^11.41.3",
+                "illuminate/pipeline": "^9.52.20 || ^10.48.28 || ^11.41.3",
+                "illuminate/support": "^9.52.20 || ^10.48.28 || ^11.41.3",
+                "php": "^8.0.2",
+                "phpstan/phpstan": "^1.12.17"
+            },
+            "type": "phpstan-extension",
+            "autoload": {
+                "psr-4": {
+                    "Larastan\\Larastan\\": "src/"
+                }
+            }
+        },
+        {
             "name": "laravel/pint",
             "version": "v1.22.1",
             "source": {
@@ -9263,6 +9306,28 @@
                 "source": "https://github.com/phar-io/version/tree/3.2.1"
             },
             "time": "2022-02-21T01:04:05+00:00"
+        },
+        {
+            "name": "phpstan/phpstan",
+            "version": "1.12.33",
+            "dist": {
+                "type": "zip",
+                "url": "https://codeload.github.com/phpstan/phpstan/zip/65399842ee2e02841167944781e11481a3efdbca",
+                "reference": "65399842ee2e02841167944781e11481a3efdbca"
+            },
+            "require": {
+                "php": "^7.2|^8.0"
+            },
+            "bin": [
+                "phpstan",
+                "phpstan.phar"
+            ],
+            "type": "library",
+            "autoload": {
+                "files": [
+                    "bootstrap.php"
+                ]
+            }
         },
         {
             "name": "phpunit/php-code-coverage",
@@ -11051,5 +11116,5 @@
         "ext-zip": "*"
     },
     "platform-dev": {},
-    "plugin-api-version": "2.6.0"
+    "plugin-api-version": "2.9.0"
 }

@@ -10,11 +10,11 @@ use App\Models\Deal;
 use App\Models\Report;
 use App\Models\ReportField;
 use Carbon\Carbon;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Auth\Access\AuthorizationException;
 
 class ReportService
 {
@@ -63,6 +63,8 @@ class ReportService
     public function updateReport(Report $report, array $reportData)
     {
         $report = DB::transaction(function () use ($report, $reportData) {
+            $reportFields = [];
+
             if (isset($reportData['report_fields'])) {
                 $reportFields = $reportData['report_fields'];
                 unset($reportData['report_fields']);

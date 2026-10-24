@@ -108,7 +108,7 @@ class DealObserver
             $oldResponsibleId = $deal->getOriginal('responsible_id');
             $oldResponsible = User::find($oldResponsibleId);
 
-            if (auth()->user()) {
+            if ($oldResponsible && auth()->user()) {
                 $dealEvent = DealEvent::create([
                     'deal_id' => $deal->id,
                     'initiator_id' => Auth::user()->id,
@@ -117,9 +117,9 @@ class DealObserver
                     'old_value' => $oldResponsible->name.' '.$oldResponsible->surname,
                     'new_value' => $deal->responsible->name.' '.$deal->responsible->surname,
                 ]);
-            }
 
-            $oldResponsible->notify(new DealEventNotification($dealEvent, compact('oldResponsibleId')));
+                $oldResponsible->notify(new DealEventNotification($dealEvent, compact('oldResponsibleId')));
+            }
         } elseif ($deal->isDirty('client')) {
             $oldClientData = $deal->getOriginal('client');
 

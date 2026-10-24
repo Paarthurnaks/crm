@@ -20,6 +20,7 @@ use Exception;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use InvalidArgumentException;
 
 class ChatService
 {
@@ -57,6 +58,16 @@ class ChatService
      */
     public function create(array $data, ?int $userId = null): Chat
     {
+        if (! in_array($data['type'] ?? null, [
+            ChatTypeEnum::SINGLE->value,
+            ChatTypeEnum::GROUP->value,
+            ChatTypeEnum::PARTNER->value,
+        ], true)) {
+            Log::warning('Отклонено создание чата с неподдерживаемым типом');
+
+            throw new InvalidArgumentException('Недопустимый тип чата для ручного создания');
+        }
+
         return DB::transaction(function () use ($data, $userId) {
             $userId = $userId ?? auth()->id();
 

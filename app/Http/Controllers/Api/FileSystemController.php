@@ -16,7 +16,9 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use RuntimeException;
 use Symfony\Component\HttpFoundation\Response;
 
 class FileSystemController extends Controller
@@ -267,16 +269,18 @@ class FileSystemController extends Controller
 
         $disk = Storage::disk('public');
         $folderPath = 'entities/available/'.trim($path, '/').'/'.$validated['title'];
-        $disk->makeDirectory($folderPath, 0777, true);
+        if (! $disk->makeDirectory($folderPath)) {
+            Log::error('Не удалось создать папку на диске', ['actor_id' => Auth::id()]);
 
-        $folderSize = File::size($disk->path($folderPath));
+            throw new RuntimeException('Не удалось создать папку');
+        }
 
         $diskEntity = DiskEntity::create([
             'title' => $validated['title'],
             'type' => DiskEntityTypeEnum::FOLDER->value,
             'who_created_id' => Auth::id(),
             'path' => substr_count($path, '/') > 1 ? rtrim($path, '/') : $path,
-            'size' => $folderSize,
+            'size' => 0,
         ]);
         Auth::user()->role->availableDiskEntities()->attach($diskEntity);
 

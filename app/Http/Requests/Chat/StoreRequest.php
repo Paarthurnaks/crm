@@ -5,7 +5,7 @@ namespace App\Http\Requests\Chat;
 use App\Enums\ChatTypeEnum;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rules\Enum;
+use Illuminate\Validation\Rule;
 
 class StoreRequest extends FormRequest
 {
@@ -25,7 +25,11 @@ class StoreRequest extends FormRequest
     public function rules(Request $request): array
     {
         $rules = [
-            'type' => ['required', 'string', new Enum(ChatTypeEnum::class)],
+            'type' => ['required', 'string', Rule::in([
+                ChatTypeEnum::SINGLE->value,
+                ChatTypeEnum::GROUP->value,
+                ChatTypeEnum::PARTNER->value,
+            ])],
             'description' => ['nullable', 'string', 'max:1000'],
             'user_ids.*' => ['required', 'distinct', 'integer', 'exists:users,id'],
         ];
