@@ -9,8 +9,6 @@ use Illuminate\Support\Facades\Storage;
 
 class MeResource extends JsonResource
 {
-    public static array $includedPartnerIds = [];
-
     /**
      * Transform the resource into an array.
      *
@@ -33,11 +31,9 @@ class MeResource extends JsonResource
             'avatar' => $this->getFirstMedia()?->getUrl() ?? Storage::disk('public')->url('avatars/avatar.png'),
         ];
 
-        if (! array_key_exists($this->id, self::$includedPartnerIds) && auth()->user()->hasRole(DefaultRolesEnum::CLIENT->value)
-        ) {
+        if ($request->user()?->hasRole(DefaultRolesEnum::CLIENT->value)) {
             $partnerDeals = $this->partnerDeals()->select('id', 'title')->get();
-            if ($partnerDeals) {
-                self::$includedPartnerIds[] = $this->id;
+            if ($partnerDeals->isNotEmpty()) {
                 $res['partner_deals'] = $partnerDeals;
             }
         }

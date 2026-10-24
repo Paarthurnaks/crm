@@ -14,7 +14,8 @@ use App\Models\SectionField;
 use App\Models\UserField;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Mockery\Exception;
+use Illuminate\Support\Facades\Log;
+use RuntimeException;
 
 class FieldService
 {
@@ -67,8 +68,8 @@ class FieldService
                 $this->addRequiredFieldToTemplates($field);
                 $this->setupRolesByField($field);
             });
-        } catch (Exception $e) {
-            throw new Exception(self::ERROR_MESSAGES['updateError']);
+        } catch (\Throwable $e) {
+            throw new RuntimeException(self::ERROR_MESSAGES['updateError'], 0, $e);
         }
     }
 
@@ -116,11 +117,8 @@ class FieldService
         $funnels = SalesFunnel::all();
 
         foreach ($funnels as $funnel) {
-            $fieldIsAlreadyExists = $funnel->whereHas('userFields', function ($query) use ($field) {
-                $query->where('user_fields.id', $field->id);
-            })->orWhereHas('fields', function ($query) use ($field) {
-                $query->where('fields.id', $field->id);
-            })->exists();
+            $relation = $isUserfield ? $funnel->userFields() : $funnel->fields();
+            $fieldIsAlreadyExists = $relation->whereKey($field->id)->exists();
 
             if ($fieldIsAlreadyExists) {
                 continue;
@@ -131,6 +129,8 @@ class FieldService
             } else {
                 $funnel->fields()->attach($field->id, ['sales_funnel_id' => $funnel->id]);
             }
+
+            Log::debug('Field added to funnel', ['field_id' => $field->id, 'funnel_id' => $funnel->id, 'is_user_field' => $isUserfield]);
         }
     }
 
@@ -139,12 +139,10 @@ class FieldService
         $roles = Role::all();
 
         foreach ($roles as $role) {
-            $permissionQuery = $role->permissions()->where('entity', PermissionEntityEnum::DEALS->value);
-
             $permissions = [
-                'view' => $permissionQuery->where('view', '!=', PermissionTypeEnum::FORBIDDEN->value)->exists(),
-                'update' => $permissionQuery->where('update', '!=', PermissionTypeEnum::FORBIDDEN->value)->exists(),
-                'create' => $permissionQuery->where('create', '!=', PermissionTypeEnum::FORBIDDEN->value)->exists(),
+                'view' => $role->permissions()->where('entity', PermissionEntityEnum::DEALS->value)->where('view', '!=', PermissionTypeEnum::FORBIDDEN->value)->exists(),
+                'update' => $role->permissions()->where('entity', PermissionEntityEnum::DEALS->value)->where('update', '!=', PermissionTypeEnum::FORBIDDEN->value)->exists(),
+                'create' => $role->permissions()->where('entity', PermissionEntityEnum::DEALS->value)->where('create', '!=', PermissionTypeEnum::FORBIDDEN->value)->exists(),
             ];
 
             $isUserField = $field instanceof UserField;
@@ -159,7 +157,7 @@ class FieldService
 
                     if (! $existingPermission) {
                         $role->$relationMethod()->attach($field->id, ['type' => $permissionType]);
-                        break;
+                        Log::debug('Field permission added', ['field_id' => $field->id, 'role_id' => $role->id, 'action' => $permissionType]);
                     }
                 }
             }

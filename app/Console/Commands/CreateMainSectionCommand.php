@@ -8,6 +8,7 @@ use App\Models\Section;
 use App\Models\SectionField;
 use App\Models\User;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Log;
 
 class CreateMainSectionCommand extends Command
 {
@@ -23,50 +24,54 @@ class CreateMainSectionCommand extends Command
      *
      * @var string
      */
-    protected $description = 'Command description';
+    protected $description = 'Создать основные разделы для пользователей';
 
     /**
      * Execute the console command.
      */
-    public function handle()
+    public function handle(): int
     {
         $this->createMainSection();
+
+        return self::SUCCESS;
     }
 
-    private function createMainSection()
+    private function createMainSection(): void
     {
-        $users = User::all();
+        $fieldsByEntity = Field::query()->where('is_required', true)->get()->groupBy('entity');
+        $entities = array_column(EntityTypeEnum::cases(), 'value');
+        $processed = 0;
 
-        foreach ($users as $user) {
-            $fields = Field::where('is_required', true)
-                ->get();
-
-            $enumsArr = EntityTypeEnum::cases();
-            $entities = array_column($enumsArr, 'value');
-
-            foreach ($entities as $entity) {
-                $title = 'Общее';
-                $section = Section::create([
-                    'user_id' => $user->id,
-                    'entity' => $entity,
-                    'title' => $title,
-                    'position' => 1,
-                    'is_template' => true,
-                    'main_section' => true,
-                ]);
-
-                $entityFields = array_values(array_filter($fields->toArray(), function ($field) use ($entity) {
-                    return $field['entity'] == $entity;
-                }));
-
-                for ($i = 0; $i < count($entityFields); $i++) {
-                    SectionField::create([
-                        'section_id' => $section->id,
-                        'field_id' => $entityFields[$i]['id'],
-                        'position' => $i + 1,
+        foreach (User::query()->select('id')->lazyById(200) as $user) {
+            try {
+                foreach ($entities as $entity) {
+                    $section = Section::firstOrCreate([
+                        'user_id' => $user->id,
+                        'entity' => $entity,
+                        'is_template' => true,
+                        'main_section' => true,
+                    ], [
+                        'title' => 'Общее',
+                        'position' => 1,
                     ]);
+
+                    foreach ($fieldsByEntity->get($entity, collect())->values() as $position => $field) {
+                        SectionField::firstOrCreate([
+                            'section_id' => $section->id,
+                            'field_id' => $field->id,
+                        ], ['position' => $position + 1]);
+                    }
                 }
+                $processed++;
+                if ($processed % 200 === 0) {
+                    Log::info('Main section command progress', ['processed_users' => $processed]);
+                }
+            } catch (\Throwable $e) {
+                Log::error('Main section command failed', ['user_id' => $user->id, 'exception_class' => get_class($e)]);
+                throw $e;
             }
         }
+
+        Log::info('Main section command completed', ['processed_users' => $processed]);
     }
 }

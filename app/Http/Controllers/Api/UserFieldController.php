@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Enums\UserFieldTypeEnum;
 use App\Http\Controllers\Controller;
 use App\Http\Filters\UserFieldFilter;
+use App\Http\Requests\UserField\AddAttachmentRequest;
+use App\Http\Requests\UserField\DeleteAttachmentRequest;
 use App\Http\Requests\UserField\StoreRequest;
 use App\Http\Requests\UserField\UpdateRequest;
 use App\Http\Resources\ListResource;
@@ -17,6 +19,7 @@ use App\Services\UserFieldService;
 use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use OpenApi\Annotations as OA;
 
 class UserFieldController extends Controller
@@ -562,32 +565,20 @@ class UserFieldController extends Controller
      *      ),
      * )
      */
-    public function addAttachment(Request $request): JsonResponse
+    public function addAttachment(AddAttachmentRequest $request): JsonResponse
     {
-        $queryParams = $request->all();
-        if (isset($queryParams['user_field_id']) && isset($queryParams['entity_id'])) {
-            $userFieldValue = UserFieldValue::firstOrCreate([
-                'entity_id' => $queryParams['entity_id'],
-                'field_id' => $queryParams['user_field_id'],
-            ],
-                [
-                    'entity_id' => $queryParams['entity_id'],
-                    'field_id' => $queryParams['user_field_id'],
-                    'value' => null,
-                ]);
+        $data = $request->validated();
+        $userFieldValue = UserFieldValue::firstOrCreate([
+            'entity_id' => $data['entity_id'],
+            'field_id' => $data['user_field_id'],
+        ], ['value' => null]);
 
-            if ($request->has('attachments')) {
-                foreach ($request['attachments'] as $attachment) {
-                    $userFieldValue->addMedia($attachment)->toMediaCollection();
-                }
-            }
-
-            return ResponseService::success(
-                UserFieldValueResource::make($userFieldValue)
-            );
+        foreach ($data['attachments'] as $attachment) {
+            $media = $userFieldValue->addMedia($attachment)->toMediaCollection();
+            Log::info('User field attachment added', ['value_id' => $userFieldValue->id, 'media_id' => $media->id]);
         }
 
-        return ResponseService::unSuccess(message: 'Не отправлено id сущности и пользовательского поля');
+        return ResponseService::success(UserFieldValueResource::make($userFieldValue));
     }
 
     /**
@@ -656,13 +647,27 @@ class UserFieldController extends Controller
      *      ),
      * )
      */
-    public function deleteAttachment(Request $request, int $attachmentId)
+    public function deleteAttachment(DeleteAttachmentRequest $request, int $attachmentId): JsonResponse
     {
-        $queryParams = $request->all();
-        $userFieldValue = UserFieldValue::where('entity_id', $queryParams['entity_id'])
-            ->where('field_id', $queryParams['user_field_id'])
+        $data = $request->validated();
+        $userFieldValue = UserFieldValue::where('entity_id', $data['entity_id'])
+            ->where('field_id', $data['user_field_id'])
             ->first();
-        $userFieldValue->deleteMedia($attachmentId);
+        if (! $userFieldValue) {
+            Log::warning('User field value not found for attachment deletion', ['field_id' => $data['user_field_id'], 'entity_id' => $data['entity_id']]);
+
+            return ResponseService::notFound();
+        }
+
+        $media = $userFieldValue->media()->find($attachmentId);
+        if (! $media) {
+            Log::warning('User field attachment not found', ['value_id' => $userFieldValue->id, 'media_id' => $attachmentId]);
+
+            return ResponseService::notFound();
+        }
+
+        $userFieldValue->deleteMedia($media);
+        Log::info('User field attachment deleted', ['value_id' => $userFieldValue->id, 'media_id' => $attachmentId]);
         $userFieldValue->refresh();
 
         return ResponseService::success(

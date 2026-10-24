@@ -493,9 +493,11 @@ class FileSystemController extends Controller
             $path = $request->input('path', '/');
             $zipFilePath = $this->service->createExportedZip($path);
 
-            return response()->download($zipFilePath)->deleteFileAfterSend(true);
-        } catch (\Exception $e) {
-            return ResponseService::badRequest(message: $e->getMessage());
+            $fileName = trim($path, '/') === '' ? 'root.zip' : basename(trim($path, '/')).'.zip';
+
+            return response()->download($zipFilePath, $fileName)->deleteFileAfterSend(true);
+        } catch (\Throwable $e) {
+            return ResponseService::fromException($e, 'filesystem.export');
         }
     }
 }

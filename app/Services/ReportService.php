@@ -14,7 +14,7 @@ use Illuminate\Contracts\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Mockery\Exception;
+use Illuminate\Auth\Access\AuthorizationException;
 
 class ReportService
 {
@@ -103,7 +103,7 @@ class ReportService
         if (auth()->user()->hasAccess(EntityTypeEnum::ANALYTICS->value, 'delete', PermissionTypeEnum::ALL->value)) {
             $report->delete();
         } else {
-            throw new Exception('Недостаточно прав');
+            throw new AuthorizationException('Недостаточно прав');
         }
     }
 

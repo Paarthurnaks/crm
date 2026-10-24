@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
 class AuthTest extends TestCase
@@ -20,17 +21,20 @@ class AuthTest extends TestCase
         parent::setUp();
 
         $this->userData = [
-            'email' => 'example@242_test.com',
+            'email' => 'example242@test.com',
             'password' => '242_test',
         ];
 
-        $this->user = User::factory()->create($this->userData);
+        $this->user = User::factory()->create([
+            ...$this->userData,
+            'password' => Hash::make($this->userData['password']),
+        ]);
 
     }
 
     public function test_login(): void
     {
-        $response = $this->post('/api/login', $this->userData);
+        $response = $this->postJson('/api/login', $this->userData);
 
         $response->assertStatus(200);
     }

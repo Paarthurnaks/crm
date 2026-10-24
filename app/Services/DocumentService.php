@@ -8,15 +8,16 @@ use App\Models\Deal;
 use App\Models\DocumentTemplate;
 use App\Models\User;
 use App\Models\UserField;
-use Exception;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use InvalidArgumentException;
 use PhpOffice\PhpWord\Exception\CopyFileException;
 use PhpOffice\PhpWord\Exception\CreateTemporaryFileException;
-use PhpOffice\PhpWord\IOFactory;
-use PhpOffice\PhpWord\Settings;
 use PhpOffice\PhpWord\TemplateProcessor;
+use RuntimeException;
+use Symfony\Component\Process\Process;
 use Symfony\Component\Translation\Exception\NotFoundResourceException;
 
 class DocumentService
@@ -124,9 +125,18 @@ class DocumentService
             'id' => $deal->id,
         ];
 
-        $path = $template->getMedia()->last()->getPath();
+        $media = $template->getMedia()->last();
+        if (! $media || ! is_file($media->getPath())) {
+            Log::warning('Document template file missing', ['template_id' => $template->id]);
+
+            throw new RuntimeException('Файл шаблона не найден');
+        }
+
+        $path = $media->getPath();
         $templateProcessor = new TemplateProcessor($path);
 
+        $tableData = $userFieldValues['table'] ?? null;
+        unset($userFieldValues['table']);
         $data = array_merge($userFieldValues, $data);
         $data = array_map(function ($value) {
             if (is_null($value)) {
@@ -140,57 +150,30 @@ class DocumentService
         }, $data);
         $templateProcessor->setValues($data);
 
-        if (isset($data['table'])) {
-            $tableData = $data['table'];
+        if ($tableData !== null) {
+            if (is_string($tableData)) {
+                $tableData = json_decode($tableData, true);
+            }
+
+            if (! is_array($tableData) || $tableData === [] || ! is_string(array_key_first($tableData))) {
+                throw new InvalidArgumentException('Некорректные данные таблицы в шаблоне');
+            }
+
             $this->fillTable($templateProcessor, $tableData);
         }
 
         $fileBaseName = Str::random(15);
         $fileDocxName = storage_path($fileBaseName.'.docx');
-        //        $filePdfName = storage_path($fileBaseName . '.pdf');
 
         $templateProcessor->saveAs($fileDocxName);
 
-        // конвертация из docx в pdf, формирование html для нормализации utf-8 кодировки
-        // формирование pdf и удаление html
-        //        Settings::setPdfRenderer(Settings::PDF_RENDERER_DOMPDF, base_path('vendor/dompdf/dompdf'));
-        $phpWord = IOFactory::load($fileDocxName);
-        //
-        //        $htmlWriter = IOFactory::createWriter($phpWord, 'HTML');
-        //        $htmlWriter->save(storage_path($fileBaseName . '.html'));
+        try {
+            $filePdfName = $this->convertDocxToPdf($fileDocxName);
+        } catch (\Throwable $exception) {
+            File::delete($fileDocxName);
 
-        //        $options = new \Dompdf\Options();
-        //        $options->set('defaultFont', 'DejaVu Sans');
-        //        $options->set('isHtml5ParserEnabled', true);
-        //        $options->set('isPhpEnabled', true);
-        //        $options->setIsRemoteEnabled(true);
-
-        //        $dompdf = new \Dompdf\Dompdf($options);
-        //        $html = '
-        // <!DOCTYPE html>
-        // <html>
-        // <head>
-        //    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
-        //    <style>
-        //        body { font-family: DejaVu Sans, sans-serif; line-height: 1.6; }
-        //        table { border-collapse: collapse; width: 100%; }
-        //        table, th, td { border: 1px solid #ddd; }
-        //        th, td { padding: 8px; text-align: left; }
-        //    </style>
-        // </head>
-        // <body>' . file_get_contents(storage_path($fileBaseName . '.html')) . '
-        // </body>
-        // </html>';
-        //        $dompdf->loadHtml($html, 'UTF-8');
-        //        $dompdf->setPaper('A4');
-        //        $dompdf->render();
-
-        //        $output = $dompdf->output();
-        //        file_put_contents($filePdfName, $output);
-
-        //        unlink(storage_path($fileBaseName . '.html'));
-
-        $filePdfName = $this->convertDocxToPdf($fileDocxName);
+            throw $exception;
+        }
 
         return [
             'docx' => $fileDocxName,
@@ -198,38 +181,51 @@ class DocumentService
         ];
     }
 
-    private function fillTable(TemplateProcessor $templateProcessor, $tableData): void
+    private function fillTable(TemplateProcessor $templateProcessor, array $tableData): void
     {
         $templateProcessor->cloneRowAndSetValues(current(array_keys($tableData)), $tableData);
     }
 
     public function convertDocxToPdf(string $docxPath): string
     {
-        $outputPdf = storage_path().'/'.pathinfo($docxPath, PATHINFO_FILENAME).'.pdf';
+        if (! is_file($docxPath)) {
+            throw new RuntimeException('Файл DOCX не найден');
+        }
 
-        $profilePath = '/tmp/lo_profile_'.uniqid();
-        mkdir($profilePath, 0777, true);
+        $outputDir = dirname($docxPath);
+        $outputPdf = $outputDir.DIRECTORY_SEPARATOR.pathinfo($docxPath, PATHINFO_FILENAME).'.pdf';
+        $profilePath = sys_get_temp_dir().DIRECTORY_SEPARATOR.'lo_profile_'.Str::random(16);
 
-        $command = sprintf(
-            'HOME=%s libreoffice --headless --convert-to pdf --outdir "%s" "%s" 2>&1',
-            $profilePath,
-            storage_path(),
-            $docxPath
-        );
+        if (! File::makeDirectory($profilePath, 0700, true)) {
+            throw new RuntimeException('Не удалось создать профиль конвертера');
+        }
 
-        exec($command, $output, $returnCode);
+        try {
+            $profileUrl = 'file:///'.str_replace('\\', '/', ltrim($profilePath, '\\/'));
+            $process = new Process([
+                'libreoffice',
+                '-env:UserInstallation='.$profileUrl,
+                '--headless',
+                '--convert-to',
+                'pdf',
+                '--outdir',
+                $outputDir,
+                $docxPath,
+            ]);
+            $process->setTimeout(120);
+            $process->run();
 
-        Log::info('LibreOffice output', [
-            'command' => $command,
-            'return_code' => $returnCode,
-            'output' => $output,
-            'file_exists' => file_exists($docxPath),
-        ]);
-        //
-        //        if ($returnCode !== 0) {
-        //            throw new Exception("Конвертация не удалась: " . implode("\n", $output));
-        //        }
+            if (! $process->isSuccessful() || ! is_file($outputPdf)) {
+                Log::error('Document conversion failed', ['exit_code' => $process->getExitCode()]);
 
-        return $outputPdf;
+                throw new RuntimeException('Не удалось преобразовать документ в PDF');
+            }
+
+            Log::info('Document converted', ['file_id' => pathinfo($docxPath, PATHINFO_FILENAME)]);
+
+            return $outputPdf;
+        } finally {
+            File::deleteDirectory($profilePath);
+        }
     }
 }

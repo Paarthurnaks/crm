@@ -5,6 +5,8 @@ namespace App\Console\Commands;
 use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
+use RuntimeException;
 
 class AddUsersDiskFolder extends Command
 {
@@ -20,18 +22,33 @@ class AddUsersDiskFolder extends Command
      *
      * @var string
      */
-    protected $description = 'Command description';
+    protected $description = 'Создать локальные папки пользователей';
 
     /**
      * Execute the console command.
      */
-    public function handle()
+    public function handle(): int
     {
-        $users = User::all();
+        $created = 0;
 
-        foreach ($users as $user) {
-            $userFullName = $user->name.'_'.$user->surname;
-            Storage::disk('local')->makeDirectory('public/users/'.$userFullName);
+        foreach (User::query()->select(['id', 'name', 'surname'])->lazyById(200) as $user) {
+            try {
+                $userFullName = $user->name.'_'.$user->surname;
+                if (! Storage::disk('local')->makeDirectory('public/users/'.$userFullName)) {
+                    throw new RuntimeException('Не удалось создать каталог пользователя');
+                }
+                $created++;
+                if ($created % 200 === 0) {
+                    Log::info('User directory command progress', ['processed' => $created]);
+                }
+            } catch (\Throwable $e) {
+                Log::error('User directory command failed', ['user_id' => $user->id, 'exception_class' => get_class($e)]);
+                throw $e;
+            }
         }
+
+        Log::info('User directory command completed', ['processed' => $created]);
+
+        return self::SUCCESS;
     }
 }

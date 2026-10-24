@@ -9,11 +9,13 @@ use App\Http\Requests\ChatMessage\StoreRequest;
 use App\Http\Requests\ChatMessage\UpdateRequest;
 use App\Http\Requests\ChatMessage\UpdateStatusRequest;
 use App\Http\Resources\ChatMessageResource;
+use App\Models\ChatMember;
 use App\Models\ChatMessage;
 use App\Services\ChatMessageService;
 use App\Services\ResponseService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class ChatMessageController extends Controller
 {
@@ -389,6 +391,15 @@ class ChatMessageController extends Controller
     public function updateMessageStatus(UpdateStatusRequest $request, string $chatId): JsonResponse
     {
         $validated = $request->validated();
+
+        if (! ChatMember::query()
+            ->where('chat_id', $chatId)
+            ->where('user_id', $request->user()->id)
+            ->exists()) {
+            Log::warning('Chat message status denied', ['chat_id' => $chatId, 'actor_id' => $request->user()->id]);
+
+            return ResponseService::forbidden(message: 'Нет доступа к этому чату');
+        }
 
         $messages = $this->service->updateMessageStatus($validated, $chatId);
 

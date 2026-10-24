@@ -2,7 +2,13 @@
 
 namespace App\Services;
 
+use DomainException;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
+use InvalidArgumentException;
+use Throwable;
 
 class ResponseService
 {
@@ -57,5 +63,30 @@ class ResponseService
     public static function notFound($data = [], $message = 'Not Found'): JsonResponse
     {
         return self::sendJsonResponse(false, 404, [], $data, $message);
+    }
+
+    public static function fromException(Throwable $exception, string $operation): JsonResponse
+    {
+        Log::error('API operation failed', [
+            'operation' => $operation,
+            'request_id' => request()->header('X-Request-ID'),
+            'exception_class' => get_class($exception),
+            'previous_exception_class' => $exception->getPrevious() ? get_class($exception->getPrevious()) : null,
+            'exception_code' => $exception->getCode(),
+        ]);
+
+        if ($exception instanceof AuthorizationException) {
+            return self::forbidden(message: 'Недостаточно прав');
+        }
+
+        if ($exception instanceof ModelNotFoundException) {
+            return self::notFound();
+        }
+
+        if ($exception instanceof InvalidArgumentException || $exception instanceof DomainException) {
+            return self::badRequest(message: 'Некорректный запрос');
+        }
+
+        return self::sendJsonResponse(false, 500, [], [], 'Внутренняя ошибка сервера');
     }
 }

@@ -4,33 +4,14 @@ namespace App\Mappers;
 
 class ActionToPermissionMapper
 {
-    public function map(string $actionName)
+    public function map(string $actionName): ?string
     {
-        return $this->{$actionName}();
-    }
-
-    private function index()
-    {
-        return 'view';
-    }
-
-    private function show()
-    {
-        return 'view';
-    }
-
-    private function store()
-    {
-        return 'create';
-    }
-
-    private function update()
-    {
-        return 'update';
-    }
-
-    private function destroy()
-    {
-        return 'delete';
+        return match ($actionName) {
+            'index', 'show' => 'view',
+            'store' => 'create',
+            'update' => 'update',
+            'destroy' => 'delete',
+            default => null,
+        };
     }
 }

@@ -43,7 +43,7 @@ class AccountService
                 'invoice_date' => $invoiceDate,
             ]);
         } catch (\Throwable $e) {
-            throw new Exception($this::ERROR_MESSAGES['createError']);
+            throw new Exception($this::ERROR_MESSAGES['createError'], 0, $e);
         }
     }
 

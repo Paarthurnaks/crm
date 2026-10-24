@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\DefaultRolesEnum;
 use App\Enums\ProhibitedFieldEnum;
 use App\Http\Filters\Traits\Filterable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -150,51 +151,49 @@ class Section extends Model
 
     public function availableFields(): HasMany
     {
-        return $this->hasMany(SectionField::class)
-            ->orderBy('position')
-            ->where(function ($query) {
-                $query->whereIn('user_field_id', Auth::user()->role->userFields()->wherePivot('type', 'view')->get()->pluck('id'))
-                    ->orWhereIn('field_id', Auth::user()->role->fields()->wherePivot('type', 'view')->get()->pluck('id'))
-                    ->get();
-            });
+        return $this->availableFieldsFor('view');
     }
 
     public function availableFieldsView(): HasMany
     {
-        return $this->hasMany(SectionField::class)
-            ->orderBy('position')
-            ->where(function ($query) {
-                $query->whereIn('user_field_id', Auth::user()->role->userFields()->wherePivot('type', 'view')->get()->pluck('id'))
-                    ->orWhereIn('field_id', Auth::user()->role->fields()->wherePivot('type', 'view')->get()->pluck('id'))
-                    ->get();
-            });
+        return $this->availableFieldsFor('view');
     }
 
     public function availableFieldsCreate(): HasMany
     {
-        return $this->hasMany(SectionField::class)
-            ->orderBy('position')
-            ->whereDoesntHave('field', function ($query) {
-                $query->whereIn('code', ProhibitedFieldEnum::values());
-            })
-            ->where(function ($query) {
-                $query->whereIn('user_field_id', Auth::user()->role->userFields()->wherePivot('type', 'create')->get()->pluck('id'))
-                    ->orWhereIn('field_id', Auth::user()->role->fields()->wherePivot('type', 'create')->get()->pluck('id'))
-                    ->get();
-            });
+        return $this->availableFieldsFor('create');
     }
 
     public function availableFieldsUpdate(): HasMany
     {
-        return $this->hasMany(SectionField::class)
-            ->orderBy('position')
-            ->whereDoesntHave('field', function ($query) {
+        return $this->availableFieldsFor('update');
+    }
+
+    private function availableFieldsFor(string $action): HasMany
+    {
+        $relation = $this->hasMany(SectionField::class)->orderBy('position');
+        $user = Auth::user();
+
+        if (! in_array($action, ['view', 'create', 'update'], true) || ! $user?->role) {
+            return $relation->whereRaw('1 = 0');
+        }
+
+        if ($action !== 'view') {
+            $relation->whereDoesntHave('field', function ($query) {
                 $query->whereIn('code', ProhibitedFieldEnum::values());
-            })
-            ->where(function ($query) {
-                $query->whereIn('user_field_id', Auth::user()->role->userFields()->wherePivot('type', 'update')->get()->pluck('id'))
-                    ->orWhereIn('field_id', Auth::user()->role->fields()->wherePivot('type', 'update')->get()->pluck('id'))
-                    ->get();
             });
+        }
+
+        if ($user->hasRole(DefaultRolesEnum::SUPER_ADMIN->value)) {
+            return $relation;
+        }
+
+        $userFieldIds = $user->role->userFields()->wherePivot('type', $action)->pluck('user_fields.id');
+        $fieldIds = $user->role->fields()->wherePivot('type', $action)->pluck('fields.id');
+
+        return $relation->where(function ($query) use ($userFieldIds, $fieldIds) {
+            $query->whereIn('user_field_id', $userFieldIds)
+                ->orWhereIn('field_id', $fieldIds);
+        });
     }
 }

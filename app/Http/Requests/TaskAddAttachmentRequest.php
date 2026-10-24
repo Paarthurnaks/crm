@@ -11,7 +11,7 @@ class TaskAddAttachmentRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return false;
+        return true;
     }
 
     /**
@@ -22,7 +22,8 @@ class TaskAddAttachmentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            //
+            'attachments' => ['required', 'array', 'min:1'],
+            'attachments.*' => ['required', 'file'],
         ];
     }
 }

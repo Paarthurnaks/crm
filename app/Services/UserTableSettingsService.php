@@ -2,46 +2,45 @@
 
 namespace App\Services;
 
+use App\Enums\DefaultRolesEnum;
 use App\Http\Resources\FieldResource;
 use App\Http\Resources\UserFieldResource;
 use App\Models\Field;
+use App\Models\User;
 use App\Models\UserField;
 use App\Models\UserTableSettings;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class UserTableSettingsService
 {
     private function processColumns(array $columns): array
     {
         $tableColumns = collect($columns);
+        $userFields = UserField::whereIn('id', $tableColumns->where('is_userfield', true)->pluck('id'))
+            ->with('userFieldEnumValues')->get()->keyBy('id');
+        $fields = Field::whereIn('id', $tableColumns->where('is_userfield', false)->pluck('id'))->get()->keyBy('id');
 
-        $userFieldIds = $tableColumns->where('is_userfield', true)->pluck('id');
-        $fieldIds = $tableColumns->where('is_userfield', false)->pluck('id');
+        return $tableColumns->map(function ($column) use ($fields, $userFields) {
+            $field = $column['is_userfield'] ? $userFields->get($column['id']) : $fields->get($column['id']);
 
-        $userFields = UserField::whereIn('id', $userFieldIds)->get()->map(function ($field) {
-            return new UserFieldResource($field);
-        });
+            if (! $field) {
+                return null;
+            }
 
-        $fields = Field::whereIn('id', $fieldIds)->get()->map(function ($field) {
-            return new FieldResource($field);
-        });
-
-        return $userFields->concat($fields)->toArray();
+            return $column['is_userfield']
+                ? (new UserFieldResource($field))->toArray(request())
+                : (new FieldResource($field))->toArray(request());
+        })->filter()->values()->toArray();
     }
 
-    /**
-     * Процесс, обратный simplySettings.
-     * Получает все данные по полям is_userfield и id
-     */
     private function processSettings(array $settings): array
     {
-        if (! empty($settings['table_columns'])) {
-            $settings['table_columns'] = $this->processColumns($settings['table_columns']);
-        }
-
-        if (isset($settings['filters'])) {
-            $settings['filters'] = $this->processColumns($settings['filters']);
+        foreach (['table_columns', 'filters'] as $key) {
+            if (isset($settings[$key]) && is_array($settings[$key])) {
+                $settings[$key] = $this->processColumns($settings[$key]);
+            }
         }
 
         return $settings;
@@ -63,18 +62,12 @@ class UserTableSettingsService
         })->toArray();
     }
 
-    /**
-     * Процесс, обратный processSettings().
-     * Урезает все лишнее, кроме is_userfield и id
-     */
     private function simplifySettings(array $settings): array
     {
-        if (isset($settings['table_columns'])) {
-            $settings['table_columns'] = $this->simplifyColumns($settings['table_columns']);
-        }
-
-        if (isset($settings['filters'])) {
-            $settings['filters'] = $this->simplifyColumns($settings['filters']);
+        foreach (['table_columns', 'filters'] as $key) {
+            if (isset($settings[$key]) && is_array($settings[$key])) {
+                $settings[$key] = $this->simplifyColumns($settings[$key]);
+            }
         }
 
         return $settings;
@@ -82,80 +75,91 @@ class UserTableSettingsService
 
     public function getUserTableSettings(array $queryParams): null|Collection|UserTableSettings
     {
-        if (array_key_exists('entity', $queryParams)) {
-            $userTableSettings = UserTableSettings::firstOrCreate([
-                'user_id' => Auth::user()->id,
-                'entity' => $queryParams['entity'],
-            ], [
-                'settings' => ['table_columns' => []],
-            ]);
+        $user = Auth::user();
 
-            if (! isset($userTableSettings->settings)) {
-                return null;
-            }
-            if (empty($userTableSettings->settings['table_columns'])) {
-                $userTableSettings = UserTableSettings::firstOrCreate([
-                    'user_id' => 1,
-                    'entity' => $queryParams['entity'],
-                ], [
-                    'settings' => ['table_columns' => []],
-                ]);
-            }
-
-            $userTableSettings->settings = $this->processSettings($userTableSettings->settings);
-
-            $clearTableColumns = [];
-            if (isset($userTableSettings->settings['table_columns'])) {
-                foreach ($userTableSettings->settings['table_columns'] as $column) {
-                    //                    if (in_array($column["id"], Auth::user()->role->fieldsView->pluck("id")->toArray()) && ($column["is_userfield"] == false)) {
-                    $clearTableColumns[] = $column;
-                    //                    }
-                    //                    else if (in_array($column["id"], Auth::user()->role->userFieldsView->pluck("id")->toArray()) && ($column["is_userfield"] == false)) {
-                    //                        $clearTableColumns[] = $column;
-                    //                    }
-                }
-
-                //                if (Auth::user()->role->title != "Руководитель") {
-                //                    $clearSettings = $userTableSettings->settings;
-                //                    $clearSettings["table_columns"] = $clearTableColumns;
-                //
-                //                    $userTableSettings->update(["settings" => $clearSettings]);
-                //                }
-            }
-            $clearTableFilters = [];
-            if (isset($userTableSettings->settings['filters'])) {
-                foreach ($userTableSettings->settings['filters'] as $column) {
-                    if (in_array($column['id'], Auth::user()->role->fieldsView->pluck('id')->toArray()) && ($column['is_userfield'] == false)) {
-                        $clearTableFilters[] = $column;
-                    } elseif (in_array($column['id'], Auth::user()->role->userFieldsView->pluck('id')->toArray()) && ($column['is_userfield'] == false)) {
-                        $clearTableFilters[] = $column;
-                    }
-                }
-
-                //                if (Auth::user()->role->title != "Руководитель") {
-                //                    $clearSettings = $userTableSettings->settings;
-                //                    $clearSettings["table_columns"] = $clearTableColumns;
-                //                    $clearSettings["filters"] = $clearTableFilters;
-                //
-                //                    $userTableSettings->update(["settings" => $clearSettings]);
-                //                }
-            }
-        } else {
-            $userTableSettings = UserTableSettings::where('user_id', Auth::user()->id)->get();
+        if (! array_key_exists('entity', $queryParams)) {
+            return UserTableSettings::where('user_id', $user->id)->get();
         }
 
-        return $userTableSettings;
+        $settingsRecord = UserTableSettings::firstOrCreate([
+            'user_id' => $user->id,
+            'entity' => $queryParams['entity'],
+        ], [
+            'settings' => ['table_columns' => []],
+        ]);
+
+        if (! isset($settingsRecord->settings)) {
+            return null;
+        }
+
+        $settings = $settingsRecord->settings;
+        if (empty($settings['table_columns'])) {
+            $template = UserTableSettings::query()
+                ->where('entity', $queryParams['entity'])
+                ->whereHas('user.role', function ($query) {
+                    $query->where('original_title', DefaultRolesEnum::SUPER_ADMIN->value);
+                })
+                ->orderBy('id')
+                ->first();
+
+            if ($template) {
+                $settings = $template->settings;
+                Log::debug('Table settings template selected', ['entity' => $queryParams['entity'], 'template_id' => $template->id]);
+            }
+        }
+
+        $settingsRecord->settings = $this->processSettings($this->filterSettingsForRole($settings, $user));
+
+        return $settingsRecord;
     }
 
     public function updateUserTableSettings(array $userTableSettingsData): UserTableSettings
     {
-        $userTableSettingsData['settings'] = $this->simplifySettings($userTableSettingsData['settings']);
+        $user = Auth::user();
+        $settings = $this->simplifySettings($userTableSettingsData['settings']);
+        $settingsRecord = UserTableSettings::updateOrCreate(
+            ['user_id' => $user->id, 'entity' => $userTableSettingsData['entity']],
+            ['settings' => $settings]
+        );
 
-        $userTableSettings = UserTableSettings::updateOrCreate(['user_id' => Auth::user()->id, 'entity' => $userTableSettingsData['entity']],
-            ['settings' => $userTableSettingsData['settings']]);
+        $settingsRecord->settings = $this->processSettings($this->filterSettingsForRole($settings, $user));
 
-        $userTableSettings->settings = $this->processSettings($userTableSettings->settings);
+        return $settingsRecord;
+    }
 
-        return $userTableSettings;
+    private function filterSettingsForRole(array $settings, User $user): array
+    {
+        if ($user->hasRole(DefaultRolesEnum::SUPER_ADMIN->value)) {
+            return $settings;
+        }
+
+        $role = $user->role;
+        $fieldIds = $role ? $role->fieldsView()->pluck('fields.id')->all() : [];
+        $userFieldIds = $role ? $role->userFieldsView()->pluck('user_fields.id')->all() : [];
+
+        foreach (['table_columns', 'filters'] as $key) {
+            if (! isset($settings[$key]) || ! is_array($settings[$key])) {
+                continue;
+            }
+
+            $originalCount = count($settings[$key]);
+            $settings[$key] = array_values(array_filter($settings[$key], function ($column) use ($fieldIds, $userFieldIds): bool {
+                if (! is_array($column) || ! isset($column['id'], $column['is_userfield'])) {
+                    return false;
+                }
+
+                $allowedIds = $column['is_userfield'] ? $userFieldIds : $fieldIds;
+
+                return in_array((int) $column['id'], $allowedIds, true);
+            }));
+
+            Log::debug('Table settings filtered', [
+                'actor_id' => $user->id,
+                'section' => $key,
+                'removed_count' => $originalCount - count($settings[$key]),
+            ]);
+        }
+
+        return $settings;
     }
 }

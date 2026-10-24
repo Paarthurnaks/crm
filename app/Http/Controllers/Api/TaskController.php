@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Filters\TaskFilter;
+use App\Http\Requests\TaskAddAttachmentRequest;
 use App\Http\Requests\Task\AddCommentRequest;
 use App\Http\Requests\Task\GetActivityRequest;
 use App\Http\Requests\Task\StoreRequest;
@@ -14,9 +15,9 @@ use App\Http\Resources\TaskResource;
 use App\Models\Task;
 use App\Services\ResponseService;
 use App\Services\TaskService;
-use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use OpenApi\Annotations as OA;
 
 class TaskController extends Controller
@@ -400,10 +401,8 @@ class TaskController extends Controller
             return ResponseService::created(
                 TaskResource::make($task)
             );
-        } catch (Exception $e) {
-            return ResponseService::badRequest(
-                $e->getMessage()
-            );
+        } catch (\Throwable $e) {
+            return ResponseService::fromException($e, 'task.store');
         }
     }
 
@@ -555,7 +554,7 @@ class TaskController extends Controller
 
             return ResponseService::success(message: __('Задача удалена'));
         } catch (\Throwable $e) {
-            return ResponseService::badRequest($e->getMessage());
+            return ResponseService::fromException($e, 'task.destroy');
         }
     }
 
@@ -635,7 +634,7 @@ class TaskController extends Controller
                 CommentResource::make($comment)
             );
         } catch (\Throwable $e) {
-            return ResponseService::badRequest($e->getMessage());
+            return ResponseService::fromException($e, 'task.comment.store');
         }
     }
 
@@ -775,12 +774,11 @@ class TaskController extends Controller
      *      ),
      * )
      */
-    public function addAttachment(Request $request, Task $task)
+    public function addAttachment(TaskAddAttachmentRequest $request, Task $task): JsonResponse
     {
-        if ($request->has('attachments')) {
-            foreach ($request['attachments'] as $attachment) {
-                $task->addMedia($attachment)->toMediaCollection();
-            }
+        foreach ($request->validated('attachments') as $attachment) {
+            $media = $task->addMedia($attachment)->toMediaCollection();
+            Log::info('Task attachment added', ['task_id' => $task->id, 'media_id' => $media->id]);
         }
 
         return ResponseService::success(
@@ -843,9 +841,17 @@ class TaskController extends Controller
      *      ),
      * )
      */
-    public function deleteAttachment(Task $task, int $attachmentId)
+    public function deleteAttachment(Task $task, int $attachmentId): JsonResponse
     {
-        $task->deleteMedia($attachmentId);
+        $media = $task->media()->find($attachmentId);
+        if (! $media) {
+            Log::warning('Task attachment not found', ['task_id' => $task->id, 'media_id' => $attachmentId]);
+
+            return ResponseService::notFound();
+        }
+
+        $task->deleteMedia($media);
+        Log::info('Task attachment deleted', ['task_id' => $task->id, 'media_id' => $attachmentId]);
         $task->refresh();
 
         return ResponseService::success(

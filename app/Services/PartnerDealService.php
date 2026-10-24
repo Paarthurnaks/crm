@@ -6,7 +6,8 @@ use App\Enums\DefaultRolesEnum;
 use App\Models\Deal;
 use App\Models\PartnerClientDeal;
 use App\Models\User;
-use Mockery\Exception;
+use DomainException;
+use Illuminate\Auth\Access\AuthorizationException;
 
 class PartnerDealService
 {
@@ -31,11 +32,11 @@ class PartnerDealService
                 ]);
             } else {
                 if (($deal->partnerClient && $deal->partnerClient->id !== $client->id)) {
-                    throw new Exception(self::ERROR_MESSAGES['dealHasPartnerClient']);
+                    throw new DomainException(self::ERROR_MESSAGES['dealHasPartnerClient']);
                 }
             }
         } else {
-            throw new Exception(self::ERROR_MESSAGES['noAccess']);
+            throw new AuthorizationException(self::ERROR_MESSAGES['noAccess']);
         }
     }
 
@@ -46,12 +47,12 @@ class PartnerDealService
 
         if ($user->hasRole(DefaultRolesEnum::PARTNER->value) && $deal->creator_id === $user->id) {
             if ($deal->partnerClient && $deal->partnerClient->id !== $clientId) {
-                throw new Exception(self::ERROR_MESSAGES['dealDoesntHaveClient']);
+                throw new DomainException(self::ERROR_MESSAGES['dealDoesntHaveClient']);
             }
 
             PartnerClientDeal::where('client_id', $clientId)->where('deal_id', $deal->id)->delete();
         } else {
-            throw new Exception(self::ERROR_MESSAGES['noAccess']);
+            throw new AuthorizationException(self::ERROR_MESSAGES['noAccess']);
         }
     }
 }

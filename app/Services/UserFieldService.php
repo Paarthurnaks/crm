@@ -21,6 +21,7 @@ class UserFieldService
 {
     private const ERROR_MESSAGES = [
         'createError' => 'Произошла ошибка во время создания пользовательского поля',
+        'updateError' => 'Произошла ошибка во время обновления пользовательского поля',
     ];
 
     public function getList(UserFieldFilter $filter, array $queryParams = []): LengthAwarePaginator
@@ -65,7 +66,7 @@ class UserFieldService
                 return $userField;
             });
         } catch (\Throwable $e) {
-            throw new Exception($this::ERROR_MESSAGES['createError']);
+            throw new Exception($this::ERROR_MESSAGES['createError'], 0, $e);
         }
     }
 
@@ -112,7 +113,7 @@ class UserFieldService
                 return $userField;
             });
         } catch (\Throwable $e) {
-            throw new Exception($this::ERROR_MESSAGES['updateError']);
+            throw new Exception($this::ERROR_MESSAGES['updateError'], 0, $e);
         }
     }
 

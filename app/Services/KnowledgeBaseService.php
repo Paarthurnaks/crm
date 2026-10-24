@@ -5,7 +5,7 @@ namespace App\Services;
 use App\Models\KnowledgeBase;
 use App\Models\KnowledgeBaseContent;
 use Illuminate\Support\Facades\DB;
-use PHPUnit\Framework\Exception;
+use RuntimeException;
 use Spatie\MediaLibrary\MediaCollections\Exceptions\FileDoesNotExist;
 use Spatie\MediaLibrary\MediaCollections\Exceptions\FileIsTooBig;
 
@@ -52,8 +52,8 @@ class KnowledgeBaseService
 
                 return $knowledgeBase;
             });
-        } catch (\Exception $e) {
-            throw new Exception(self::ERROR_MESSAGES['createError']);
+        } catch (\Throwable $e) {
+            throw new RuntimeException(self::ERROR_MESSAGES['createError'], 0, $e);
         }
     }
 
@@ -107,8 +107,8 @@ class KnowledgeBaseService
                     }
                 }
             });
-        } catch (\Exception $e) {
-            throw new Exception(self::ERROR_MESSAGES['updateError']);
+        } catch (\Throwable $e) {
+            throw new RuntimeException(self::ERROR_MESSAGES['updateError'], 0, $e);
         }
     }
 }

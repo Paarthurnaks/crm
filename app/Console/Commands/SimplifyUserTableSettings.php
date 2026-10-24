@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\UserTableSettings;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Log;
 
 class SimplifyUserTableSettings extends Command
 {
@@ -51,20 +52,35 @@ class SimplifyUserTableSettings extends Command
         return $settings;
     }
 
-    public function handle(): void
+    public function handle(): int
     {
-        $userTableSettingsRecords = UserTableSettings::all();
+        $processed = 0;
+        $updated = 0;
 
-        foreach ($userTableSettingsRecords as $record) {
-            $settings = $record->settings;
-            if (empty($settings)) {
-                continue;
+        foreach (UserTableSettings::query()->lazyById(200) as $record) {
+            try {
+                $settings = $record->settings;
+                if (! empty($settings)) {
+                    $simplifiedSettings = $this->simplifySettings($settings);
+                    if ($simplifiedSettings !== $settings) {
+                        $record->settings = $simplifiedSettings;
+                        $record->save();
+                        $updated++;
+                    }
+                }
+                $processed++;
+                if ($processed % 200 === 0) {
+                    Log::info('Table settings command progress', ['processed' => $processed, 'updated' => $updated]);
+                }
+            } catch (\Throwable $e) {
+                Log::error('Table settings command failed', ['settings_id' => $record->id, 'exception_class' => get_class($e)]);
+                throw $e;
             }
-            $simplifiedSettings = $this->simplifySettings($settings);
-            $record->settings = $simplifiedSettings;
-            $record->save();
         }
 
-        $this->info('UserTableSettings records have been simplified and duplicates removed.');
+        Log::info('Table settings command completed', ['processed' => $processed, 'updated' => $updated]);
+        $this->info("Processed {$processed} settings; updated {$updated}.");
+
+        return self::SUCCESS;
     }
 }

@@ -5,9 +5,14 @@ namespace App\Services;
 use App\Enums\DiskEntityTypeEnum;
 use App\Jobs\DeleteOldDiskEntityJob;
 use App\Models\DiskEntity;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use InvalidArgumentException;
+use RuntimeException;
 use ZipArchive;
 
 class FileSystemService
@@ -23,8 +28,8 @@ class FileSystemService
 
         DiskEntity::query()
             ->where(function ($query) use ($diskEntityPath, $diskEntity) {
-                $query->where('path', 'like', "$diskEntityPath%")
-                    ->orWhere('original_path', 'like', "$diskEntityPath%")
+                $query->where(fn (Builder $pathQuery) => $this->wherePathWithin($pathQuery, 'path', $diskEntityPath))
+                    ->orWhere(fn (Builder $pathQuery) => $this->wherePathWithin($pathQuery, 'original_path', $diskEntityPath))
                     ->orWhere('id', $diskEntity->id);
             })
             ->get()
@@ -39,7 +44,7 @@ class FileSystemService
                         'original_path' => $path,
                         'path' => $entity->id === $diskEntity->id ?
                             '/' :
-                            preg_replace("#^$diskEntityPath?#", "/$diskEntity->title", $path),
+                            preg_replace('#^'.preg_quote($diskEntityPath, '#').'(?=/|$)#', '/'.$diskEntity->title, $path),
                     ]);
                 }
             });
@@ -96,22 +101,22 @@ class FileSystemService
             $dirPath = 'entities/trash'.'/'.$dir->id.'_'.$dir->title;
             $parentDir = $destinationPath."/$dir->title";
 
-            Storage::move($dirPath, $parentDir);
+            $this->moveOrFail($dirPath, $parentDir);
         });
 
         if ($duplicateInTrash && $entity->type->value !== DiskEntityTypeEnum::FILE->value) {
             $entity->delete();
         }
 
-        if (Storage::exists($sourcePath)) {
-            if (! is_dir(Storage::path($destinationPath))) {
-                Storage::move($sourcePath, $destinationPath);
+        if (Storage::disk('public')->exists($sourcePath)) {
+            if (! is_dir(Storage::disk('public')->path($destinationPath))) {
+                $this->moveOrFail($sourcePath, $destinationPath);
 
                 return;
             }
 
-            if (! Storage::exists($destinationPath)) {
-                Storage::makeDirectory($destinationPath);
+            if (! Storage::disk('public')->exists($destinationPath)) {
+                Storage::disk('public')->makeDirectory($destinationPath);
             }
 
             $this->moveEntities($sourcePath, $destinationPath);
@@ -120,22 +125,22 @@ class FileSystemService
 
     private function moveEntities(string $sourcePath, string $destinationPath): void
     {
-        $allFilesAndDirs = Storage::allFiles($sourcePath);
-        $allDirectories = Storage::allDirectories($sourcePath);
+        $allFilesAndDirs = Storage::disk('public')->allFiles($sourcePath);
+        $allDirectories = Storage::disk('public')->allDirectories($sourcePath);
         foreach ($allFilesAndDirs as $file) {
             $newPath = str_replace(ltrim($sourcePath, '/'), $destinationPath, $file);
-            Storage::move($file, $newPath);
+            $this->moveOrFail($file, $newPath);
         }
 
         foreach ($allDirectories as $directory) {
             $newPath = str_replace(ltrim($sourcePath, '/'), $destinationPath, $directory);
-            if (! Storage::exists($newPath)) {
-                Storage::makeDirectory($newPath);
+            if (! Storage::disk('public')->exists($newPath)) {
+                Storage::disk('public')->makeDirectory($newPath);
             }
-            Storage::deleteDirectory($directory);
+            Storage::disk('public')->deleteDirectory($directory);
         }
 
-        Storage::deleteDirectory($sourcePath);
+        Storage::disk('public')->deleteDirectory($sourcePath);
     }
 
     private function restoreFromTrash(DiskEntity $entity): void
@@ -170,7 +175,7 @@ class FileSystemService
 
             foreach ($dirs as $dir) {
                 $path = '/entities/trash'.'/'.$dir->id.'_'.$dir->title;
-                if (Storage::exists($path)) {
+                if (Storage::disk('public')->exists($path)) {
                     $availableDirIsExists = DiskEntity::query()
                         ->where('path', $dir->original_path)
                         ->where('deleted', false)
@@ -205,20 +210,20 @@ class FileSystemService
             $dirPath = 'entities/available'.'/'.$dir->id.'_'.$dir->title;
             $parentDir = $destinationPath."/$dir->title";
 
-            if (Storage::exists($dirPath)) {
-                Storage::move($dirPath, $parentDir);
+            if (Storage::disk('public')->exists($dirPath)) {
+                $this->moveOrFail($dirPath, $parentDir);
             }
         });
 
-        if (Storage::exists($sourcePath)) {
-            if (! is_dir(Storage::path($sourcePath))) {
-                Storage::move($sourcePath, $destinationPath);
+        if (Storage::disk('public')->exists($sourcePath)) {
+            if (! is_dir(Storage::disk('public')->path($sourcePath))) {
+                $this->moveOrFail($sourcePath, $destinationPath);
 
                 return;
             }
 
-            if (! Storage::exists($destinationPath)) {
-                Storage::makeDirectory($destinationPath);
+            if (! Storage::disk('public')->exists($destinationPath)) {
+                Storage::disk('public')->makeDirectory($destinationPath);
             }
 
             $this->moveEntities($sourcePath, $destinationPath);
@@ -230,8 +235,11 @@ class FileSystemService
         $this->restoreFromTrash($entity);
 
         DiskEntity::query()
-            ->where('original_path', 'like', "$entity->original_path/$entity->title%")
-            ->orWhere('id', $entity->id)
+            ->where(function (Builder $query) use ($entity) {
+                $entityPath = rtrim($entity->original_path, '/').'/'.$entity->title;
+                $query->where(fn (Builder $pathQuery) => $this->wherePathWithin($pathQuery, 'original_path', $entityPath))
+                    ->orWhere('id', $entity->id);
+            })
             ->where('deleted', true)
             ->get()
             ->each(function ($entity) {
@@ -245,37 +253,65 @@ class FileSystemService
 
     public function createExportedZip(string $path): string
     {
-        $trimmedPath = rtrim($path, '/');
+        $parts = explode('/', str_replace('\\', '/', $path));
+        if (in_array('..', $parts, true) || in_array('.', $parts, true) || str_contains($path, "\0")) {
+            throw new InvalidArgumentException('Недопустимый путь экспорта');
+        }
 
-        $diskEntities = DiskEntity::where('path', 'like', "$trimmedPath%")->where('deleted', false)->get();
+        $normalizedPath = str_replace('\\', '/', $path);
+        $trimmedPath = rtrim('/'.trim($normalizedPath, '/'), '/');
+
+        $diskEntities = DiskEntity::query()
+            ->where(fn (Builder $query) => $this->wherePathWithin($query, 'path', $trimmedPath ?: '/'))
+            ->where('deleted', false)
+            ->get();
 
         if ($diskEntities->isEmpty()) {
             throw new \Exception(self::ERROR_MESSAGES['noFilesError']);
         }
 
-        $zipFileName = $trimmedPath === '' ? 'root.zip' : Str::afterLast($trimmedPath, '/').'.zip';
-
         $zip = new ZipArchive;
-        $zipFilePath = public_path("storage/$zipFileName");
+        $zipDirectory = storage_path('app/tmp/exports');
+        File::ensureDirectoryExists($zipDirectory);
+        $zipFilePath = $zipDirectory.DIRECTORY_SEPARATOR.Str::random(24).'.zip';
 
         if ($zip->open($zipFilePath, ZipArchive::CREATE) !== true) {
-            throw new \Exception(self::ERROR_MESSAGES['zipCreateError']);
+            throw new RuntimeException(self::ERROR_MESSAGES['zipCreateError']);
         }
 
-        foreach ($diskEntities as $entity) {
-            $localPath = storage_path('app/public/entities/available'."{$entity->path}/{$entity->title}");
-            $relativePath = trim(Str::replaceFirst($trimmedPath, '', "{$entity->path}/{$entity->title}"), '/');
+        $closed = false;
+        try {
+            foreach ($diskEntities as $entity) {
+                $localPath = Storage::disk('public')->path('entities/available'."{$entity->path}/{$entity->title}");
+                $relativePath = trim(Str::replaceFirst($trimmedPath, '', "{$entity->path}/{$entity->title}"), '/');
 
-            if (is_dir($localPath)) {
-                $zip->addEmptyDir($relativePath);
-            } else {
-                $zip->addFile($localPath, $relativePath);
+                if (is_dir($localPath)) {
+                    $added = $zip->addEmptyDir($relativePath);
+                } elseif (is_file($localPath)) {
+                    $added = $zip->addFile($localPath, $relativePath);
+                } else {
+                    $added = false;
+                }
+
+                if (! $added) {
+                    throw new RuntimeException(self::ERROR_MESSAGES['zipCreateError']);
+                }
+            }
+
+            $closed = $zip->close();
+            if (! $closed) {
+                throw new RuntimeException(self::ERROR_MESSAGES['zipCreateError']);
+            }
+
+            Log::info('Disk entities exported', ['entity_count' => $diskEntities->count()]);
+
+            return $zipFilePath;
+        } finally {
+            if (! $closed) {
+                $zip->close();
+                File::delete($zipFilePath);
             }
         }
-
-        $zip->close();
-
-        return $zipFilePath;
     }
 
     private function deleteByPath(DiskEntity $entity): void
@@ -283,7 +319,7 @@ class FileSystemService
         if ($entity->path !== '/') {
             $dirs = $this->getEntityHierarchy($entity, true);
             foreach ($dirs as $dir) {
-                if (Storage::exists('/entities/trash'.'/'.$dir->id.'_'.$dir->title)) {
+                if (Storage::disk('public')->exists('/entities/trash'.'/'.$dir->id.'_'.$dir->title)) {
                     $path = '/'.$dir->id.'_'.$dir->title.'/'.$entity->title;
                     $this->deleteEntityFromStorage($path);
 
@@ -301,10 +337,10 @@ class FileSystemService
     {
         $fullPath = '/entities/trash'.$path;
 
-        if (Storage::exists($fullPath)) {
-            is_dir(Storage::path($fullPath)) ?
-                Storage::deleteDirectory($fullPath) :
-                Storage::delete($fullPath);
+        if (Storage::disk('public')->exists($fullPath)) {
+            is_dir(Storage::disk('public')->path($fullPath)) ?
+                Storage::disk('public')->deleteDirectory($fullPath) :
+                Storage::disk('public')->delete($fullPath);
         }
     }
 
@@ -322,15 +358,41 @@ class FileSystemService
             $conditions[] = ['path' => $subPath ?: '/', 'title' => $title];
         }
 
-        $query = DiskEntity::query();
+        return DiskEntity::query()
+            ->where('deleted', $deleted)
+            ->where(function (Builder $query) use ($conditions) {
+                foreach ($conditions as $condition) {
+                    $query->orWhere(function (Builder $subQuery) use ($condition) {
+                        $subQuery->where('original_path', $condition['path'])
+                            ->where('title', $condition['title']);
+                    });
+                }
+            })
+            ->get();
+    }
 
-        foreach ($conditions as $condition) {
-            $query->orWhere(function ($subQuery) use ($condition) {
-                $subQuery->where('original_path', $condition['path'])
-                    ->where('title', $condition['title']);
-            })->where('deleted', $deleted);
+    private function wherePathWithin(Builder $query, string $column, string $path): Builder
+    {
+        $path = rtrim($path, '/') ?: '/';
+        $escapedPath = str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $path);
+        $prefix = $path === '/' ? $escapedPath.'%' : $escapedPath.'/%';
+
+        return $query->where(function (Builder $pathQuery) use ($column, $path, $prefix) {
+            $pathQuery->where($column, $path)
+                ->orWhereRaw("$column LIKE ? ESCAPE '!'", [$prefix]);
+        });
+    }
+
+    private function moveOrFail(string $source, string $destination): void
+    {
+        if (Storage::disk('public')->move($source, $destination)) {
+            Log::debug('Disk entity moved', ['source_hash' => hash('sha256', $source), 'destination_hash' => hash('sha256', $destination)]);
+
+            return;
         }
 
-        return $query->get();
+        Log::error('Disk entity move failed', ['source_hash' => hash('sha256', $source), 'destination_hash' => hash('sha256', $destination)]);
+
+        throw new RuntimeException('Не удалось переместить файл или папку');
     }
 }

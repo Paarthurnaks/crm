@@ -61,9 +61,13 @@ class TaskService
      */
     public function create(array $data): Task
     {
+        $type = TaskTypeEnum::tryFrom($data['type'] ?? TaskTypeEnum::STANDARD->value)?->value;
+        if ($type === null) {
+            throw new \InvalidArgumentException('Недопустимый тип задачи');
+        }
+
         try {
             $user = Auth::user();
-            $type = TaskTypeEnum::tryFrom(request()->input('type', TaskTypeEnum::STANDARD->value))->value;
 
             $fields = [
                 'creator_id' => $data['creator_id'] ?? $user->id,
@@ -81,7 +85,7 @@ class TaskService
                 $fields['deadline'] = isset($data['deadline']) ? Carbon::parse($data['deadline'])->format('Y-m-d H:i:s') : null;
                 $fields['start_time'] = isset($data['start_time']) ? Carbon::parse($data['start_time'])->format('Y-m-d H:i:s') : null;
 
-                if (Carbon::parse($fields['deadline'])->isPast()) {
+                if ($fields['deadline'] !== null && Carbon::parse($fields['deadline'])->isPast()) {
                     $fields['status'] = TaskStatusEnum::EXPIRED->value;
                 }
             }
@@ -126,7 +130,7 @@ class TaskService
                 return $task;
             });
         } catch (\Throwable $e) {
-            throw new Exception($e->getMessage());
+            throw new Exception($this::ERROR_MESSAGES['createError'], 0, $e);
         }
     }
 
@@ -195,6 +199,7 @@ class TaskService
     public function getCommentsActivity(Task $task, array $data)
     {
         return $task->comments()
+            ->with(['commentator', 'media'])
             ->approved()
             ->when(isset($data['author_id']), function ($query) use ($data) {
                 return $query->where('user_id', $data['author_id']);
@@ -246,7 +251,7 @@ class TaskService
                 }
             }
 
-            $comment->load('media');
+            $comment->load(['commentator', 'media']);
 
             return $comment;
         });

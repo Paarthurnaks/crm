@@ -4,13 +4,12 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use Illuminate\Support\Facades\Auth;
 
 class SectionFieldResource extends JsonResource
 {
     private string $type;
 
-    public function __construct($resource, string $type)
+    public function __construct($resource, string $type, private readonly bool $isEditable = false)
     {
         parent::__construct($resource);
         $this->type = $type;
@@ -33,23 +32,10 @@ class SectionFieldResource extends JsonResource
         ];
 
         if ($this->type != 'create') {
-            $data['is_editable'] = $this->getIsEditable($field);
+            $data['is_editable'] = $this->type === 'update' || $this->isEditable;
         }
 
         return $data;
     }
 
-    public function getIsEditable($field): bool
-    {
-        //        if (Auth::user()->role->title == "Руководитель")
-        //        {
-        return true;
-        //        }
-        //
-        //        if ($this->userField) {
-        //            return in_array($field->id, $this->section->availableFieldsUpdate->pluck("user_field_id")->toArray());
-        //        } else {
-        //            return in_array($field->id, $this->section->availableFieldsUpdate->pluck("field_id")->toArray());
-        //        }
-    }
 }

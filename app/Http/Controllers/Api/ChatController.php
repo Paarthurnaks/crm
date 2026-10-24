@@ -135,7 +135,7 @@ class ChatController extends Controller
                 ChatResource::make($chat)
             );
         } catch (\Throwable $e) {
-            return ResponseService::badRequest($e->getMessage());
+            return ResponseService::fromException($e, 'chat.store');
         }
     }
 
@@ -282,7 +282,7 @@ class ChatController extends Controller
                 ChatResource::make($updatedChat)
             );
         } catch (\Throwable $e) {
-            return ResponseService::badRequest($e->getMessage());
+            return ResponseService::fromException($e, 'chat.update');
         }
 
     }
@@ -353,7 +353,7 @@ class ChatController extends Controller
             return ResponseService::success(message: __('Чат удален.'));
 
         } catch (\Throwable $e) {
-            return ResponseService::badRequest($e->getMessage());
+            return ResponseService::fromException($e, 'chat.destroy');
         }
 
     }

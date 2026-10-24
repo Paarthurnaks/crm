@@ -21,7 +21,6 @@ use App\Models\Task;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Mockery\Exception;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class DealService
@@ -85,7 +84,6 @@ class DealService
     }
 
     /**
-     * @throws Exception
      */
     public function updateDeal(Deal $deal, array $dealData): Deal
     {

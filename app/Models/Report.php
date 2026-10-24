@@ -133,4 +133,11 @@ class Report extends Model
     {
         return $this->belongsToMany(User::class, 'report_accesses');
     }
+
+    public function canBeViewedBy(int $userId): bool
+    {
+        return (int) $this->getAttribute('author_id') === $userId
+            || ! $this->userAccess()->exists()
+            || $this->userAccess()->whereKey($userId)->exists();
+    }
 }

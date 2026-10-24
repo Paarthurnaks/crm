@@ -14,12 +14,13 @@ use App\Models\Report;
 use App\Models\RoleUserField;
 use App\Services\ReportService;
 use App\Services\ResponseService;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
-use Mockery\Exception;
 
 class ReportController extends Controller
 {
@@ -179,7 +180,9 @@ class ReportController extends Controller
      */
     public function show(Request $request, Report $report): JsonResponse
     {
-        if ($report->author_id != Auth::id() && ! $report->userAccess->isEmpty() && ! array_key_exists(Auth::id(), $report->userAccess()->pluck('user_id')->toArray())) {
+        if (! $report->canBeViewedBy((int) Auth::id())) {
+            Log::warning('Report access denied', ['report_id' => $report->id, 'actor_id' => Auth::id(), 'action' => 'view']);
+
             return ResponseService::forbidden(message: 'Вы не имеете доступ к этому отчёту');
         }
 
@@ -215,7 +218,13 @@ class ReportController extends Controller
     {
         $report = Report::find($id);
 
-        if ($report->author_id != Auth::id() && ! $report->userAccess->isEmpty() && ! array_key_exists(Auth::id(), $report->userAccess()->pluck('user_id')->toArray())) {
+        if (! $report) {
+            return ResponseService::notFound(message: 'Отчёт не найден');
+        }
+
+        if (! $report->canBeViewedBy((int) Auth::id())) {
+            Log::warning('Report access denied', ['report_id' => $report->id, 'actor_id' => Auth::id(), 'action' => 'export']);
+
             return ResponseService::forbidden(message: 'Вы не имеете доступ к этому отчёту');
         }
 
@@ -350,8 +359,8 @@ class ReportController extends Controller
             $this->reportService->deleteReport($report);
 
             return ResponseService::success(message: 'Отчёт успешно удалён');
-        } catch (Exception $e) {
-            return ResponseService::forbidden(message: $e->getMessage());
+        } catch (AuthorizationException $e) {
+            return ResponseService::fromException($e, 'report.destroy');
         }
     }
 }

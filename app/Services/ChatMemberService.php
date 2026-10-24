@@ -12,6 +12,7 @@ use App\Models\ChatMember;
 use App\Models\User;
 use Exception;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 
 class ChatMemberService
 {
@@ -97,7 +98,13 @@ class ChatMemberService
 
         $this->broadcastAddingToChatToGlobal($data['user_ids'], $chat);
 
-        return ChatMember::whereIn('user_id', $data['user_ids'])->get() ?? collect();
+        $members = ChatMember::where('chat_id', $chatId)
+            ->whereIn('user_id', $data['user_ids'])
+            ->get();
+
+        Log::debug('Chat members added', ['chat_id' => $chatId, 'member_count' => $members->count()]);
+
+        return $members;
     }
 
     public function broadcastAddingToChatToGlobal(array $user_ids, Chat $chat): void

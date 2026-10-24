@@ -20,7 +20,8 @@ use App\Services\ResponseService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Mockery\Exception;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
 use PhpOffice\PhpWord\Exception\CopyFileException;
 use PhpOffice\PhpWord\Exception\CreateTemporaryFileException;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
@@ -444,8 +445,8 @@ class DealController extends Controller
             return ResponseService::success(
                 DealResource::make($deal)
             );
-        } catch (Exception $e) {
-            return ResponseService::badRequest(message: $e->getMessage());
+        } catch (\Throwable $e) {
+            return ResponseService::fromException($e, 'deal.update');
         }
     }
 
@@ -836,6 +837,12 @@ class DealController extends Controller
             'creator', 'salesFunnel', 'salesStage', 'responsible', 'userFieldValues'
         )->find($dealId);
 
+        if (! $deal) {
+            return ResponseService::notFound(
+                message: __('Сделка не найдена')
+            );
+        }
+
         $firstMediaExists = DB::table('media')
             ->where('model_id', $dealId)
             ->where('model_type', Deal::class)
@@ -847,12 +854,6 @@ class DealController extends Controller
 
         if ($firstMediaExists) {
             return ResponseService::forbidden(message: 'Документ с таким названием уже существует у данной сделки');
-        }
-
-        if (! $deal) {
-            return ResponseService::notFound(
-                message: __('Сделка не найдена')
-            );
         }
 
         $template = DocumentTemplate::find($templateId);
@@ -871,17 +872,27 @@ class DealController extends Controller
 
         $document = $this->documentService->generateDocumentFromTemplate($deal, $template);
 
-        $docxMedia = $deal->addMedia($document['docx'])
-            ->setName($validated['title'])
-            ->setFileName($validated['title'].'.docx')
-            ->withCustomProperties(['user_id' => auth()->id(), 'template_id' => $template->id])
-            ->toMediaCollection('docs');
+        $docxMedia = null;
+        try {
+            $docxMedia = $deal->addMedia($document['docx'])
+                ->setName($validated['title'])
+                ->setFileName($validated['title'].'.docx')
+                ->withCustomProperties(['user_id' => auth()->id(), 'template_id' => $template->id])
+                ->toMediaCollection('docs');
 
-        $pdfMedia = $deal->addMedia($document['pdf'])
-            ->setName($validated['title'])
-            ->setFileName($validated['title'].'.pdf')
-            ->withCustomProperties(['user_id' => auth()->id(), 'template_id' => $template->id])
-            ->toMediaCollection('docs');
+            $pdfMedia = $deal->addMedia($document['pdf'])
+                ->setName($validated['title'])
+                ->setFileName($validated['title'].'.pdf')
+                ->withCustomProperties(['user_id' => auth()->id(), 'template_id' => $template->id])
+                ->toMediaCollection('docs');
+        } catch (\Throwable $exception) {
+            $docxMedia?->delete();
+            Log::error('Document media save failed', ['deal_id' => $deal->id, 'template_id' => $template->id]);
+
+            throw $exception;
+        } finally {
+            File::delete([$document['docx'], $document['pdf']]);
+        }
 
         return ResponseService::success([
             'id' => $docxMedia->id,

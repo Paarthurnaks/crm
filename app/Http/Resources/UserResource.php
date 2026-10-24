@@ -9,8 +9,6 @@ use Illuminate\Support\Facades\Storage;
 
 class UserResource extends JsonResource
 {
-    public static array $includedPartnerIds = [];
-
     /**
      * @OA\Schema(
      *     schema="UserResource",
@@ -94,13 +92,11 @@ class UserResource extends JsonResource
             'avatar' => $this->getFirstMedia()?->getUrl() ?? Storage::disk('public')->url('avatars/avatar.png'),
         ];
 
-        if (! array_key_exists($this->id, self::$includedPartnerIds) &&
-            auth()->user()?->clients()->where('users.id', $this->id)->exists() &&
-            auth()->user()->hasRole(DefaultRolesEnum::PARTNER->value)
+        if ($request->user()?->hasRole(DefaultRolesEnum::PARTNER->value) &&
+            $request->user()->clients()->where('users.id', $this->id)->exists()
         ) {
             $partnerDeals = $this->partnerDeals()->select('id', 'title')->get();
-            if ($partnerDeals) {
-                self::$includedPartnerIds[] = $this->id;
+            if ($partnerDeals->isNotEmpty()) {
                 $res['partner_deals'] = $partnerDeals;
             }
         }

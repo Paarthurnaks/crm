@@ -2,7 +2,6 @@
 
 namespace App\Http\Resources;
 
-use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use OpenApi\Annotations as OA;
@@ -64,13 +63,11 @@ class CommentResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        $user = User::find($this->user_id);
-
         return [
             'id' => $this->id,
             'comment' => $this->comment,
-            'attachments' => $this->resource?->getMedia() ? MediaResource::collection($this->resource->getMedia()) : null,
-            'user' => UserResource::make($user),
+            'attachments' => MediaResource::collection($this->getMedia()),
+            'user' => UserResource::make($this->commentator),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

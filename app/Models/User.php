@@ -237,8 +237,12 @@ class User extends Authenticatable implements HasMedia, JWTSubject
 
     public function partnerDeals(): HasMany
     {
-        // берем только тех, у кого значение в client - число
-        return $this->hasMany(Deal::class, 'client')->whereRaw("client REGEXP '^[0-9]+$'");
+        return $this->hasMany(Deal::class, 'client', 'partner_deal_client_key');
+    }
+
+    public function getPartnerDealClientKeyAttribute(): string
+    {
+        return (string) $this->getKey();
     }
 
     /**

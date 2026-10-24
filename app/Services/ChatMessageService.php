@@ -21,6 +21,7 @@ use App\Models\ForwardingChatMessage;
 use App\Models\UnreadChatMessage;
 use Exception;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 
 class ChatMessageService
 {
@@ -271,15 +272,19 @@ class ChatMessageService
             'replyTo',
             'forward',
         ])
+            ->where('chat_id', $chatId)
             ->whereIn('id', $messageIds)
             ->get();
+
+        $selectedMessageIds = $messages->pluck('id');
+        Log::debug('Chat messages selected for status update', ['chat_id' => $chatId, 'message_count' => $selectedMessageIds->count()]);
 
         $lastMessageId = ChatMessage::where('chat_id', $chatId)
             ->latest('id')
             ->value('id');
 
         UnreadChatMessage::where('user_id', $userId)
-            ->whereIn('chat_message_id', $messageIds)
+            ->whereIn('chat_message_id', $selectedMessageIds)
             ->delete();
 
         $updatedMessages = $messages->map(function ($message) use ($lastMessageId, $userId) {
@@ -299,7 +304,8 @@ class ChatMessageService
             return $message;
         });
 
-        ChatMessage::whereIn('id', $messageIds)
+        ChatMessage::where('chat_id', $chatId)
+            ->whereIn('id', $selectedMessageIds)
             ->where('user_id', '!=', $userId)
             ->where('status', '!=', ChatMessageTypeEnum::READ->value)
             ->update(['status' => ChatMessageTypeEnum::READ->value]);
@@ -338,7 +344,7 @@ class ChatMessageService
             if ($member->user_id !== auth()->id()) {
                 broadcast(
                     new GlobalChatsMessageDeleteBroadcast(
-                        new ChatResource($member->chat, $member->userId),
+                        new ChatResource($member->chat, $member->user_id),
                         $messageId,
                         $member->user_id
                     )
