@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Gate;
 use Laravel\Sanctum\HasApiTokens;
 use PHPOpenSourceSaver\JWTAuth\Contracts\JWTSubject;
 use Spatie\Image\Enums\Fit;
@@ -217,7 +218,9 @@ class User extends Authenticatable implements HasMedia, JWTSubject
 
     public function getIsHighLevelAdminAttribute(): bool
     {
-        return $this->highLevelAdmin()->exists();
+        return $this->relationLoaded('highLevelAdmin')
+            ? $this->highLevelAdmin !== null
+            : $this->highLevelAdmin()->exists();
     }
 
     public function role(): BelongsTo
@@ -271,35 +274,27 @@ class User extends Authenticatable implements HasMedia, JWTSubject
 
     public function hasDealAccess(int $dealId): bool
     {
-        $user = auth()->user();
+        $deal = Deal::find($dealId);
 
-        $roleAccessToDeal = $user->role->permissions()
-            ->where('entity', 'deals')
-            ->where('view', 'all')
-            ->exists();
-
-        if ($roleAccessToDeal) {
-            return true;
-        }
-
-        return Deal::where('id', $dealId)
-            ->where(function ($query) {
-                $query->where('creator_id', auth()->id())
-                    ->orWhere('responsible_id', auth()->id());
-            })
-            ->exists();
+        return $deal !== null && Gate::forUser($this)->allows('view', $deal);
     }
 
     public function hasAccess(string $entity, string $action, string $scope): bool
     {
-        if (! $this->role) {
-            return false;
+        return $this->permissionScope($entity, $action) === $scope;
+    }
+
+    public function permissionScope(string $entity, string $action): ?string
+    {
+        if (! $this->getAttribute('role_id') || ! in_array($action, ['view', 'create', 'update', 'delete', 'import', 'export'], true)) {
+            return null;
         }
 
         return $this->role->permissions()
             ->where('entity', $entity)
-            ->where($action, $scope)
-            ->exists();
+            ->orderByDesc('permissions.id')
+            ->pluck($action)
+            ->first();
     }
 
     /**

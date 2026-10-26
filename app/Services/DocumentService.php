@@ -8,39 +8,81 @@ use App\Models\Deal;
 use App\Models\DocumentTemplate;
 use App\Models\User;
 use App\Models\UserField;
+use App\Services\Document\DocxToPdfConverter;
+use App\Services\Document\LibreOfficeDocxToPdfConverter;
 use App\Services\Document\TemplateValueFormatter;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-use PhpOffice\PhpWord\Exception\CopyFileException;
-use PhpOffice\PhpWord\Exception\CreateTemporaryFileException;
 use PhpOffice\PhpWord\TemplateProcessor;
 use RuntimeException;
-use Symfony\Component\Process\Process;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Symfony\Component\Translation\Exception\NotFoundResourceException;
 
 class DocumentService
 {
-    public function create(array $data): mixed
+    /** @return array{docx: Media, pdf: Media} */
+    public function generateDealDocument(Deal $deal, DocumentTemplate $template, string $title, User $actor): array
     {
-        $user = Auth::user();
+        $document = $this->generateDocumentFromTemplate($deal, $template);
+        $docxMedia = null;
 
+        try {
+            $properties = ['user_id' => $actor->id, 'template_id' => $template->id];
+            $docxMedia = $deal->addMedia($document['docx'])
+                ->setName($title)
+                ->setFileName($title.'.docx')
+                ->withCustomProperties($properties)
+                ->toMediaCollection('docs');
+
+            $pdfMedia = $deal->addMedia($document['pdf'])
+                ->setName($title)
+                ->setFileName($title.'.pdf')
+                ->withCustomProperties($properties)
+                ->toMediaCollection('docs');
+        } catch (\Throwable $exception) {
+            try {
+                $docxMedia?->delete();
+            } catch (\Throwable $cleanupException) {
+                Log::error('document.media.cleanup.failed', ['deal_id' => $deal->id, 'exception' => $cleanupException::class]);
+            }
+            Log::error('document.media.save.failed', ['deal_id' => $deal->id, 'template_id' => $template->id, 'exception' => $exception::class]);
+            throw $exception;
+        } finally {
+            File::delete([$document['docx'], $document['pdf']]);
+        }
+
+        Log::info('document.media.saved', ['deal_id' => $deal->id, 'template_id' => $template->id, 'docx_media_id' => $docxMedia->id, 'pdf_media_id' => $pdfMedia->id]);
+
+        return ['docx' => $docxMedia, 'pdf' => $pdfMedia];
+    }
+
+    private readonly DocxToPdfConverter $converter;
+
+    public function __construct(?DocxToPdfConverter $converter = null)
+    {
+        $this->converter = $converter ?? new LibreOfficeDocxToPdfConverter;
+    }
+
+    public function create(array $data, User $actor, UploadedFile $upload): DocumentTemplate
+    {
         $documentTemplate = DocumentTemplate::create([
-            'creator_id' => $user->id,
+            'creator_id' => $actor->id,
             'entity' => $data['entity'],
             'title' => $data['title'],
         ]);
 
-        $documentTemplate->addMediaFromRequest('template')->toMediaCollection();
+        $documentTemplate->addMedia($upload)->toMediaCollection();
 
         return $documentTemplate;
     }
 
     /**
-     * @throws Exception
+     * @throws NotFoundResourceException
      */
-    public function update(int $templateId, array $data)
+    public function update(int $templateId, array $data): DocumentTemplate
     {
         $documentTemplate = DocumentTemplate::find($templateId);
 
@@ -59,7 +101,7 @@ class DocumentService
         return $documentTemplate;
     }
 
-    public function updateTemplate(int $templateId)
+    public function updateTemplate(int $templateId, UploadedFile $upload): DocumentTemplate
     {
         $documentTemplate = DocumentTemplate::find($templateId);
 
@@ -67,14 +109,12 @@ class DocumentService
             throw new NotFoundResourceException(__('document template not found'));
         }
 
-        if (request()->has('template')) {
-            $documentTemplate->addMediaFromRequest('template')->toMediaCollection();
-        }
+        $documentTemplate->addMedia($upload)->toMediaCollection();
 
         return $documentTemplate;
     }
 
-    public function getList(DocumentTemplateFilter $filter, array $queryParams = [])
+    public function getList(DocumentTemplateFilter $filter, array $queryParams = []): LengthAwarePaginator
     {
         $limit = $queryParams['limit'] ?? config('constants.paginator.limit');
 
@@ -88,9 +128,8 @@ class DocumentService
     }
 
     /**
-     * @throws CopyFileException
-     * @throws CreateTemporaryFileException|\PhpOffice\PhpWord\Exception\Exception
-     * @throws MpdfException
+     * @throws \PhpOffice\PhpWord\Exception\Exception
+     * @throws RuntimeException
      */
     public function generateDocumentFromTemplate(Deal $deal, DocumentTemplate $template): array
     {
@@ -218,49 +257,8 @@ class DocumentService
 
     public function convertDocxToPdf(string $docxPath): string
     {
-        if (! is_file($docxPath)) {
-            throw new RuntimeException('Файл DOCX не найден');
-        }
+        Log::debug('document.converter.selected', ['converter' => $this->converter::class]);
 
-        $outputDir = dirname($docxPath);
-        $outputPdf = $outputDir.DIRECTORY_SEPARATOR.pathinfo($docxPath, PATHINFO_FILENAME).'.pdf';
-        $profilePath = sys_get_temp_dir().DIRECTORY_SEPARATOR.'lo_profile_'.Str::random(16);
-
-        if (! File::makeDirectory($profilePath, 0700, true)) {
-            throw new RuntimeException('Не удалось создать профиль конвертера');
-        }
-
-        try {
-            $profileUrl = 'file:///'.str_replace('\\', '/', ltrim($profilePath, '\\/'));
-            $process = $this->conversionProcess([
-                'libreoffice',
-                '-env:UserInstallation='.$profileUrl,
-                '--headless',
-                '--convert-to',
-                'pdf',
-                '--outdir',
-                $outputDir,
-                $docxPath,
-            ]);
-            $process->setTimeout(120);
-            $process->run();
-
-            if (! $process->isSuccessful() || ! is_file($outputPdf)) {
-                Log::error('Document conversion failed', ['exit_code' => $process->getExitCode()]);
-
-                throw new RuntimeException('Не удалось преобразовать документ в PDF');
-            }
-
-            Log::info('Document converted', ['file_id' => pathinfo($docxPath, PATHINFO_FILENAME)]);
-
-            return $outputPdf;
-        } finally {
-            File::deleteDirectory($profilePath);
-        }
-    }
-
-    protected function conversionProcess(array $command): Process
-    {
-        return new Process($command);
+        return $this->converter->convert($docxPath);
     }
 }

@@ -24,7 +24,7 @@ class GetDealActivityRequest extends FormRequest
     {
         return [
             'search' => ['string'],
-            'author_id' => ['integer', 'exists:deals,id'],
+            'author_id' => ['integer', 'exists:users,id'],
             'date_from' => ['datetime'],
             'date_to' => ['datetime'],
         ];

@@ -16,9 +16,10 @@ use App\Models\User;
 use App\Notifications\TaskEventNotification;
 use Carbon\Carbon;
 use Exception;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class TaskService
 {
@@ -26,10 +27,11 @@ class TaskService
         'createError' => 'Произошла ошибка во время создания задачи. Проверьте переданные вами поля',
     ];
 
-    public function getList(TaskFilter $filter, array $queryParams = []): LengthAwarePaginator
+    public function getList(TaskFilter $filter, array $queryParams, User $actor): LengthAwarePaginator
     {
-        $user = auth()->user();
+        $user = $actor;
         $limit = $queryParams['limit'] ?? config('constants.paginator.limit');
+        Log::debug('task.list.started', ['actor_id' => $user->id, 'limit' => $limit]);
 
         $taskScopes = [
             PermissionTypeEnum::ALL->value => 'allTasks',
@@ -42,14 +44,18 @@ class TaskService
             if (isset($queryParams['type']) &&
                 $queryParams['type'] === TaskTypeEnum::DOCKET->value &&
                 $user->hasAccess(PermissionEntityEnum::DOCKET->value, 'view', $type)) {
-                return Task::$scopeMethod()
+                $tasks = $scopeMethod === 'ownTasks' ? Task::ownTasks($user->id) : Task::$scopeMethod();
+
+                return $tasks
                     ->filter($filter)
                     ->paginate($limit);
             }
 
             // для всех остальных задач
             if ($user->hasAccess(PermissionEntityEnum::TASKS->value, 'view', $type)) {
-                return Task::$scopeMethod()->filter($filter)->paginate($limit);
+                $tasks = $scopeMethod === 'ownTasks' ? Task::ownTasks($user->id) : Task::$scopeMethod();
+
+                return $tasks->filter($filter)->paginate($limit);
             }
         }
 
@@ -59,7 +65,7 @@ class TaskService
     /**
      * @throws Exception
      */
-    public function create(array $data): Task
+    public function create(array $data, User $actor): Task
     {
         $type = TaskTypeEnum::tryFrom($data['type'] ?? TaskTypeEnum::STANDARD->value)?->value;
         if ($type === null) {
@@ -67,10 +73,8 @@ class TaskService
         }
 
         try {
-            $user = Auth::user();
-
             $fields = [
-                'creator_id' => $data['creator_id'] ?? $user->id,
+                'creator_id' => $data['creator_id'] ?? $actor->id,
                 'title' => $data['title'],
                 'description' => $data['description'] ?? null,
                 'status' => TaskStatusEnum::NEW->value,
@@ -104,6 +108,8 @@ class TaskService
                 $fields['email'] = $data['email'] ?? null;
             }
 
+            Log::debug('task.create.scenario_selected', ['actor_id' => $actor->id, 'type' => $type]);
+
             return DB::transaction(function () use ($fields, $data) {
                 $task = Task::create($fields);
 
@@ -113,12 +119,12 @@ class TaskService
 
                 if (isset($data['executors'])) {
                     $task->executors()->sync($data['executors']);
-                    $this->sendTaskEventNotifications($task, $data['executors']);
+                    DB::afterCommit(fn () => $this->sendTaskEventNotifications($task, $data['executors']));
                 }
 
                 if (isset($data['observers'])) {
                     $task->observers()->sync($data['observers']);
-                    $this->sendTaskEventNotifications($task, $data['observers']);
+                    DB::afterCommit(fn () => $this->sendTaskEventNotifications($task, $data['observers']));
                 }
 
                 if (isset($data['attachments'])) {
@@ -130,6 +136,7 @@ class TaskService
                 return $task;
             });
         } catch (\Throwable $e) {
+            Log::error('task.create.failed', ['actor_id' => $actor->id, 'exception' => $e::class]);
             throw new Exception($this::ERROR_MESSAGES['createError'], 0, $e);
         }
     }
@@ -141,7 +148,11 @@ class TaskService
 
         if ($taskEvent) {
             foreach ($users as $user) {
-                $user->notify(new TaskEventNotification($taskEvent));
+                try {
+                    $user->notify(new TaskEventNotification($taskEvent));
+                } catch (\Throwable $exception) {
+                    Log::error('task.notification.failed', ['task_id' => $task->id, 'user_id' => $user->id, 'exception' => $exception::class]);
+                }
             }
         }
     }
@@ -166,37 +177,33 @@ class TaskService
         $task->delete();
     }
 
-    public function getActivity(Task $task, array $queryParams)
+    public function getActivity(Task $task, array $queryParams): array
     {
         $comments = $this->getCommentsActivity($task, $queryParams);
         $events = $this->getEventsActivity($task, $queryParams);
 
-        $result = [];
+        $result = collect();
 
-        if (! empty($comments)) {
-            $result = collect($result)->merge($comments->map(function ($comment) {
-                return [
-                    'type' => TaskActivityEnum::COMMENT->value,
-                    'data' => new CommentResource($comment),
-                ];
-            }));
-        }
+        $result = $result->merge($comments->map(function ($comment) {
+            return [
+                'type' => TaskActivityEnum::COMMENT->value,
+                'data' => new CommentResource($comment),
+            ];
+        }));
 
-        if (! empty($events)) {
-            $result = collect($result)->merge($events->map(function ($event) {
-                return [
-                    'type' => TaskActivityEnum::EVENT->value,
-                    'data' => new TaskEventResource($event),
-                ];
-            }));
-        }
+        $result = $result->merge($events->map(function ($event) {
+            return [
+                'type' => TaskActivityEnum::EVENT->value,
+                'data' => new TaskEventResource($event),
+            ];
+        }));
 
         return $result->sortByDesc(function ($item) {
             return $item['data']->created_at;
         })->values()->all();
     }
 
-    public function getCommentsActivity(Task $task, array $data)
+    public function getCommentsActivity(Task $task, array $data): EloquentCollection
     {
         return $task->comments()
             ->with(['commentator', 'media'])
@@ -217,7 +224,7 @@ class TaskService
             ->get();
     }
 
-    private function getEventsActivity(Task $task, array $data): mixed
+    private function getEventsActivity(Task $task, array $data): EloquentCollection
     {
         return $task->events()
             ->with('initiator')

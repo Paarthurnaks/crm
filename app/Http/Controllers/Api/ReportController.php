@@ -180,7 +180,7 @@ class ReportController extends Controller
      */
     public function show(Request $request, Report $report): JsonResponse
     {
-        if (! $report->canBeViewedBy((int) Auth::id())) {
+        if (! $request->user()->can('view', $report)) {
             Log::warning('Report access denied', ['report_id' => $report->id, 'actor_id' => Auth::id(), 'action' => 'view']);
 
             return ResponseService::forbidden(message: 'Вы не имеете доступ к этому отчёту');
@@ -222,7 +222,7 @@ class ReportController extends Controller
             return ResponseService::notFound(message: 'Отчёт не найден');
         }
 
-        if (! $report->canBeViewedBy((int) Auth::id())) {
+        if (! $request->user()->can('view', $report)) {
             Log::warning('Report access denied', ['report_id' => $report->id, 'actor_id' => Auth::id(), 'action' => 'export']);
 
             return ResponseService::forbidden(message: 'Вы не имеете доступ к этому отчёту');

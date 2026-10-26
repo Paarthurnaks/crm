@@ -5,8 +5,11 @@ namespace App\Services;
 use App\Enums\DiskEntityTypeEnum;
 use App\Jobs\DeleteOldDiskEntityJob;
 use App\Models\DiskEntity;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -18,6 +21,90 @@ use ZipArchive;
 
 class FileSystemService
 {
+    public function createFolder(array $data, User $actor): DiskEntity
+    {
+        $path = $data['path'];
+        $folderPath = 'entities/available/'.trim($path, '/').'/'.$data['title'];
+        $disk = Storage::disk('public');
+        $created = ! $disk->exists($folderPath);
+
+        if (! $disk->makeDirectory($folderPath)) {
+            Log::error('disk.folder.create.failed', ['actor_id' => $actor->id]);
+            throw new RuntimeException('Не удалось создать папку');
+        }
+
+        try {
+            $entity = DB::transaction(function () use ($data, $path, $actor): DiskEntity {
+                $entity = DiskEntity::create([
+                    'title' => $data['title'],
+                    'type' => DiskEntityTypeEnum::FOLDER->value,
+                    'who_created_id' => $actor->id,
+                    'path' => substr_count($path, '/') > 1 ? rtrim($path, '/') : $path,
+                    'size' => 0,
+                ]);
+                $actor->role->availableDiskEntities()->attach($entity);
+
+                return $entity;
+            });
+        } catch (Throwable $exception) {
+            if ($created) {
+                $disk->deleteDirectory($folderPath);
+            }
+            Log::error('disk.folder.create.failed', ['actor_id' => $actor->id, 'exception' => $exception::class]);
+            throw $exception;
+        }
+
+        Log::info('disk.folder.created', ['entity_id' => $entity->id]);
+
+        return $entity;
+    }
+
+    public function createFile(array $data, User $actor): DiskEntity
+    {
+        /** @var UploadedFile $file */
+        $file = $data['file'];
+        $path = $data['path'];
+        $filename = $file->getClientOriginalName();
+        $folderPath = 'entities/available'.$path;
+        $storagePath = rtrim($folderPath, '/').'/'.$filename;
+        $disk = Storage::disk('public');
+
+        if ($disk->exists($storagePath)) {
+            Log::warning('disk.file.create.conflict', ['actor_id' => $actor->id]);
+            throw new RuntimeException('Файл с таким именем уже существует');
+        }
+
+        if ($file->storeAs($folderPath, $filename, 'public') === false) {
+            Log::error('disk.file.store.failed', ['actor_id' => $actor->id]);
+            throw new RuntimeException('Не удалось сохранить файл');
+        }
+
+        try {
+            $entity = DB::transaction(function () use ($data, $actor, $file, $filename): DiskEntity {
+                $path = $data['path'];
+                $entity = DiskEntity::create([
+                    'title' => $filename,
+                    'type' => DiskEntityTypeEnum::FILE->value,
+                    'who_created_id' => $actor->id,
+                    'path' => substr_count($path, '/') > 1 ? rtrim($path, '/') : $path,
+                    'size' => $file->getSize(),
+                    'mime_type' => $file->getClientMimeType(),
+                ]);
+                $actor->role->availableDiskEntities()->attach($entity);
+
+                return $entity;
+            });
+        } catch (Throwable $exception) {
+            $disk->delete($storagePath);
+            Log::error('disk.file.create.failed', ['actor_id' => $actor->id, 'exception' => $exception::class]);
+            throw $exception;
+        }
+
+        Log::info('disk.file.created', ['entity_id' => $entity->id]);
+
+        return $entity;
+    }
+
     private const ERROR_MESSAGES = [
         'zipCreateError' => 'Произошла ошибка при создании файла',
         'noFilesError' => 'Папка пустая',

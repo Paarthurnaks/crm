@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Deal;
 use App\Models\DocumentTemplate;
+use App\Services\Document\DocxToPdfConverter;
 use App\Services\DocumentService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\File;
@@ -39,9 +40,9 @@ class DocumentGenerationTest extends TestCase
         $deal->created_at = now();
         $deal->updated_at = now();
 
-        $service = new class extends DocumentService
+        $converter = new class implements DocxToPdfConverter
         {
-            public function convertDocxToPdf(string $docxPath): string
+            public function convert(string $docxPath): string
             {
                 $pdfPath = dirname($docxPath).DIRECTORY_SEPARATOR.pathinfo($docxPath, PATHINFO_FILENAME).'.pdf';
                 File::put($pdfPath, 'PDF fixture');
@@ -49,6 +50,7 @@ class DocumentGenerationTest extends TestCase
                 return $pdfPath;
             }
         };
+        $service = new DocumentService($converter);
 
         $result = null;
 

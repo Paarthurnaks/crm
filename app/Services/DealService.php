@@ -3,10 +3,13 @@
 namespace App\Services;
 
 use App\Enums\DealActivityEnum;
+use App\Enums\DealEventTypeEnum;
 use App\Enums\DefaultRolesEnum;
 use App\Enums\PermissionEntityEnum;
 use App\Enums\PermissionTypeEnum;
+use App\Enums\SalesStageEnum;
 use App\Enums\SectionFieldEntityEnum;
+use App\Events\Deal\PartnerInProgressDealUpdateBroadcast;
 use App\Http\Filters\DealActivityFilter;
 use App\Http\Filters\DealFilter;
 use App\Http\Resources\CommentResource;
@@ -17,10 +20,17 @@ use App\Models\Deal;
 use App\Models\DealEvent;
 use App\Models\SalesFunnel;
 use App\Models\SalesStage;
+use App\Models\SalesTunnel;
+use App\Models\Section;
 use App\Models\Task;
+use App\Models\User;
+use App\Notifications\DealEventNotification;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Lang;
+use Illuminate\Support\Facades\Log;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class DealService
@@ -59,39 +69,240 @@ class DealService
         }
     }
 
-    public function createDeal(array $dealData): Deal
+    public function createDeal(array $dealData, ?User $actor = null): Deal
     {
-        $sales_funnel_id = $dealData['sales_funnel_id'] ?? SalesFunnel::first()->id;
-        $sales_stage = SalesStage::where('sales_funnel_id', $sales_funnel_id)->first();
-        $user = Auth::user();
+        $user = $actor ?? Auth::user();
 
-        $deal = Deal::query()->create([
-            'title' => $dealData['title'] ?? $this->generateDealTitle(),
-            'sales_funnel_id' => $sales_funnel_id,
-            'sales_stage_id' => $dealData['sales_stage_id'] ?? $sales_stage->id,
-            'creator_id' => $user->id,
-            'responsible_id' => $dealData['responsible_id'] ?? $user->id,
-            'note' => $dealData['note'] ?? '',
-            'amount' => $dealData['amount'] ?? 0,
-            'client' => $dealData['client_id'] ?? null,
-        ]);
-
-        if (! empty($dealData['user_field_values'])) {
-            $this->userFieldService->addUserFieldValues($deal->id, $dealData['user_field_values'], SectionFieldEntityEnum::DEALS);
+        if ($user === null) {
+            throw new AuthenticationException;
         }
+        Log::info('deal.create.started', ['actor_id' => $user?->id]);
 
-        return Deal::where('id', $deal->id)->with('userFieldValues')->first();
+        try {
+            return DB::transaction(function () use ($dealData, $user): Deal {
+                $salesFunnelId = $dealData['sales_funnel_id'] ?? SalesFunnel::firstOrFail()->id;
+                $salesStage = SalesStage::where('sales_funnel_id', $salesFunnelId)->firstOrFail();
+
+                $deal = Deal::query()->create([
+                    'title' => $dealData['title'] ?? $this->generateDealTitle(),
+                    'sales_funnel_id' => $salesFunnelId,
+                    'sales_stage_id' => $dealData['sales_stage_id'] ?? $salesStage->id,
+                    'creator_id' => $user->id,
+                    'responsible_id' => $dealData['responsible_id'] ?? $user->id,
+                    'note' => $dealData['note'] ?? '',
+                    'amount' => $dealData['amount'] ?? 0,
+                    'client' => $dealData['client_id'] ?? null,
+                ]);
+
+                $this->initializeCreatedDeal($deal, $user->id);
+
+                if (! empty($dealData['user_field_values'])) {
+                    $this->userFieldService->addUserFieldValues($deal->id, $dealData['user_field_values'], SectionFieldEntityEnum::DEALS);
+                }
+
+                Log::info('deal.create.completed', ['deal_id' => $deal->id, 'actor_id' => $user->id]);
+
+                return $deal->load('userFieldValues');
+            });
+        } catch (\Throwable $exception) {
+            Log::error('deal.create.failed', ['actor_id' => $user?->id, 'exception' => $exception::class]);
+            throw $exception;
+        }
     }
 
-    /**
-     */
-    public function updateDeal(Deal $deal, array $dealData): Deal
+    public function updateDeal(Deal $deal, array $dealData, ?User $actor = null): Deal
     {
-        $this->userFieldService->updateUserFieldEntity($deal, $dealData, SectionFieldEntityEnum::DEALS);
+        $actorId = $actor?->id ?? Auth::id();
+        Log::info('deal.update.started', ['deal_id' => $deal->id, 'actor_id' => $actorId]);
 
-        $deal->save();
+        try {
+            return DB::transaction(function () use ($deal, $dealData, $actorId): Deal {
+                $this->userFieldService->updateUserFieldEntity($deal, $dealData, SectionFieldEntityEnum::DEALS);
+                $changes = $deal->getDirty();
+                $original = $deal->getRawOriginal();
+                $deal->save();
 
-        return Deal::where('id', $deal->id)->with('userFieldValues')->first();
+                $this->recordDealChanges($deal, $changes, $original, $actorId);
+                Log::info('deal.update.completed', ['deal_id' => $deal->id, 'actor_id' => $actorId, 'changed_count' => count($changes)]);
+
+                return $deal->load('userFieldValues');
+            });
+        } catch (\Throwable $exception) {
+            Log::error('deal.update.failed', ['deal_id' => $deal->id, 'actor_id' => $actorId, 'exception' => $exception::class]);
+            throw $exception;
+        }
+    }
+
+    private function initializeCreatedDeal(Deal $deal, ?int $actorId): void
+    {
+        DealEvent::create([
+            'deal_id' => $deal->id,
+            'initiator_id' => $deal->creator_id,
+            'type' => DealEventTypeEnum::NEW_DEAL->value,
+        ]);
+
+        if ($actorId !== null) {
+            $sections = Section::where('entity', 'deals')
+                ->where('is_template', true)
+                ->where('sales_funnel_id', $deal->sales_funnel_id)
+                ->where('user_id', $actorId)
+                ->with('fields')
+                ->get();
+
+            foreach ($sections as $section) {
+                $clone = $section->replicate();
+                $clone->deal_id = $deal->id;
+                $clone->is_template = false;
+                $clone->save();
+
+                foreach ($section->fields as $field) {
+                    $cloneField = $field->replicate();
+                    $cloneField->section_id = $clone->id;
+                    $cloneField->save();
+                }
+            }
+        }
+
+        $this->userFieldService->setupBooleanValues();
+        Log::debug('deal.initialized', ['deal_id' => $deal->id, 'actor_id' => $actorId]);
+    }
+
+    private function recordDealChanges(Deal $deal, array $changes, array $original, ?int $actorId): void
+    {
+        if (array_key_exists('sales_stage_id', $changes)) {
+            $this->replicateForStageTransitions($deal, $actorId);
+
+            $oldStage = SalesStage::find($original['sales_stage_id'] ?? null);
+            $newStage = $deal->salesStage;
+
+            if ($actorId !== null) {
+                DealEvent::create([
+                    'deal_id' => $deal->id,
+                    'initiator_id' => $actorId,
+                    'type' => DealEventTypeEnum::CHANGE_STAGE->value,
+                    'changed_field' => trans('deals.sales_stage_id'),
+                    'old_value' => $oldStage?->title,
+                    'new_value' => $newStage?->title,
+                ]);
+            }
+
+            if ($oldStage && $newStage && ($oldStage->type === SalesStageEnum::DEFAULT->value) !== ($newStage->type === SalesStageEnum::DEFAULT->value)) {
+                DB::afterCommit(fn () => $this->broadcastPartnerDealCounts($deal));
+            }
+        }
+
+        if (array_key_exists('responsible_id', $changes)) {
+            $oldResponsible = User::find($original['responsible_id'] ?? null);
+            $newResponsible = $deal->responsible;
+
+            if ($actorId !== null && $oldResponsible && $newResponsible) {
+                $event = DealEvent::create([
+                    'deal_id' => $deal->id,
+                    'initiator_id' => $actorId,
+                    'type' => DealEventTypeEnum::CHANGE_RESPONSIBLE->value,
+                    'changed_field' => trans('deals.responsible_id'),
+                    'old_value' => $oldResponsible->name.' '.$oldResponsible->surname,
+                    'new_value' => $newResponsible->name.' '.$newResponsible->surname,
+                ]);
+
+                DB::afterCommit(function () use ($oldResponsible, $event): void {
+                    try {
+                        $oldResponsible->notify(new DealEventNotification($event, ['oldResponsibleId' => $oldResponsible->id]));
+                    } catch (\Throwable $exception) {
+                        Log::error('deal.responsible_notification.failed', [
+                            'deal_id' => $event->deal_id,
+                            'user_id' => $oldResponsible->id,
+                            'exception' => $exception::class,
+                        ]);
+                    }
+                });
+            }
+        }
+
+        if (array_key_exists('client', $changes) && $actorId !== null) {
+            DealEvent::create([
+                'deal_id' => $deal->id,
+                'initiator_id' => $actorId,
+                'type' => DealEventTypeEnum::CHANGE_CLIENT->value,
+                'changed_field' => trans('deals.client'),
+                'old_value' => $this->formatClientValue($original['client'] ?? null),
+                'new_value' => $this->formatClientValue($deal->getRawOriginal('client')),
+            ]);
+        }
+
+        if ($actorId === null) {
+            return;
+        }
+
+        foreach (Lang::get('deals') as $key => $label) {
+            if (in_array($key, ['responsible_id', 'sales_stage_id', 'client'], true) || ! array_key_exists($key, $changes)) {
+                continue;
+            }
+
+            DealEvent::create([
+                'deal_id' => $deal->id,
+                'initiator_id' => $actorId,
+                'type' => DealEventTypeEnum::CHANGE_FIELD->value,
+                'changed_field' => $label,
+                'old_value' => $key === 'note' ? strip_tags($original[$key] ?? '') : ($original[$key] ?? null),
+                'new_value' => $deal->{$key},
+            ]);
+        }
+    }
+
+    private function replicateForStageTransitions(Deal $deal, ?int $actorId): void
+    {
+        $tunnels = SalesTunnel::with('toStage.salesFunnel')->where('from_stage_id', $deal->sales_stage_id)->get();
+
+        foreach ($tunnels as $tunnel) {
+            $replica = $deal->replicate();
+            $replica->sales_funnel_id = $tunnel->toStage->salesFunnel->id;
+            $replica->sales_stage_id = $tunnel->to_stage_id;
+            $replica->save();
+            $this->initializeCreatedDeal($replica, $actorId);
+        }
+
+        Log::debug('deal.stage_replicas.created', ['deal_id' => $deal->id, 'count' => $tunnels->count()]);
+    }
+
+    private function formatClientValue(?string $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        if (ctype_digit($value)) {
+            $client = User::find((int) $value);
+
+            return $client ? $client->name.' '.$client->surname : $value;
+        }
+
+        return str_starts_with($value, 'str_') ? substr($value, 4) : $value;
+    }
+
+    private function broadcastPartnerDealCounts(Deal $deal): void
+    {
+        $partnerRole = DefaultRolesEnum::PARTNER->value;
+        $partnerIds = [
+            $deal->responsible()->whereHas('role', fn ($query) => $query->where('original_title', $partnerRole))->value('id'),
+            $deal->creator()->whereHas('role', fn ($query) => $query->where('original_title', $partnerRole))->value('id'),
+        ];
+
+        foreach (array_unique(array_filter($partnerIds)) as $partnerId) {
+            try {
+                $count = Deal::whereHas('salesStage', fn ($query) => $query->where('type', SalesStageEnum::DEFAULT->value))
+                    ->where(fn ($query) => $query->where('creator_id', $partnerId)->orWhere('responsible_id', $partnerId))
+                    ->count();
+
+                broadcast(new PartnerInProgressDealUpdateBroadcast($partnerId, $count));
+            } catch (\Throwable $exception) {
+                Log::error('deal.partner_count_broadcast.failed', [
+                    'deal_id' => $deal->id,
+                    'user_id' => $partnerId,
+                    'exception' => $exception::class,
+                ]);
+            }
+        }
     }
 
     public function deleteDeal(Deal $deal): void
@@ -106,7 +317,7 @@ class DealService
         return 'Сделка #'.$dealId;
     }
 
-    public function getActivity(Deal $deal, DealActivityFilter $filter): LengthAwarePaginator
+    public function getActivity(Deal $deal, DealActivityFilter $filter, array $pagination = []): LengthAwarePaginator
     {
         $activityMap = [
             DealEvent::class => ['type' => DealActivityEnum::EVENT, 'resource' => DealEventResource::class],
@@ -114,7 +325,7 @@ class DealService
             Task::class => ['type' => DealActivityEnum::TASK, 'resource' => TaskResource::class],
         ];
 
-        return $this->activityService->getActivity($deal, $filter, $activityMap);
+        return $this->activityService->getActivity($deal, $filter, $activityMap, $pagination);
 
     }
 

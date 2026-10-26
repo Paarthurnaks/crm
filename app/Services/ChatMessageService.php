@@ -19,8 +19,10 @@ use App\Models\ChatHiddenMessage;
 use App\Models\ChatMessage;
 use App\Models\ForwardingChatMessage;
 use App\Models\UnreadChatMessage;
+use Closure;
 use Exception;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class ChatMessageService
@@ -150,34 +152,46 @@ class ChatMessageService
             throw new Exception(self::ERROR_MESSAGES['clientChatError']);
         }
 
-        $message = ChatMessage::create([
-            'chat_id' => $chat->id,
-            'user_id' => auth()->id(),
-            'status' => ChatMessageTypeEnum::SENT->value,
-            'text' => $data['text'] ?? null,
-            'reply_message_id' => $data['reply_message_id'] ?? null,
-            'is_forwarded' => $data['is_forwarded'] ?? false,
-        ]);
+        $actorId = auth()->id();
+        Log::info('chat.message.send.started', ['chat_id' => $chatId, 'actor_id' => $actorId]);
 
-        if (isset($data['attachments'])) {
-            foreach ($data['attachments'] as $attachment) {
-                $message->addMedia($attachment)
-                    ->withCustomProperties(['chat_id' => $chat->id])
-                    ->toMediaCollection();
-            }
+        try {
+            return DB::transaction(function () use ($data, $chat, $actorId): ChatMessage {
+                $message = ChatMessage::create([
+                    'chat_id' => $chat->id,
+                    'user_id' => $actorId,
+                    'status' => ChatMessageTypeEnum::DELIVERED->value,
+                    'text' => $data['text'] ?? null,
+                    'reply_message_id' => $data['reply_message_id'] ?? null,
+                    'is_forwarded' => $data['is_forwarded'] ?? false,
+                ]);
+
+                foreach ($data['attachments'] ?? [] as $attachment) {
+                    $message->addMedia($attachment)
+                        ->withCustomProperties(['chat_id' => $chat->id])
+                        ->toMediaCollection();
+                }
+
+                DB::afterCommit(function () use ($message, $actorId): void {
+                    try {
+                        $this->broadcastMessageSentToGlobal($message, $actorId);
+                    } catch (\Throwable $exception) {
+                        Log::error('chat.message.broadcast.failed', ['chat_id' => $message->chat_id, 'message_id' => $message->id, 'exception' => $exception::class]);
+                    }
+                });
+                Log::info('chat.message.send.completed', ['chat_id' => $chat->id, 'message_id' => $message->id]);
+
+                return $message;
+            });
+        } catch (\Throwable $exception) {
+            Log::error('chat.message.send.failed', ['chat_id' => $chatId, 'actor_id' => $actorId, 'exception' => $exception::class]);
+            throw $exception;
         }
-
-        $this->broadcastMessageSentToGlobal($message);
-
-        return $message;
     }
 
-    public function broadcastMessageSentToGlobal(ChatMessage $message): void
+    public function broadcastMessageSentToGlobal(ChatMessage $message, ?int $actorId = null): void
     {
-        if ($message->status !== ChatMessageTypeEnum::DELIVERED->value) {
-            $message->status = ChatMessageTypeEnum::DELIVERED->value;
-            $message->save();
-        }
+        $actorId ??= auth()->id();
 
         $chat = $message->chat;
         $chat->load(
@@ -191,34 +205,14 @@ class ChatMessageService
             'messages.forward',
         );
 
-        $chatResources = $chat->members
-            ->filter(function ($member) {
-                return $member->user_id !== auth()->id();
-            })
-            ->mapWithKeys(function ($member) use ($chat, $message) {
-                $chatResource = ChatResource::make($chat, $member->user_id);
+        $this->broadcastToRecipients($chat, $actorId, $message->id, 'sent', function (int $recipientId) use ($chat, $message) {
+            $chatResource = ChatResource::make($chat, $recipientId);
 
-                return [$member->user_id => [
-                    'chat' => $chatResource,
-                    'message' => ChatMessageResource::make($message, $member->user_id, $chatResource),
-                ]];
-            });
-
-        $message->chat->members->each(function ($member) use ($chatResources) {
-            if ($member->user_id !== auth()->id()) {
-                $chatResource = $chatResources[$member->user_id]['chat'];
-                $chatMessageResource = $chatResources[$member->user_id]['message'];
-
-                try {
-                    broadcast(new GlobalChatsMessageSentBroadcast(
-                        $chatMessageResource,
-                        $chatResource,
-                        $member->user_id
-                    ));
-                } catch (\Exception $e) {
-                    \Log::error('Ошибка при broadcast для пользователя '.$member->user_id.': '.$e->getMessage());
-                }
-            }
+            return new GlobalChatsMessageSentBroadcast(
+                ChatMessageResource::make($message, $recipientId, $chatResource),
+                $chatResource,
+                $recipientId
+            );
         });
     }
 
@@ -231,26 +225,33 @@ class ChatMessageService
             throw new Exception(self::ERROR_MESSAGES['chatMemberError']);
         }
 
-        $isUpdated = $message->update(['text' => $data['text']]);
+        return DB::transaction(function () use ($message, $data): bool {
+            $isUpdated = $message->update(['text' => $data['text']]);
 
-        $this->broadcastMessageUpdateToGlobal($message);
+            if ($isUpdated) {
+                DB::afterCommit(function () use ($message): void {
+                    try {
+                        $this->broadcastMessageUpdateToGlobal($message);
+                    } catch (\Throwable $exception) {
+                        Log::error('chat.message_update.broadcast.failed', ['chat_id' => $message->chat_id, 'message_id' => $message->id, 'exception' => $exception::class]);
+                    }
+                });
+                Log::info('chat.message.updated', ['chat_id' => $message->chat_id, 'message_id' => $message->id]);
+            }
 
-        return $isUpdated;
+            return $isUpdated;
+        });
     }
 
     public function broadcastMessageUpdateToGlobal($message): void
     {
         $message->chat->load('lastMessage.chat', 'lastMessage.user', 'category', 'unreadMessages.message.user', 'members.user.role', 'forward');
-        $message->chat->members->each(function ($member) use ($message) {
-            if ($member->user_id !== auth()->id()) {
-                broadcast(
-                    new GlobalChatsMessageUpdateBroadcast(
-                        ChatMessageResource::make($message, $member->user_id),
-                        ChatResource::make($message->chat, $member->user_id),
-                        $member->user_id
-                    )
-                );
-            }
+        $this->broadcastToRecipients($message->chat, auth()->id(), $message->id, 'updated', function (int $recipientId) use ($message) {
+            return new GlobalChatsMessageUpdateBroadcast(
+                ChatMessageResource::make($message, $recipientId),
+                ChatResource::make($message->chat, $recipientId),
+                $recipientId
+            );
         });
     }
 
@@ -283,34 +284,43 @@ class ChatMessageService
             ->latest('id')
             ->value('id');
 
-        UnreadChatMessage::where('user_id', $userId)
-            ->whereIn('chat_message_id', $selectedMessageIds)
-            ->delete();
+        return DB::transaction(function () use ($chatId, $userId, $selectedMessageIds, $messages, $lastMessageId): Collection {
+            UnreadChatMessage::where('user_id', $userId)
+                ->whereIn('chat_message_id', $selectedMessageIds)
+                ->delete();
 
-        $updatedMessages = $messages->map(function ($message) use ($lastMessageId, $userId) {
-            if ($message->user_id !== $userId && $message->status !== ChatMessageTypeEnum::READ->value) {
-                $message->status = ChatMessageTypeEnum::READ->value;
-            }
+            ChatMessage::where('chat_id', $chatId)
+                ->whereIn('id', $selectedMessageIds)
+                ->where('user_id', '!=', $userId)
+                ->where('status', '!=', ChatMessageTypeEnum::READ->value)
+                ->update(['status' => ChatMessageTypeEnum::READ->value]);
 
-            $chatResource = ChatResource::make($message->chat, $message->user_id);
-            $messageResource = ChatMessageResource::make($message, $message->user_id);
+            $messages->each(function (ChatMessage $message) use ($userId): void {
+                if ($message->user_id !== $userId) {
+                    $message->status = ChatMessageTypeEnum::READ->value;
+                }
+            });
 
-            broadcast(new ChangeMessageStatusBroadcast($messageResource, $chatResource));
+            DB::afterCommit(function () use ($messages, $lastMessageId, $chatId): void {
+                foreach ($messages as $message) {
+                    try {
+                        $chatResource = ChatResource::make($message->chat, $message->user_id);
+                        $messageResource = ChatMessageResource::make($message, $message->user_id);
+                        broadcast(new ChangeMessageStatusBroadcast($messageResource, $chatResource));
 
-            if ($message->id === $lastMessageId) {
-                broadcast(new GlobalChatsMessageStatusChangeBroadcast($messageResource, $chatResource));
-            }
+                        if ($message->id === $lastMessageId) {
+                            broadcast(new GlobalChatsMessageStatusChangeBroadcast($messageResource, $chatResource));
+                        }
+                    } catch (\Throwable $exception) {
+                        Log::error('chat.message_status.broadcast.failed', ['chat_id' => $chatId, 'message_id' => $message->id, 'exception' => $exception::class]);
+                    }
+                }
+            });
 
-            return $message;
+            Log::debug('chat.message_status.updated', ['chat_id' => $chatId, 'message_count' => $messages->count()]);
+
+            return $messages;
         });
-
-        ChatMessage::where('chat_id', $chatId)
-            ->whereIn('id', $selectedMessageIds)
-            ->where('user_id', '!=', $userId)
-            ->where('status', '!=', ChatMessageTypeEnum::READ->value)
-            ->update(['status' => ChatMessageTypeEnum::READ->value]);
-
-        return $updatedMessages;
     }
 
     public function hideMessage(int $messageId): void
@@ -325,32 +335,47 @@ class ChatMessageService
     {
         $chat = $message->chat;
         $messageId = $message->id;
+        $actorId = auth()->id();
 
-        broadcast(
-            new ChatMessageDeleteBroadcast(
-                ChatResource::make($chat),
-                $messageId
-            )
-        )->toOthers();
+        DB::transaction(function () use ($message, $chat, $messageId, $actorId): void {
+            $message->delete();
 
-        $this->broadcastMessageDeleteToGlobal($chat->id, $messageId);
+            DB::afterCommit(function () use ($chat, $messageId, $actorId): void {
+                try {
+                    broadcast(new ChatMessageDeleteBroadcast(ChatResource::make($chat), $messageId))->toOthers();
+                    $this->broadcastMessageDeleteToGlobal($chat, $messageId, $actorId);
+                } catch (\Throwable $exception) {
+                    Log::error('chat.message_delete.broadcast.failed', ['chat_id' => $chat->id, 'message_id' => $messageId, 'exception' => $exception::class]);
+                }
+            });
 
-        $message->delete();
+            Log::info('chat.message.deleted', ['chat_id' => $chat->id, 'message_id' => $messageId]);
+        });
     }
 
-    private function broadcastMessageDeleteToGlobal($chatId, $messageId): void
+    private function broadcastMessageDeleteToGlobal(Chat $chat, int $messageId, ?int $actorId): void
     {
-        Chat::find($chatId)->members->each(function ($member) use ($messageId) {
-            if ($member->user_id !== auth()->id()) {
-                broadcast(
-                    new GlobalChatsMessageDeleteBroadcast(
-                        new ChatResource($member->chat, $member->user_id),
-                        $messageId,
-                        $member->user_id
-                    )
-                );
-            }
+        $chat->load('members.user.role', 'unreadMessages.message.user', 'lastMessage', 'category');
+        $this->broadcastToRecipients($chat, $actorId, $messageId, 'deleted', function (int $recipientId) use ($chat, $messageId) {
+            return new GlobalChatsMessageDeleteBroadcast(new ChatResource($chat, $recipientId), $messageId, $recipientId);
         });
+    }
+
+    private function broadcastToRecipients(Chat $chat, ?int $actorId, int $messageId, string $action, Closure $eventForRecipient): void
+    {
+        foreach ($chat->members as $member) {
+            $recipientId = (int) $member->user_id;
+            if ($recipientId === $actorId) {
+                continue;
+            }
+
+            try {
+                broadcast($eventForRecipient($recipientId));
+                Log::info('chat.message.broadcast.sent', ['chat_id' => $chat->id, 'message_id' => $messageId, 'user_id' => $recipientId, 'action' => $action]);
+            } catch (\Throwable $exception) {
+                Log::error('chat.message.broadcast.failed', ['chat_id' => $chat->id, 'message_id' => $messageId, 'user_id' => $recipientId, 'action' => $action, 'exception' => $exception::class]);
+            }
+        }
     }
 
     /**
@@ -360,36 +385,40 @@ class ChatMessageService
     {
         $messages = ChatMessage::find($data['message_ids']);
 
-        $result = [];
+        return DB::transaction(function () use ($data, $messages): Collection {
+            $result = [];
 
-        foreach ($data['chat_ids'] as $chatId) {
-            foreach ($messages as $message) {
-                $newMessageData = [
-                    'chat_id' => $chatId,
-                    'user_id' => auth()->id(),
-                    'status' => ChatMessageTypeEnum::SENT->value,
-                    'text' => $message->text,
-                    'is_forwarded' => true,
-                    'reply_message_id' => null,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ];
+            foreach ($data['chat_ids'] as $chatId) {
+                foreach ($messages as $message) {
+                    $newMessageData = [
+                        'chat_id' => $chatId,
+                        'user_id' => auth()->id(),
+                        'status' => ChatMessageTypeEnum::SENT->value,
+                        'text' => $message->text,
+                        'is_forwarded' => true,
+                        'reply_message_id' => null,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
 
-                $forwardedMessage = $this->sendMessage($newMessageData, $chatId);
+                    $forwardedMessage = $this->sendMessage($newMessageData, $chatId);
 
-                foreach ($message->getMedia() as $media) {
-                    $media->copy($forwardedMessage);
+                    foreach ($message->getMedia() as $media) {
+                        $media->copy($forwardedMessage);
+                    }
+
+                    ForwardingChatMessage::create([
+                        'original_message_id' => $message->forward()->exists() ? $message->forward->original_message_id : $message->id,
+                        'forwarded_message_id' => $forwardedMessage->id,
+                    ]);
+
+                    $result[] = $forwardedMessage;
                 }
-
-                ForwardingChatMessage::create([
-                    'original_message_id' => $message->forward()->exists() ? $message->forward->original_message_id : $message->id,
-                    'forwarded_message_id' => $forwardedMessage->id,
-                ]);
-
-                $result[] = $forwardedMessage;
             }
-        }
 
-        return collect($result);
+            Log::info('chat.messages.forwarded', ['source_count' => $messages->count(), 'created_count' => count($result)]);
+
+            return collect($result);
+        });
     }
 }

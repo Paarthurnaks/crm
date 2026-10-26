@@ -65,6 +65,28 @@ class UserTableSettingsAccessTest extends TestCase
         $this->assertCount(1, $settings->settings['table_columns']);
     }
 
+    public function test_update_stores_simple_columns_and_returns_enriched_columns(): void
+    {
+        $role = Role::create(['title' => 'limited']);
+        $user = $this->createUser($role);
+        $field = Field::create(['name' => 'Title', 'entity' => 'deals', 'type' => 'string', 'code' => 'title']);
+        $role->fields()->attach($field->id, ['type' => 'view']);
+        $this->actingAs($user, 'api');
+
+        $result = (new UserTableSettingsService)->updateUserTableSettings([
+            'entity' => 'deals',
+            'settings' => ['table_columns' => [[
+                'id' => $field->id,
+                'is_userfield' => false,
+                'name' => 'Не сохранять имя из запроса',
+            ]]],
+        ]);
+
+        $stored = $result->fresh()->settings['table_columns'][0];
+        $this->assertSame(['id' => $field->id, 'is_userfield' => false], $stored);
+        $this->assertSame('Title', $result->settings['table_columns'][0]['name']);
+    }
+
     private function createUser(Role $role): User
     {
         return User::withoutEvents(fn (): User => User::create([

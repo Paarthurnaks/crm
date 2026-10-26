@@ -23,41 +23,36 @@ class FieldService
         'updateError' => 'Возникла ошибка при обновлении поля',
     ];
 
+    /** @return array{fields: \Illuminate\Support\Collection, user_fields: \Illuminate\Support\Collection} */
     public function getFieldsAndUserFields(string $entity, array $queryParams): array
     {
-        $prohibited = ProhibitedFieldEnum::values();
+        $action = $queryParams['type'] ?? 'view';
+        $actor = Auth::user();
+        $fields = Field::where('entity', $entity);
+        $userFields = UserField::where('entity', $entity);
 
-        if (! isset($queryParams['type'])) {
-            $queryParams['type'] = 'view';
+        if (! FieldAccess::supports($action) || ! $actor?->role) {
+            Log::warning('field.list.denied', ['actor_id' => $actor?->id, 'action' => $action]);
+
+            return ['fields' => collect(), 'user_fields' => collect()];
         }
 
-        //        if (Auth::user()->role->title == "Руководитель") {
-        return [
-            'fields' => Field::where('entity', $entity)->when($queryParams['type'] !== 'view', function ($query) use ($prohibited) {
-                $query->whereNotIn('code', $prohibited);
-            })->get(),
-            'user_fields' => UserField::where('entity', $entity)->when($queryParams['type'] !== 'view', function ($query) use ($prohibited) {
-                $query->whereNotIn('code', $prohibited);
-            })->get(),
-        ];
-        //        } else {
-        //            return [
-        //                "fields" => Auth::user()->role->fields()
-        //                    ->wherePivot("type", $queryParams["type"])
-        //                    ->where("entity", $entity)
-        //                    ->when($queryParams["type"] !== "view", function ($query) use ($prohibited) {
-        //                        $query->whereNotIn("code", $prohibited);
-        //                    })
-        //                    ->get(),
-        //                "user_fields" => Auth::user()->role->userFields()
-        //                    ->wherePivot("type", $queryParams["type"] ?? "view")
-        //                    ->where("entity", $entity)
-        //                    ->when($queryParams["type"] !== "view", function ($query) use ($prohibited) {
-        //                        $query->whereNotIn("code", $prohibited);
-        //                    })
-        //                    ->get(),
-        //            ];
-        //        }
+        if ($action !== 'view') {
+            $prohibited = ProhibitedFieldEnum::values();
+            $fields->whereNotIn('code', $prohibited);
+            $userFields->whereNotIn('code', $prohibited);
+        }
+
+        if (! FieldAccess::isSuperAdmin($actor)) {
+            $allowed = FieldAccess::allowedIds($actor, $action);
+            $fields->whereIn('id', $allowed['fields']);
+            $userFields->whereIn('id', $allowed['user_fields']);
+        }
+
+        $result = ['fields' => $fields->get(), 'user_fields' => $userFields->get()];
+        Log::debug('field.list.loaded', ['actor_id' => $actor->id, 'action' => $action, 'count' => $result['fields']->count() + $result['user_fields']->count()]);
+
+        return $result;
     }
 
     public function update(array $data, UserField|Field $field): void

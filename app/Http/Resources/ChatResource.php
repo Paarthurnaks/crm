@@ -5,19 +5,23 @@ namespace App\Http\Resources;
 use App\Enums\ChatTypeEnum;
 use App\Enums\DefaultRolesEnum;
 use App\Models\Chat;
-use App\Models\ChatMessage;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use Illuminate\Support\Facades\Auth;
 
 class ChatResource extends JsonResource
 {
     private int $userId;
 
+    private array $presentation;
+
     public function __construct($resource, $userId = null)
     {
         parent::__construct($resource);
         $this->userId = $userId ?? auth()->id();
+        $prepared = $resource instanceof Chat ? $resource->getAttribute('chat_presentation') : null;
+        $this->presentation = is_array($prepared) && ($prepared['user_id'] ?? null) === $this->userId
+            ? $prepared
+            : self::prepareForUser($resource, $this->userId);
     }
 
     /**
@@ -107,57 +111,64 @@ class ChatResource extends JsonResource
         $chat = $this->resource;
 
         $lastMessage = $chat->lastMessage;
-        $firstUnreadMessage = $this->firstUnreadMessage($chat);
+        $firstUnreadMessage = $this->presentation['first_unread_message'];
 
         return [
             'id' => $chat->id,
             'type' => $chat->type,
-            'name' => $chat->getDisplayName($this->userId),
-            'avatar' => $chat->getDisplayAvatar($this->userId),
+            'name' => $this->presentation['name'],
+            'avatar' => $this->presentation['avatar'],
             'category' => $chat->category->isNotEmpty() ? ChatCategoryResource::make($chat->category->first()) : null,
-            'first_unread_message' => $firstUnreadMessage ? ChatSpecialMessageResource::make($firstUnreadMessage, $this->userId) : null,
-            'last_message' => $lastMessage ? ChatSpecialMessageResource::make($lastMessage, $this->userId) : null,
-            'unread_messages_count' => $chat->unreadMessages->where('user_id', $this->userId)->count(),
+            'first_unread_message' => $firstUnreadMessage ? ChatSpecialMessageResource::make($firstUnreadMessage, $this->userId, $chat) : null,
+            'last_message' => $lastMessage ? ChatSpecialMessageResource::make($lastMessage, $this->userId, $chat) : null,
+            'unread_messages_count' => $this->presentation['unread_messages_count'],
             'created_at' => $chat->created_at,
             'updated_at' => $chat->updated_at,
             'description' => $chat->type === ChatTypeEnum::GROUP->value ? $chat->description : null,
-            'can_delete' => $this->canDelete($chat),
+            'can_delete' => $this->presentation['can_delete'],
         ];
     }
 
-    private function firstUnreadMessage(Chat $chat): ?ChatMessage
+    public static function prepareForUser(Chat $chat, int $userId): array
     {
         $unreadMessage = $chat->unreadMessages
-            ->where('user_id', $this->userId)
+            ->where('user_id', $userId)
             ->sortBy('created_at')
             ->first();
 
-        return $unreadMessage?->message;
+        return [
+            'user_id' => $userId,
+            'name' => $chat->getDisplayName($userId),
+            'avatar' => $chat->getDisplayAvatar($userId),
+            'first_unread_message' => $unreadMessage?->message,
+            'unread_messages_count' => $chat->unreadMessages->where('user_id', $userId)->count(),
+            'can_delete' => self::canDeleteForUser($chat, $userId),
+        ];
     }
 
-    private function canDelete(Chat $chat): bool
+    private static function canDeleteForUser(Chat $chat, int $userId): bool
     {
         switch ($chat->type) {
             case ChatTypeEnum::GROUP->value:
-                return Auth::check() && Auth::user()->isCreatorOfChat($chat);
+                return $chat->members->contains(fn ($member) => (int) $member->user_id === $userId && (bool) $member->is_creator);
 
             case ChatTypeEnum::SINGLE->value:
                 return $chat->members->count() === 1;
 
             case ChatTypeEnum::PARTNER->value:
                 $partnerExists = $chat->members->contains(function ($member) {
-                    return $member->user->role->original_title === DefaultRolesEnum::PARTNER->value;
+                    return $member->user?->role?->original_title === DefaultRolesEnum::PARTNER->value;
                 });
 
                 return ! $partnerExists;
 
             case ChatTypeEnum::CLIENT->value:
                 $clientExists = $chat->members->contains(function ($member) {
-                    return $member->user->role->original_title === DefaultRolesEnum::CLIENT->value;
+                    return $member->user?->role?->original_title === DefaultRolesEnum::CLIENT->value;
                 });
 
                 $partnerExists = $chat->members->contains(function ($member) {
-                    return $member->user->role->original_title === DefaultRolesEnum::PARTNER->value;
+                    return $member->user?->role?->original_title === DefaultRolesEnum::PARTNER->value;
                 });
 
                 return ! $clientExists || ! $partnerExists;

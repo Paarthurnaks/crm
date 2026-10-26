@@ -7,6 +7,7 @@ use App\Http\Resources\ChatMessageResource;
 use App\Services\ChatAttachmentService;
 use App\Services\ResponseService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class ChatAttachmentController extends Controller
 {
@@ -84,9 +85,10 @@ class ChatAttachmentController extends Controller
      *     )
      * )
      */
-    public function getAllMediaImages(string $id): JsonResponse
+    public function getAllMediaImages(string $id, Request $request): JsonResponse
     {
-        $messages = $this->service->getAllChatMediaImages($id);
+        $limit = $request->query('limit');
+        $messages = $this->service->getAllChatMediaImages($id, $limit === null ? null : (int) $limit);
 
         return ResponseService::success(
             ChatMessageResource::collection($messages)->response()->getData(true)
@@ -163,9 +165,10 @@ class ChatAttachmentController extends Controller
      *     )
      * )
      */
-    public function getAllMediaDocuments(string $id): JsonResponse
+    public function getAllMediaDocuments(string $id, Request $request): JsonResponse
     {
-        $messages = $this->service->getAllChatMediaDocuments($id);
+        $limit = $request->query('limit');
+        $messages = $this->service->getAllChatMediaDocuments($id, $limit === null ? null : (int) $limit);
 
         return ResponseService::success(
             ChatMessageResource::collection($messages)->response()->getData(true)

@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
-use App\Enums\DefaultRolesEnum;
 use App\Enums\ProhibitedFieldEnum;
 use App\Http\Filters\Traits\Filterable;
+use App\Services\FieldAccess;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -174,7 +174,7 @@ class Section extends Model
         $relation = $this->hasMany(SectionField::class)->orderBy('position');
         $user = Auth::user();
 
-        if (! in_array($action, ['view', 'create', 'update'], true) || ! $user?->role) {
+        if (! FieldAccess::supports($action) || ! $user?->role) {
             return $relation->whereRaw('1 = 0');
         }
 
@@ -184,16 +184,15 @@ class Section extends Model
             });
         }
 
-        if ($user->hasRole(DefaultRolesEnum::SUPER_ADMIN->value)) {
+        if (FieldAccess::isSuperAdmin($user)) {
             return $relation;
         }
 
-        $userFieldIds = $user->role->userFields()->wherePivot('type', $action)->pluck('user_fields.id');
-        $fieldIds = $user->role->fields()->wherePivot('type', $action)->pluck('fields.id');
+        $allowed = FieldAccess::allowedIds($user, $action);
 
-        return $relation->where(function ($query) use ($userFieldIds, $fieldIds) {
-            $query->whereIn('user_field_id', $userFieldIds)
-                ->orWhereIn('field_id', $fieldIds);
+        return $relation->where(function ($query) use ($allowed) {
+            $query->whereIn('user_field_id', $allowed['user_fields'])
+                ->orWhereIn('field_id', $allowed['fields']);
         });
     }
 }

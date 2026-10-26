@@ -5,18 +5,21 @@ namespace App\Services;
 use App\Http\Filters\Abstract\QueryFilter;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Log;
 
 class EntityActivityService
 {
-    public function getActivity(Model $model, QueryFilter $filter, array $activityMap): LengthAwarePaginator
+    public function getActivity(Model $model, QueryFilter $filter, array $activityMap, array $pagination = []): LengthAwarePaginator
     {
-        $limit = request()->input('limit', config('constants.paginator.limit'));
+        $limit = $pagination['limit'] ?? config('constants.paginator.limit');
 
         $activities = $model->activities()
             ->with('activityable')
             ->filter($filter)
             ->latest()
             ->paginate($limit);
+
+        Log::debug('entity_activity.list.loaded', ['entity_type' => $model::class, 'entity_id' => $model->getKey(), 'count' => $activities->count()]);
 
         $transformedItems = $activities->getCollection()->map(function ($activity) use ($activityMap) {
             if (array_key_exists($activity->activityable_type, $activityMap)) {
@@ -37,8 +40,8 @@ class EntityActivityService
             $activities->perPage(),
             $activities->currentPage(),
             [
-                'path' => request()->url(),
-                'query' => request()->query(),
+                'path' => $pagination['path'] ?? '',
+                'query' => $pagination['query'] ?? [],
             ]
         );
     }

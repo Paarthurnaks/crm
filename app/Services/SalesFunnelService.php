@@ -14,12 +14,13 @@ use App\Models\User;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 
 class SalesFunnelService
 {
-    public function __construct(private SalesStageService $salesstageService) {}
+    public function __construct(private SalesStageService $salesStageService) {}
 
     public function getSalesFunnels(SalesFunnelFilter $filter, DealFilter $dealFilter, array $queryParams): LengthAwarePaginator
     {
@@ -68,7 +69,7 @@ class SalesFunnelService
             ]);
 
             foreach ($salesFunnelData['stages'] as $salesStageData) {
-                $this->salesstageService->createSalesStage($salesStageData, $salesFunnel->id);
+                $this->salesStageService->createSalesStage($salesStageData, $salesFunnel->id);
             }
 
             return $salesFunnel;
@@ -79,103 +80,119 @@ class SalesFunnelService
 
     public function updateSalesFunnel(SalesFunnel $salesFunnel, array $salesFunnelData): SalesFunnel
     {
-        // if (Auth::user()->role->title != "Администратор")
-        // {
-        //     throw new AccessDeniedHttpException("Обновлять направления может только администратор");
-        // }
-
         if (! empty($salesFunnelData['stages']) && ! $this->checkAllStages($salesFunnelData['stages'])) {
             throw new BadRequestHttpException('Должны быть обязательно 1 обычная, 1 успешная и 1 неуспешная стадия');
         }
 
-        DB::transaction(function () use ($salesFunnel, $salesFunnelData) {
-            if (array_key_exists('title', $salesFunnelData)) {
-                $salesFunnel->update(['title' => $salesFunnelData['title']]);
-            }
-            if (array_key_exists('position', $salesFunnelData)) {
-                $salesFunnel->update(['position' => $salesFunnelData['position']]);
-            }
-            $arrayStagesIds = [];
-            if (! empty($salesFunnelData['stages'])) {
-                foreach ($salesFunnelData['stages'] as $salesStageData) {
-                    if (array_key_exists('id', $salesStageData)) {
-                        $arrayStagesIds[] = $salesStageData['id'];
-                        $stage = SalesStage::find($salesStageData['id']);
-                        $this->salesstageService->updateSalesStage($stage, $salesStageData);
-                    } else {
-                        $stage = $this->salesstageService->createSalesStage($salesStageData, $salesFunnel->id);
-                        $arrayStagesIds[] = $stage->id;
-                    }
+        $step = 'attributes';
+
+        try {
+            DB::transaction(function () use ($salesFunnel, $salesFunnelData, &$step): void {
+                $attributes = array_intersect_key($salesFunnelData, array_flip(['title', 'position']));
+                if ($attributes !== []) {
+                    $salesFunnel->update($attributes);
                 }
-                $this->syncStages($salesFunnel, $arrayStagesIds);
+
+                if (! empty($salesFunnelData['stages'])) {
+                    $step = 'stages';
+                    $this->updateStages($salesFunnel, $salesFunnelData['stages']);
+                }
+
+                if (array_key_exists('fields', $salesFunnelData)) {
+                    $step = 'fields';
+                    $this->syncFunnelFields($salesFunnel, $salesFunnelData['fields']);
+                }
+            });
+        } catch (\Throwable $exception) {
+            Log::error('sales_funnel.update.failed', ['funnel_id' => $salesFunnel->id, 'step' => $step, 'exception' => $exception::class]);
+            throw $exception;
+        }
+
+        Log::info('sales_funnel.update.completed', ['funnel_id' => $salesFunnel->id]);
+
+        return $salesFunnel;
+    }
+
+    private function updateStages(SalesFunnel $salesFunnel, array $stages): void
+    {
+        $stageIds = [];
+
+        foreach ($stages as $stageData) {
+            if (isset($stageData['id'])) {
+                $stage = SalesStage::where('sales_funnel_id', $salesFunnel->id)->findOrFail($stageData['id']);
+                $this->salesStageService->updateSalesStage($stage, $stageData);
+            } else {
+                $stage = $this->salesStageService->createSalesStage($stageData, $salesFunnel->id);
             }
 
-            if (array_key_exists('fields', $salesFunnelData)) {
-                $fields = collect($salesFunnelData['fields']);
+            $stageIds[] = $stage->id;
+        }
 
-                $fieldIds = $fields->pluck('field_id')->filter();
-                $userFieldIds = $fields->pluck('user_field_id')->filter();
+        $this->syncStages($salesFunnel, $stageIds);
+        Log::debug('sales_funnel.stages.synced', ['funnel_id' => $salesFunnel->id, 'stage_count' => count($stageIds)]);
+    }
 
-                $fieldsResult = $salesFunnel->fields()->syncWithPivotValues($fieldIds, ['sales_funnel_id' => $salesFunnel->id]);
-                $userFieldsResult = $salesFunnel->userFields()->syncWithPivotValues($userFieldIds, ['sales_funnel_id' => $salesFunnel->id]);
+    private function syncFunnelFields(SalesFunnel $salesFunnel, array $fieldData): void
+    {
+        $fields = collect($fieldData);
+        $fieldIds = $fields->pluck('field_id')->filter();
+        $userFieldIds = $fields->pluck('user_field_id')->filter();
 
-                SectionField::whereHas('section', function ($query) use ($salesFunnel) {
-                    $query->where('sales_funnel_id', $salesFunnel->id)
-                        ->where('is_customized', false)
-                        ->where('is_template', true)
-                        ->where('entity', SectionFieldEntityEnum::DEALS->value);
-                })
-                    ->where(function ($query) use ($fieldsResult, $userFieldsResult) {
-                        $query->whereIn('field_id', $fieldsResult['detached'])
-                            ->orWhereIn('user_field_id', $userFieldsResult['detached']);
-                    })
-                    ->delete();
+        $fieldsResult = $salesFunnel->fields()->syncWithPivotValues($fieldIds, ['sales_funnel_id' => $salesFunnel->id]);
+        $userFieldsResult = $salesFunnel->userFields()->syncWithPivotValues($userFieldIds, ['sales_funnel_id' => $salesFunnel->id]);
 
-                User::chunk(200, function ($users) use ($salesFunnel, $fieldsResult, $userFieldsResult) {
-                    foreach ($users as $user) {
+        SectionField::whereHas('section', function ($query) use ($salesFunnel) {
+            $query->where('sales_funnel_id', $salesFunnel->id)
+                ->where('is_customized', false)
+                ->where('is_template', true)
+                ->where('entity', SectionFieldEntityEnum::DEALS->value);
+        })
+            ->where(function ($query) use ($fieldsResult, $userFieldsResult) {
+                $query->whereIn('field_id', $fieldsResult['detached'])
+                    ->orWhereIn('user_field_id', $userFieldsResult['detached']);
+            })
+            ->delete();
 
-                        $section = Section::updateOrCreate([
-                            'user_id' => $user->id,
-                            'entity' => SectionFieldEntityEnum::DEALS->value,
-                            'title' => 'Общее',
-                            'position' => 1,
-                            'is_template' => true,
-                            'main_section' => true,
-                            'sales_funnel_id' => $salesFunnel->id,
-                        ]);
+        $this->syncTemplateSections($salesFunnel, $fieldsResult['attached'], $userFieldsResult['attached']);
+    }
 
-                        $lastPosition = $section->fields()->max('position') ?? 0;
+    private function syncTemplateSections(SalesFunnel $salesFunnel, array $fieldIds, array $userFieldIds): void
+    {
+        $processed = 0;
 
-                        foreach ($fieldsResult['attached'] as $index => $fieldId) {
-                            SectionField::updateOrCreate(
-                                [
-                                    'section_id' => $section->id,
-                                    'field_id' => $fieldId,
-                                ],
-                                [
-                                    'position' => $lastPosition + $index + 1,
-                                ]
-                            );
-                        }
+        User::query()->chunkById(200, function ($users) use ($salesFunnel, $fieldIds, $userFieldIds, &$processed): void {
+            foreach ($users as $user) {
+                $section = Section::updateOrCreate([
+                    'user_id' => $user->id,
+                    'entity' => SectionFieldEntityEnum::DEALS->value,
+                    'title' => 'Общее',
+                    'position' => 1,
+                    'is_template' => true,
+                    'main_section' => true,
+                    'sales_funnel_id' => $salesFunnel->id,
+                ]);
 
-                        foreach ($userFieldsResult['attached'] as $index => $userFieldId) {
-                            SectionField::updateOrCreate(
-                                [
-                                    'section_id' => $section->id,
-                                    'user_field_id' => $userFieldId,
-                                ],
-                                [
-                                    'position' => $lastPosition + $index + 1,
-                                ]
-                            );
-                        }
-                    }
-                });
+                $lastPosition = $section->fields()->max('position') ?? 0;
 
+                foreach ($fieldIds as $index => $fieldId) {
+                    SectionField::updateOrCreate(
+                        ['section_id' => $section->id, 'field_id' => $fieldId],
+                        ['position' => $lastPosition + $index + 1]
+                    );
+                }
+
+                foreach ($userFieldIds as $index => $userFieldId) {
+                    SectionField::updateOrCreate(
+                        ['section_id' => $section->id, 'user_field_id' => $userFieldId],
+                        ['position' => $lastPosition + count($fieldIds) + $index + 1]
+                    );
+                }
+
+                $processed++;
             }
         });
 
-        return $salesFunnel;
+        Log::debug('sales_funnel.template_sections.synced', ['funnel_id' => $salesFunnel->id, 'user_count' => $processed]);
     }
 
     public function deleteSalesFunnel(SalesFunnel $salesFunnel): void

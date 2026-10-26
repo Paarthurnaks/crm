@@ -9,6 +9,14 @@ use Illuminate\Support\Facades\Storage;
 
 class UserResource extends JsonResource
 {
+    private ?bool $isPartnerClientOverride;
+
+    public function __construct($resource, ?bool $isPartnerClientOverride = null)
+    {
+        parent::__construct($resource);
+        $this->isPartnerClientOverride = $isPartnerClientOverride;
+    }
+
     /**
      * @OA\Schema(
      *     schema="UserResource",
@@ -92,10 +100,14 @@ class UserResource extends JsonResource
             'avatar' => $this->getFirstMedia()?->getUrl() ?? Storage::disk('public')->url('avatars/avatar.png'),
         ];
 
-        if ($request->user()?->hasRole(DefaultRolesEnum::PARTNER->value) &&
-            $request->user()->clients()->where('users.id', $this->id)->exists()
-        ) {
-            $partnerDeals = $this->partnerDeals()->select('id', 'title')->get();
+        $viewerRole = $request->user()?->role;
+        $viewerIsPartner = $viewerRole?->original_title === DefaultRolesEnum::PARTNER->value
+            || $viewerRole?->title === DefaultRolesEnum::PARTNER->value;
+
+        if ($viewerIsPartner && ($this->isPartnerClientOverride ?? $request->user()->clients()->where('users.id', $this->id)->exists())) {
+            $partnerDeals = $this->resource->relationLoaded('partnerDeals')
+                ? $this->partnerDeals->map(fn ($deal) => $deal->only(['id', 'title']))
+                : $this->partnerDeals()->select('id', 'title')->get();
             if ($partnerDeals->isNotEmpty()) {
                 $res['partner_deals'] = $partnerDeals;
             }

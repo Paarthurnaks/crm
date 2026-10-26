@@ -240,7 +240,7 @@ class UserController extends Controller
     {
         $queryParams = $request->all();
 
-        $users = $this->userService->getUsers($filter, $queryParams);
+        $users = $this->userService->getUsers($filter, $queryParams, $request->user());
 
         $total = $users->toArray()['total'];
 
@@ -347,7 +347,7 @@ class UserController extends Controller
     {
         $validated = $request->validated();
 
-        $user = $this->userService->createUser($validated);
+        $user = $this->userService->createUser($validated, $request->user(), $request->file('avatar'));
 
         return ResponseService::created(
             UserResource::make($user)
@@ -420,7 +420,7 @@ class UserController extends Controller
     {
         $validated = $request->validated();
 
-        $user = $this->userService->updateUser($user, $validated);
+        $user = $this->userService->updateUser($user, $validated, $request->file('avatar'));
 
         return ResponseService::success(
             UserResource::make($user)

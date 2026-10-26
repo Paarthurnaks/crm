@@ -218,15 +218,19 @@ class Task extends Model implements HasMedia
         return $this->morphMany(EntityActivity::class, 'activityable');
     }
 
-    public function scopeOwnTasks($query): Builder
+    public function scopeOwnTasks($query, ?int $actorId = null): Builder
     {
-        return $query->where('creator_id', auth()->id())
-            ->orWhereHas('executors', function ($query) {
-                $query->where('user_id', auth()->id());
-            })
-            ->orWhereHas('observers', function ($query) {
-                $query->where('user_id', auth()->id());
-            });
+        $actorId ??= auth()->id();
+
+        return $query->where(function ($query) use ($actorId) {
+            $query->where('creator_id', $actorId)
+                ->orWhereHas('executors', function ($query) use ($actorId) {
+                    $query->where('user_id', $actorId);
+                })
+                ->orWhereHas('observers', function ($query) use ($actorId) {
+                    $query->where('user_id', $actorId);
+                });
+        });
     }
 
     public function scopeOpenedTasks($query): Builder

@@ -7,11 +7,11 @@ use App\Enums\PermissionEntityEnum;
 use App\Enums\PermissionTypeEnum;
 use App\Mappers\ActionToPermissionMapper;
 use App\Models\Deal;
-use App\Models\Permission;
 use App\Models\User;
 use App\Services\ResponseService;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -61,10 +61,7 @@ class CheckPermissionMiddleware
             $deal = $request->route('deal');
 
             return $action === 'view'
-                && ($deal === null || ($deal instanceof Deal && Deal::query()
-                    ->where('client', (string) $user->id)
-                    ->whereKey($deal->id)
-                    ->exists()));
+                && ($deal === null || ($deal instanceof Deal && Gate::forUser($user)->allows('view', $deal)));
         }
 
         $permissionEntity = $entity;
@@ -74,15 +71,7 @@ class CheckPermissionMiddleware
             $permissionEntity = 'clients';
         }
 
-        if (! $user->role_id) {
-            return false;
-        }
-
-        $permission = Permission::query()
-            ->where('role_id', $user->role_id)
-            ->where('entity', $permissionEntity)
-            ->first();
-        $scope = $permission ? $permission->{$action} : null;
+        $scope = $user->permissionScope($permissionEntity, $action);
 
         if (! in_array($scope, [PermissionTypeEnum::ALL->value, PermissionTypeEnum::OWN->value, PermissionTypeEnum::OPENED->value], true)) {
             return false;
@@ -107,6 +96,10 @@ class CheckPermissionMiddleware
 
             if (! $deal instanceof Deal) {
                 return false;
+            }
+
+            if ($action === 'view') {
+                return Gate::forUser($user)->allows('view', $deal);
             }
 
             $scopeMethod = $scope === PermissionTypeEnum::OWN->value ? 'ownDeals' : 'openedDeals';

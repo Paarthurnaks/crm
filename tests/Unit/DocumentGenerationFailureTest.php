@@ -4,6 +4,7 @@ namespace Tests\Unit;
 
 use App\Models\Deal;
 use App\Models\DocumentTemplate;
+use App\Services\Document\LibreOfficeDocxToPdfConverter;
 use App\Services\DocumentService;
 use Illuminate\Support\Facades\File;
 use Mockery;
@@ -31,7 +32,7 @@ class DocumentGenerationFailureTest extends TestCase
     public function test_conversion_reports_unsuccessful_process(): void
     {
         $docxPath = tempnam(sys_get_temp_dir(), 'docx-');
-        $service = new class extends DocumentService
+        $converter = new class extends LibreOfficeDocxToPdfConverter
         {
             protected function conversionProcess(array $command): Process
             {
@@ -59,7 +60,7 @@ class DocumentGenerationFailureTest extends TestCase
             $this->expectException(RuntimeException::class);
             $this->expectExceptionMessage('Не удалось преобразовать документ в PDF');
 
-            $service->convertDocxToPdf($docxPath);
+            $converter->convert($docxPath);
         } finally {
             File::delete($docxPath);
         }

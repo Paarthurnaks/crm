@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Enums\DefaultRolesEnum;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\UserService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Hash;
 
@@ -14,7 +15,7 @@ class CreateAdminCommand extends Command
 
     protected $description = 'Create a new admin user';
 
-    public function handle(): int
+    public function handle(UserService $userService): int
     {
         $name = $this->argument('name');
         $surname = $this->argument('surname');
@@ -38,7 +39,7 @@ class CreateAdminCommand extends Command
         }
 
         // Create the user
-        $user = User::create([
+        $user = $userService->createProvisionedUser([
             'name' => $name,
             'surname' => $surname,
             'email' => $email,

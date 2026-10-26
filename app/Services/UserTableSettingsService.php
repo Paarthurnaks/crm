@@ -3,11 +3,6 @@
 namespace App\Services;
 
 use App\Enums\DefaultRolesEnum;
-use App\Http\Resources\FieldResource;
-use App\Http\Resources\UserFieldResource;
-use App\Models\Field;
-use App\Models\User;
-use App\Models\UserField;
 use App\Models\UserTableSettings;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -15,35 +10,11 @@ use Illuminate\Support\Facades\Log;
 
 class UserTableSettingsService
 {
-    private function processColumns(array $columns): array
+    private readonly UserTableSettingsPresenter $presenter;
+
+    public function __construct(?UserTableSettingsPresenter $presenter = null)
     {
-        $tableColumns = collect($columns);
-        $userFields = UserField::whereIn('id', $tableColumns->where('is_userfield', true)->pluck('id'))
-            ->with('userFieldEnumValues')->get()->keyBy('id');
-        $fields = Field::whereIn('id', $tableColumns->where('is_userfield', false)->pluck('id'))->get()->keyBy('id');
-
-        return $tableColumns->map(function ($column) use ($fields, $userFields) {
-            $field = $column['is_userfield'] ? $userFields->get($column['id']) : $fields->get($column['id']);
-
-            if (! $field) {
-                return null;
-            }
-
-            return $column['is_userfield']
-                ? (new UserFieldResource($field))->toArray(request())
-                : (new FieldResource($field))->toArray(request());
-        })->filter()->values()->toArray();
-    }
-
-    private function processSettings(array $settings): array
-    {
-        foreach (['table_columns', 'filters'] as $key) {
-            if (isset($settings[$key]) && is_array($settings[$key])) {
-                $settings[$key] = $this->processColumns($settings[$key]);
-            }
-        }
-
-        return $settings;
+        $this->presenter = $presenter ?? new UserTableSettingsPresenter;
     }
 
     private function simplifyColumns(array $columns): array
@@ -93,6 +64,8 @@ class UserTableSettingsService
         }
 
         $settings = $settingsRecord->settings;
+        $source = 'user';
+        $template = null;
         if (empty($settings['table_columns'])) {
             $template = UserTableSettings::query()
                 ->where('entity', $queryParams['entity'])
@@ -104,11 +77,18 @@ class UserTableSettingsService
 
             if ($template) {
                 $settings = $template->settings;
-                Log::debug('Table settings template selected', ['entity' => $queryParams['entity'], 'template_id' => $template->id]);
+                $source = 'template';
             }
         }
 
-        $settingsRecord->settings = $this->processSettings($this->filterSettingsForRole($settings, $user));
+        Log::debug('table_settings.source_selected', [
+            'actor_id' => $user->id,
+            'entity' => $queryParams['entity'],
+            'source' => $source,
+            'template_id' => $template?->id ?? null,
+        ]);
+
+        $settingsRecord->settings = $this->presenter->present($settings, $user);
 
         return $settingsRecord;
     }
@@ -122,44 +102,8 @@ class UserTableSettingsService
             ['settings' => $settings]
         );
 
-        $settingsRecord->settings = $this->processSettings($this->filterSettingsForRole($settings, $user));
+        $settingsRecord->settings = $this->presenter->present($settings, $user);
 
         return $settingsRecord;
-    }
-
-    private function filterSettingsForRole(array $settings, User $user): array
-    {
-        if ($user->hasRole(DefaultRolesEnum::SUPER_ADMIN->value)) {
-            return $settings;
-        }
-
-        $role = $user->role;
-        $fieldIds = $role ? $role->fieldsView()->pluck('fields.id')->all() : [];
-        $userFieldIds = $role ? $role->userFieldsView()->pluck('user_fields.id')->all() : [];
-
-        foreach (['table_columns', 'filters'] as $key) {
-            if (! isset($settings[$key]) || ! is_array($settings[$key])) {
-                continue;
-            }
-
-            $originalCount = count($settings[$key]);
-            $settings[$key] = array_values(array_filter($settings[$key], function ($column) use ($fieldIds, $userFieldIds): bool {
-                if (! is_array($column) || ! isset($column['id'], $column['is_userfield'])) {
-                    return false;
-                }
-
-                $allowedIds = $column['is_userfield'] ? $userFieldIds : $fieldIds;
-
-                return in_array((int) $column['id'], $allowedIds, true);
-            }));
-
-            Log::debug('Table settings filtered', [
-                'actor_id' => $user->id,
-                'section' => $key,
-                'removed_count' => $originalCount - count($settings[$key]),
-            ]);
-        }
-
-        return $settings;
     }
 }

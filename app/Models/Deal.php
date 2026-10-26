@@ -195,7 +195,7 @@ class Deal extends Model implements HasMedia
     {
         $user = auth()->user();
 
-        if ($user->hasRole(DefaultRolesEnum::CLIENT->value)) {
+        if ($user?->hasRole(DefaultRolesEnum::CLIENT->value)) {
             return $this->morphMany(EntityActivity::class, 'entity')
                 ->where('activityable_type', \BeyondCode\Comments\Comment::class)
                 ->whereHasMorph('activityable', [\BeyondCode\Comments\Comment::class], function ($query) use ($user) {

@@ -13,154 +13,16 @@ use App\Http\Resources\ListResource;
 use App\Http\Resources\UserFieldResource;
 use App\Http\Resources\UserFieldValueResource;
 use App\Models\UserField;
-use App\Models\UserFieldValue;
 use App\Services\ResponseService;
 use App\Services\UserFieldService;
 use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
-use OpenApi\Annotations as OA;
 
 class UserFieldController extends Controller
 {
     public function __construct(private readonly UserFieldService $service) {}
 
-    /**
-     * @OA\Get(
-     *     path="/api/user-fields",
-     *     operationId="getUserFields",
-     *     tags={"UserField"},
-     *     description="Получение списка пользовательских полей",
-     *     summary="Получение списка пользовательских полей",
-     *     security={{"bearer_token":{}}},
-     *
-     *     @OA\Parameter(
-     *          name="page",
-     *          description="Номер страницы",
-     *          required=false,
-     *          in="query",
-     *
-     *          @OA\Schema(
-     *              type="int",
-     *              example=1
-     *          )
-     *      ),
-     *
-     *      @OA\Parameter(
-     *          name="limit",
-     *          description="Количество элементов на странице",
-     *          required=false,
-     *          in="query",
-     *
-     *          @OA\Schema(
-     *              type="int",
-     *              default=50,
-     *              example=50
-     *          )
-     *      ),
-     *
-     *      @OA\Parameter(
-     *          name="entity",
-     *          description="сущность к которой прикреплено пользовательское поле",
-     *          required=false,
-     *          in="query",
-     *
-     *          @OA\Schema(
-     *              type="string",
-     *              example="deal"
-     *          )
-     *      ),
-     *
-     *      @OA\Parameter(
-     *          name="name",
-     *          description="название пользовательского поля (используя like)",
-     *          required=false,
-     *          in="query",
-     *
-     *          @OA\Schema(
-     *              type="string",
-     *              example="тестовое поле"
-     *          )
-     *      ),
-     *
-     *      @OA\Parameter(
-     *          name="type",
-     *          description="тип поля",
-     *          required=false,
-     *          in="query",
-     *
-     *          @OA\Schema(
-     *              type="string",
-     *              example="integer"
-     *          )
-     *      ),
-     *
-     *     @OA\Parameter(
-     *          name="created_at_from",
-     *          description="фильтр по дате создания (от)",
-     *          required=false,
-     *          in="query",
-     *
-     *          @OA\Schema(
-     *              type="string",
-     *          )
-     *      ),
-     *
-     *     @OA\Parameter(
-     *          name="created_at_to",
-     *          description="фильтр по дате создания (до)",
-     *          required=false,
-     *          in="query",
-     *
-     *          @OA\Schema(
-     *              type="string",
-     *          )
-     *      ),
-     *
-     *     @OA\Parameter(
-     *          name="updated_at_from",
-     *          description="фильтр по дате обновления (от)",
-     *          required=false,
-     *          in="query",
-     *
-     *          @OA\Schema(
-     *              type="string",
-     *          )
-     *      ),
-     *
-     *     @OA\Parameter(
-     *          name="updated_at_to",
-     *          description="фильтр по дате обновления (до)",
-     *          required=false,
-     *          in="query",
-     *
-     *          @OA\Schema(
-     *              type="string",
-     *          )
-     *      ),
-     *
-     *     @OA\Response(response="200",
-     *          description="OK",
-     *
-     *          @OA\MediaType(
-     *              mediaType="application/json",
-     *
-     *              @OA\Schema(
-     *
-     *                 @OA\Property(
-     *                     property="data",
-     *                     type="array",
-     *
-     *                     @OA\Items(
-     *                        ref="#/components/schemas/UserField"
-     *                     )
-     *                 ),
-     *              )
-     *          ),
-     *      )
-     * )
-     */
     public function index(Request $request, UserFieldFilter $filter): JsonResponse
     {
         $queryParams = $request->all();
@@ -172,48 +34,6 @@ class UserFieldController extends Controller
         );
     }
 
-    /**
-     * @OA\Get(
-     *     path="/api/user-fields/{id}",
-     *     operationId="getUserField",
-     *     tags={"UserField"},
-     *     description="Метод для получения конкретного пользовательского поля",
-     *     summary="Метод для получения конкретного пользовательского поля",
-     *     security={{"bearer_token":{}}},
-     *
-     *     @OA\Parameter(
-     *          name="id",
-     *          description="id пользовательского поля",
-     *          required=true,
-     *          in="path",
-     *
-     *          @OA\Schema(
-     *              type="string",
-     *              example=19
-     *          )
-     *      ),
-     *
-     *     @OA\Response(response="200",
-     *          description="OK",
-     *
-     *          @OA\MediaType(
-     *              mediaType="application/json",
-     *
-     *              @OA\Schema(
-     *
-     *                 @OA\Property(
-     *                     property="data",
-     *                     ref="#/components/schemas/UserField"
-     *                 ),
-     *              )
-     *          )
-     *      ),
-     *
-     *      @OA\Response(response="404",
-     *          description="NOT FOUND"
-     *      ),
-     * )
-     */
     public function show(int $id): JsonResponse
     {
         $userField = UserField::with('userFieldEnumValues')->find($id);
@@ -229,53 +49,6 @@ class UserFieldController extends Controller
         );
     }
 
-    /**
-     * @OA\Post(
-     *     path="/api/user-fields",
-     *     operationId="createUserField",
-     *     tags={"UserField"},
-     *     description="Метод для создания пользовательского поля",
-     *     summary="Метод для создания пользовательского поля",
-     *     security={{"bearer_token":{}}},
-     *
-     *     @OA\RequestBody(
-     *
-     *       @OA\MediaType(
-     *           mediaType="application/json",
-     *
-     *           @OA\Schema(
-     *
-     *              @OA\Property(property="name", type="string", example="тестовое поле"),
-     *              @OA\Property(property="entity", type="string", example="Deal"),
-     *              @OA\Property(property="type", type="string", example="integer"),
-     *              @OA\Property(property="options", type="array", @OA\Items(
-     *                 ref="#/components/schemas/UserFieldEnumValue"
-     *              )),
-     *           ),
-     *       ),
-     *     ),
-     *
-     *     @OA\Response(response="200",
-     *          description="OK",
-     *
-     *          @OA\MediaType(
-     *              mediaType="application/json",
-     *
-     *              @OA\Schema(
-     *
-     *                 @OA\Property(
-     *                     property="data",
-     *                     ref="#/components/schemas/UserField"
-     *                 ),
-     *              )
-     *          )
-     *      ),
-     *
-     *      @OA\Response(response="403",
-     *          description="FORBIDDEN"
-     *     ),
-     * )
-     */
     public function store(StoreRequest $request): JsonResponse
     {
         $validated = $request->validated();
@@ -293,69 +66,6 @@ class UserFieldController extends Controller
         }
     }
 
-    /**
-     * @OA\Put(
-     *     path="/api/user-fields/{id}",
-     *     operationId="updateUserField",
-     *     tags={"UserField"},
-     *     description="Метод для обновления пользовательского поля",
-     *     summary="Метод для обновления пользовательского поля",
-     *     security={{"bearer_token":{}}},
-     *
-     *     @OA\Parameter(
-     *          name="id",
-     *          description="id пользовательского поля",
-     *          required=true,
-     *          in="path",
-     *
-     *          @OA\Schema(
-     *              type="string"
-     *          )
-     *      ),
-     *
-     *     @OA\RequestBody(
-     *
-     *       @OA\MediaType(
-     *           mediaType="application/json",
-     *
-     *           @OA\Schema(
-     *
-     *              @OA\Property(property="name", type="string", example="тестовое поле"),
-     *              @OA\Property(property="entity", type="string", example="Deal"),
-     *              @OA\Property(property="type", type="string", example="integer"),
-     *              @OA\Property(property="options", type="array", @OA\Items(
-     *                 ref="#/components/schemas/UserFieldEnumValue"
-     *              )),
-     *           ),
-     *       ),
-     *     ),
-     *
-     *     @OA\Response(response="200",
-     *          description="OK",
-     *
-     *          @OA\MediaType(
-     *              mediaType="application/json",
-     *
-     *              @OA\Schema(
-     *
-     *                 @OA\Property(
-     *                     property="data",
-     *                     ref="#/components/schemas/UserField"
-     *                 ),
-     *              )
-     *          )
-     *      ),
-     *
-     *      @OA\Response(response="404",
-     *          description="NOT FOUND"
-     *      ),
-     *      @OA\Response(response="403",
-     *          description="FORBIDDEN"
-     *     ),
-     * )
-     *
-     * @throws Exception
-     */
     public function update(int $id, UpdateRequest $request): JsonResponse
     {
         try {
@@ -381,37 +91,6 @@ class UserFieldController extends Controller
         }
     }
 
-    /**
-     * @OA\Delete(
-     *     path="/api/user-fields/{id}",
-     *     operationId="deleteUserField",
-     *     tags={"UserField"},
-     *     description="Метод для удаления пользовательского поля",
-     *     summary="Метод для удаления пользовательского поля",
-     *     security={{"bearer_token":{}}},
-     *
-     *     @OA\Parameter(
-     *          name="id",
-     *          description="id пользовательского поля",
-     *          required=true,
-     *          in="path",
-     *
-     *          @OA\Schema(
-     *              type="string"
-     *          )
-     *      ),
-     *
-     *     @OA\Response(response="200",
-     *          description="OK",
-     *     ),
-     *     @OA\Response(response="404",
-     *          description="NOT FOUND"
-     *     ),
-     *     @OA\Response(response="403",
-     *          description="FORBIDDEN"
-     *     ),
-     * )
-     */
     public function destroy(int $id): JsonResponse
     {
         try {
@@ -429,51 +108,6 @@ class UserFieldController extends Controller
         }
     }
 
-    /**
-     * Возвращает список доступных типов пользовательских полей
-     *
-     * @OA\Get(
-     *     path="/api/user-fields/types",
-     *     operationId="getUserFieldTypes",
-     *     tags={"UserField"},
-     *     description="Метод для получения списка доступных типов пользовательских полей",
-     *     summary="Метод для получения списка доступных типов пользовательских полей",
-     *     security={{"bearer_token":{}}},
-     *
-     *     @OA\Response(response="200",
-     *          description="OK",
-     *
-     *          @OA\MediaType(
-     *              mediaType="application/json",
-     *
-     *              @OA\Schema(
-     *
-     *                 @OA\Property(
-     *                     property="data",
-     *                     description="ответственные",
-     *                     type="array",
-     *
-     *                     @OA\Items(
-     *
-     *                        @OA\Property(
-     *                            property="code",
-     *                            example="integer"
-     *                        ),
-     *                        @OA\Property(
-     *                            property="description",
-     *                            example="Целое число"
-     *                        )
-     *                     )
-     *                 ),
-     *              )
-     *          )
-     *      ),
-     *
-     *      @OA\Response(response="404",
-     *          description="NOT FOUND"
-     *      ),
-     * )
-     */
     public function types(): JsonResponse
     {
         $types = UserFieldTypeEnum::values();
@@ -490,185 +124,21 @@ class UserFieldController extends Controller
         return ResponseService::success(collect($response));
     }
 
-    /**
-     * @OA\Post(
-     *     path="/api/user-field-values/attachments",
-     *     operationId="addAttachmentUF",
-     *     tags={"UserField"},
-     *     description="Метод для добавления вложений к пользовательскому полю",
-     *     summary="Метод для добавления вложений к пользовательскому полю",
-     *     security={{"bearer_token":{}}},
-     *
-     *     @OA\Parameter(
-     *          name="user_field_id",
-     *          description="id пользовательского поля",
-     *          required=true,
-     *          in="path",
-     *
-     *          @OA\Schema(
-     *              type="string",
-     *          )
-     *      ),
-     *
-     *     @OA\Parameter(
-     *          name="entity_id",
-     *          description="id сущности",
-     *          required=true,
-     *          in="path",
-     *
-     *          @OA\Schema(
-     *              type="string",
-     *          )
-     *      ),
-     *
-     *     @OA\RequestBody(
-     *
-     *        @OA\MediaType(
-     *           mediaType="muptipart/form-data",
-     *
-     *           @OA\Schema(
-     *
-     *              @OA\Property(
-     *                  property="attachments",
-     *                  type="array",
-     *
-     *                  @OA\Items(
-     *                      type="string",
-     *                      format="file"
-     *                  )
-     *              )
-     *           ),
-     *       )
-     *     ),
-     *
-     *     @OA\Response(response="200",
-     *          description="OK",
-     *
-     *          @OA\MediaType(
-     *              mediaType="application/json",
-     *
-     *              @OA\Schema(
-     *
-     *                 @OA\Property(
-     *                     property="data",
-     *                     ref="#/components/schemas/UserFieldValue"
-     *                 ),
-     *              )
-     *          )
-     *      ),
-     *
-     *      @OA\Response(response="404",
-     *          description="NOT FOUND"
-     *      ),
-     *      @OA\Response(response="403",
-     *          description="FORBIDDEN"
-     *      ),
-     * )
-     */
     public function addAttachment(AddAttachmentRequest $request): JsonResponse
     {
         $data = $request->validated();
-        $userFieldValue = UserFieldValue::firstOrCreate([
-            'entity_id' => $data['entity_id'],
-            'field_id' => $data['user_field_id'],
-        ], ['value' => null]);
-
-        foreach ($data['attachments'] as $attachment) {
-            $media = $userFieldValue->addMedia($attachment)->toMediaCollection();
-            Log::info('User field attachment added', ['value_id' => $userFieldValue->id, 'media_id' => $media->id]);
-        }
+        $userFieldValue = $this->service->addAttachments($data['entity_id'], $data['user_field_id'], $data['attachments']);
 
         return ResponseService::success(UserFieldValueResource::make($userFieldValue));
     }
 
-    /**
-     * @OA\Delete(
-     *     path="/api/user-field-values/attachments/{attachmentId}",
-     *     operationId="deleteAttachmentUF",
-     *     tags={"UserField"},
-     *     description="Метод для удаления вложения у пользовательского поля",
-     *     summary="Метод для удаления вложения у пользовательского поля",
-     *     security={{"bearer_token":{}}},
-     *
-     *     @OA\Parameter(
-     *          name="attachmentId",
-     *          description="id вложения",
-     *          required=true,
-     *          in="path",
-     *
-     *          @OA\Schema(
-     *              type="string",
-     *          )
-     *      ),
-     *
-     *     @OA\Parameter(
-     *          name="user_field_id",
-     *          description="id пользовательского поля",
-     *          required=true,
-     *          in="path",
-     *
-     *          @OA\Schema(
-     *              type="string",
-     *          )
-     *      ),
-     *
-     *     @OA\Parameter(
-     *          name="entity_id",
-     *          description="id сущности",
-     *          required=true,
-     *          in="path",
-     *
-     *          @OA\Schema(
-     *              type="string",
-     *          )
-     *      ),
-     *
-     *     @OA\Response(response="200",
-     *          description="OK",
-     *
-     *          @OA\MediaType(
-     *              mediaType="application/json",
-     *
-     *              @OA\Schema(
-     *
-     *                 @OA\Property(
-     *                     property="data",
-     *                     ref="#/components/schemas/UserFieldValue"
-     *                 ),
-     *              )
-     *          )
-     *      ),
-     *
-     *      @OA\Response(response="404",
-     *          description="NOT FOUND"
-     *      ),
-     *      @OA\Response(response="403",
-     *          description="FORBIDDEN"
-     *      ),
-     * )
-     */
     public function deleteAttachment(DeleteAttachmentRequest $request, int $attachmentId): JsonResponse
     {
         $data = $request->validated();
-        $userFieldValue = UserFieldValue::where('entity_id', $data['entity_id'])
-            ->where('field_id', $data['user_field_id'])
-            ->first();
-        if (! $userFieldValue) {
-            Log::warning('User field value not found for attachment deletion', ['field_id' => $data['user_field_id'], 'entity_id' => $data['entity_id']]);
-
+        $userFieldValue = $this->service->deleteAttachment($data['entity_id'], $data['user_field_id'], $attachmentId);
+        if ($userFieldValue === null) {
             return ResponseService::notFound();
         }
-
-        $media = $userFieldValue->media()->find($attachmentId);
-        if (! $media) {
-            Log::warning('User field attachment not found', ['value_id' => $userFieldValue->id, 'media_id' => $attachmentId]);
-
-            return ResponseService::notFound();
-        }
-
-        $userFieldValue->deleteMedia($media);
-        Log::info('User field attachment deleted', ['value_id' => $userFieldValue->id, 'media_id' => $attachmentId]);
-        $userFieldValue->refresh();
 
         return ResponseService::success(
             UserFieldValueResource::make($userFieldValue)

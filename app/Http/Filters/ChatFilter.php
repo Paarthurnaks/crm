@@ -9,6 +9,7 @@ use App\Enums\DefaultRolesEnum;
 use App\Http\Filters\Abstract\QueryFilter;
 use App\Models\ChatCategory;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class ChatFilter extends QueryFilter
@@ -31,6 +32,7 @@ class ChatFilter extends QueryFilter
         };
 
         $searchTerm = Str::lower($value);
+        Log::debug('chat.search.applied', ['category_type' => $typeByCategory]);
 
         $this->builder->when($searchTerm, function ($query) use ($searchTerm, $typeByCategory) {
             $user = auth()->user();
@@ -67,11 +69,7 @@ class ChatFilter extends QueryFilter
         $query->orWhere(function ($subQuery) use ($searchTerm) {
             $subQuery->where('type', ChatTypeEnum::PARTNER->value)
                 ->whereHas('members.user', function ($userQuery) use ($searchTerm) {
-                    $userQuery->whereHas('role', function ($roleQuery) {
-                        $roleQuery->where('original_title', DefaultRolesEnum::PARTNER->value);
-                    })
-                        ->where(DB::raw("LOWER(CONCAT(users.name, ' ', users.surname))"), 'LIKE', "%{$searchTerm}%")
-                        ->where('users.id', '!=', auth()->id());
+                    $this->whereMemberNameMatches($userQuery, $searchTerm, [DefaultRolesEnum::PARTNER->value]);
                 });
         });
     }
@@ -82,11 +80,7 @@ class ChatFilter extends QueryFilter
             $subQuery->where('type', ChatTypeEnum::CLIENT->value)
                 ->where(function ($memberQuery) use ($searchTerm) {
                     $memberQuery->whereHas('members.user', function ($userQuery) use ($searchTerm) {
-                        $userQuery->whereHas('role', function ($roleQuery) {
-                            $roleQuery->whereIn('original_title', [DefaultRolesEnum::CLIENT->value, DefaultRolesEnum::PARTNER->value]);
-                        })
-                            ->where(DB::raw("LOWER(CONCAT(users.name, ' ', users.surname))"), 'LIKE', "%{$searchTerm}%")
-                            ->where('users.id', '!=', auth()->id());
+                        $this->whereMemberNameMatches($userQuery, $searchTerm, [DefaultRolesEnum::CLIENT->value, DefaultRolesEnum::PARTNER->value]);
                     });
                 });
         });
@@ -103,10 +97,21 @@ class ChatFilter extends QueryFilter
             $subQuery->orWhere(function ($singleQuery) use ($searchTerm) {
                 $singleQuery->where('type', ChatTypeEnum::SINGLE->value)
                     ->whereHas('members.user', function ($userQuery) use ($searchTerm) {
-                        $userQuery->where(DB::raw("LOWER(CONCAT(users.name, ' ', users.surname))"), 'LIKE', "%{$searchTerm}%")
-                            ->where('users.id', '!=', auth()->id());
+                        $this->whereMemberNameMatches($userQuery, $searchTerm);
                     });
             });
         });
+    }
+
+    private function whereMemberNameMatches($query, string $searchTerm, array $roles = []): void
+    {
+        if ($roles !== []) {
+            $query->whereHas('role', function ($roleQuery) use ($roles) {
+                $roleQuery->whereIn('original_title', $roles);
+            });
+        }
+
+        $query->where(DB::raw("LOWER(CONCAT(users.name, ' ', users.surname))"), 'LIKE', "%{$searchTerm}%")
+            ->where('users.id', '!=', auth()->id());
     }
 }

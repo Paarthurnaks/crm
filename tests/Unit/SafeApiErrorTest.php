@@ -2,12 +2,12 @@
 
 namespace Tests\Unit;
 
-use App\Services\ResponseService;
-use App\Services\TaskService;
 use App\Enums\TaskStatusEnum;
 use App\Models\Task;
+use App\Models\User;
+use App\Services\ResponseService;
+use App\Services\TaskService;
 use Illuminate\Auth\Access\AuthorizationException;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 use ReflectionFunction;
@@ -40,21 +40,30 @@ class SafeApiErrorTest extends TestCase
     {
         $this->expectException(InvalidArgumentException::class);
 
-        (new TaskService)->create(['type' => 'unknown', 'title' => 'Example']);
+        (new TaskService)->create(['type' => 'unknown', 'title' => 'Example'], new User);
     }
 
     public function test_missing_deadline_does_not_mark_new_task_as_expired(): void
     {
-        Auth::shouldReceive('user')->once()->andReturn((object) ['id' => 1]);
+        $actor = new User;
+        $actor->id = 1;
         DB::shouldReceive('transaction')->once()->andReturnUsing(function ($callback) {
             $fields = (new ReflectionFunction($callback))->getStaticVariables()['fields'];
 
             return new Task($fields);
         });
 
-        $task = (new TaskService)->create(['title' => 'Example']);
+        $task = (new TaskService)->create(['title' => 'Example'], $actor);
 
         $this->assertSame(TaskStatusEnum::NEW->value, $task->status);
         $this->assertNull($task->deadline);
+    }
+
+    public function test_own_task_scope_uses_explicit_actor_without_http_context(): void
+    {
+        $query = Task::ownTasks(7);
+
+        $this->assertSame([7, 7, 7], $query->getBindings());
+        $this->assertStringContainsString('creator_id', $query->toSql());
     }
 }

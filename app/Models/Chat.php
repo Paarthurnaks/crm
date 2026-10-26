@@ -119,27 +119,22 @@ class Chat extends Model implements HasMedia
 
     private function getClientChatName($userId): string
     {
-        $user = User::find($userId) ?? auth()->user();
+        $user = $this->relationLoaded('members')
+            ? $this->members->firstWhere('user_id', $userId)?->user
+            : User::find($userId);
+        $user ??= auth()->user();
 
-        if ($user && $user->hasRole(DefaultRolesEnum::havePersonalAccount())) {
+        if ($user && $this->userHasRole($user, DefaultRolesEnum::havePersonalAccount())) {
             return $this->getOtherUserName($userId) ?? DefaultChatNameEnum::DELETED->value;
         }
 
-        $partnerUser = $this->members()
-            ->whereHas('user.role', function ($query) {
-                $query->where('original_title', DefaultRolesEnum::PARTNER->value);
-            })
-            ->with(['user'])
-            ->first()
-            ?->user;
-
-        $clientUser = $this->members()
-            ->whereHas('user.role', function ($query) {
-                $query->where('original_title', DefaultRolesEnum::CLIENT->value);
-            })
-            ->with(['user'])
-            ->first()
-            ?->user;
+        if ($this->relationLoaded('members')) {
+            $partnerUser = $this->members->first(fn ($member) => $member->user?->role?->original_title === DefaultRolesEnum::PARTNER->value)?->user;
+            $clientUser = $this->members->first(fn ($member) => $member->user?->role?->original_title === DefaultRolesEnum::CLIENT->value)?->user;
+        } else {
+            $partnerUser = $this->members()->whereHas('user.role', fn ($query) => $query->where('original_title', DefaultRolesEnum::PARTNER->value))->with('user')->first()?->user;
+            $clientUser = $this->members()->whereHas('user.role', fn ($query) => $query->where('original_title', DefaultRolesEnum::CLIENT->value))->with('user')->first()?->user;
+        }
 
         $partnerName = $partnerUser ? "{$partnerUser->name} {$partnerUser->surname}" : DefaultChatNameEnum::DELETED_PARTNER->value;
         $clientName = $clientUser ? "{$clientUser->name} {$clientUser->surname}" : DefaultChatNameEnum::DELETED_CLIENT->value;
@@ -149,6 +144,20 @@ class Chat extends Model implements HasMedia
 
     private function getOtherUserName($userId): ?string
     {
+        if ($this->relationLoaded('members')) {
+            $otherUser = $this->members
+                ->filter(fn ($member) => (int) $member->user_id !== (int) $userId)
+                ->first(function ($member) {
+                    return match ($this->type) {
+                        ChatTypeEnum::CLIENT->value => $member->user?->role?->original_title === DefaultRolesEnum::CLIENT->value,
+                        ChatTypeEnum::PARTNER->value => $member->user?->role?->original_title === DefaultRolesEnum::PARTNER->value,
+                        default => true,
+                    };
+                })?->user;
+
+            return $otherUser ? "{$otherUser->name} {$otherUser->surname}" : DefaultChatNameEnum::DELETED->value;
+        }
+
         $query = $this->members()
             ->where('user_id', '!=', $userId)
             ->with(['user']);
@@ -170,9 +179,11 @@ class Chat extends Model implements HasMedia
 
     private function getPartnerChatName($userId): string
     {
-        $user = User::find($userId);
+        $user = $this->relationLoaded('members')
+            ? $this->members->firstWhere('user_id', $userId)?->user
+            : User::find($userId);
 
-        if ($user && $user->hasRole(DefaultRolesEnum::PARTNER->value)) {
+        if ($user && $this->userHasRole($user, [DefaultRolesEnum::PARTNER->value])) {
             return DefaultChatNameEnum::ESB_SYSTEM->value;
         }
 
@@ -182,24 +193,31 @@ class Chat extends Model implements HasMedia
     public function getDisplayAvatar($userId): string
     {
         if ($this->type === ChatTypeEnum::SINGLE->value) {
-            $otherUser = $this->members()
-                ->where('user_id', '!=', $userId)
-                ->with(['user'])
-                ->first()
-                ?->user;
+            $otherUser = $this->relationLoaded('members')
+                ? $this->members->first(fn ($member) => (int) $member->user_id !== (int) $userId)?->user
+                : $this->members()->where('user_id', '!=', $userId)->with('user')->first()?->user;
 
             return $otherUser?->getFirstMedia()?->getUrl() ?? asset(Storage::url('avatars/avatar.png'));
         }
 
         if ($this->type === ChatTypeEnum::PARTNER->value) {
-            $partner = User::find($userId);
+            $partner = $this->relationLoaded('members')
+                ? $this->members->firstWhere('user_id', $userId)?->user
+                : User::find($userId);
 
-            if ($partner->hasRole(DefaultRolesEnum::PARTNER->value)) {
+            if ($partner && $this->userHasRole($partner, [DefaultRolesEnum::PARTNER->value])) {
                 return asset(Storage::url('avatars/esb_logo.png'));
             }
         }
 
         return $this->getFirstMedia()?->getUrl() ?? asset(Storage::url('avatars/chat-avatar.png'));
+    }
+
+    private function userHasRole(User $user, array $roles): bool
+    {
+        $role = $user->role;
+
+        return $role !== null && (in_array($role->original_title, $roles, true) || in_array($role->title, $roles, true));
     }
 
     public function category(): BelongsToMany

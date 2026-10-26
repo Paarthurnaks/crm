@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Enums\DiskEntityTypeEnum;
 use App\Http\Controllers\Controller;
 use App\Http\Filters\DiskEntityFilter;
 use App\Http\Requests\StoreFileRequest;
@@ -14,11 +13,6 @@ use App\Services\FileSystemService;
 use App\Services\ResponseService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
-use RuntimeException;
 use Symfony\Component\HttpFoundation\Response;
 
 class FileSystemController extends Controller
@@ -209,10 +203,8 @@ class FileSystemController extends Controller
      *          ),
      *      )
      * )
-     *
-     * @return JsonResponse
      */
-    public function content(Request $request, DiskEntityFilter $filter): mixed
+    public function content(Request $request, DiskEntityFilter $filter): JsonResponse
     {
         $limit = $request->get('limit') ?? config('constants.paginator.limit');
 
@@ -264,25 +256,7 @@ class FileSystemController extends Controller
      */
     public function storeFolder(StoreFolderRequest $request): JsonResponse
     {
-        $validated = $request->validated();
-        $path = $validated['path'];
-
-        $disk = Storage::disk('public');
-        $folderPath = 'entities/available/'.trim($path, '/').'/'.$validated['title'];
-        if (! $disk->makeDirectory($folderPath)) {
-            Log::error('Не удалось создать папку на диске', ['actor_id' => Auth::id()]);
-
-            throw new RuntimeException('Не удалось создать папку');
-        }
-
-        $diskEntity = DiskEntity::create([
-            'title' => $validated['title'],
-            'type' => DiskEntityTypeEnum::FOLDER->value,
-            'who_created_id' => Auth::id(),
-            'path' => substr_count($path, '/') > 1 ? rtrim($path, '/') : $path,
-            'size' => 0,
-        ]);
-        Auth::user()->role->availableDiskEntities()->attach($diskEntity);
+        $diskEntity = $this->service->createFolder($request->validated(), $request->user());
 
         return ResponseService::success(
             DiskEntityResource::make($diskEntity)
@@ -332,26 +306,7 @@ class FileSystemController extends Controller
     {
         $validated = $request->validated();
         if ($request->hasFile('file')) {
-            $path = $validated['path'];
-
-            $file = $validated['file'];
-            $filePath = 'entities/available'.$path;
-            $filename = $file->getClientOriginalName();
-
-            $file->storeAs($filePath, $filename, 'public');
-
-            $size = File::size($file);
-
-            $diskEntity = DiskEntity::create([
-                'title' => $filename,
-                'type' => DiskEntityTypeEnum::FILE->value,
-                'who_created_id' => Auth::id(),
-                'path' => substr_count($path, '/') > 1 ? rtrim($path, '/') : $path,
-                'size' => $size,
-                'mime_type' => $file->getClientMimeType(),
-            ]);
-
-            Auth::user()->role->availableDiskEntities()->attach($diskEntity);
+            $diskEntity = $this->service->createFile($validated, $request->user());
 
             return ResponseService::success(
                 DiskEntityResource::make($diskEntity)

@@ -54,6 +54,7 @@ class ResourcePermissionTest extends TestCase
             'delete' => PermissionTypeEnum::ALL->value,
         ]);
 
+        $this->assertSame(PermissionTypeEnum::ALL->value, $user->permissionScope('users', 'view'));
         $this->actingAs($user, 'api')
             ->getJson('/api/roles')
             ->assertOk();

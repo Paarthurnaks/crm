@@ -12,10 +12,13 @@ use App\Models\ChatMember;
 use App\Models\User;
 use Exception;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class ChatMemberService
 {
+    public function __construct(private readonly ChatCategoryService $chatCategoryService) {}
+
     private const ERROR_MESSAGES = [
         'chatCreatorError' => 'Пользователь не является создателем чата',
         'userAlreadyInChat' => 'Пользователь уже состоит в чате',
@@ -112,14 +115,20 @@ class ChatMemberService
 
         if (in_array($chat->type, ChatTypeEnum::personalTypes())) {
             User::find($user_ids)->each(function ($user) {
-                app(ChatService::class)->setupSystemCategories($user);
+                $this->chatCategoryService->setupSystemCategories($user);
             });
         }
         $chat = $chat->fresh(['lastMessage' => ['chat', 'user', 'forward'], 'category', 'unreadMessages.message.user', 'members.user.role', 'messages.forward']);
 
-        foreach ($user_ids as $userId) {
-            broadcast(new GlobalChatCreateBroadcast(ChatResource::make($chat, $userId), $userId));
-        }
+        DB::afterCommit(function () use ($user_ids, $chat): void {
+            foreach ($user_ids as $userId) {
+                try {
+                    broadcast(new GlobalChatCreateBroadcast(ChatResource::make($chat, $userId), $userId));
+                } catch (\Throwable $exception) {
+                    Log::error('chat.member_create_broadcast.failed', ['chat_id' => $chat->id, 'user_id' => $userId, 'exception' => $exception::class]);
+                }
+            }
+        });
     }
 
     /**
@@ -131,7 +140,17 @@ class ChatMemberService
             throw new Exception(self::ERROR_MESSAGES['chatCreatorError']);
         }
 
-        broadcast(new GlobalChatDeleteBroadcast($chatMember->chat_id, $chatMember->user_id));
+        DB::afterCommit(function () use ($chatMember): void {
+            try {
+                broadcast(new GlobalChatDeleteBroadcast($chatMember->chat_id, $chatMember->user_id));
+            } catch (\Throwable $exception) {
+                Log::error('chat.member_delete_broadcast.failed', [
+                    'chat_id' => $chatMember->chat_id,
+                    'user_id' => $chatMember->user_id,
+                    'exception' => $exception::class,
+                ]);
+            }
+        });
 
         $chatMember->forceDelete();
     }

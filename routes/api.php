@@ -89,8 +89,8 @@ Route::group(['middleware' => 'auth:api'], function () {
     // комментарии к сущностям
     Route::get('/deals/{dealId}/comments', [DealController::class, 'getComments']);
     Route::post('/deals/{dealId}/comments', [DealController::class, 'addComment']);
-    Route::get('/tasks/{dealId}/comments', [TaskController::class, 'getComments']);
-    Route::post('/tasks/{dealId}/comments', [TaskController::class, 'addComment']);
+    Route::get('/tasks/{taskId}/comments', [TaskController::class, 'getComments']);
+    Route::post('/tasks/{taskId}/comments', [TaskController::class, 'addComment']);
 
     Route::get('/deals/{dealId}/activity', [DealController::class, 'getActivity']);
     Route::get('/tasks/{task}/activity', [TaskController::class, 'getActivity']);

@@ -6,6 +6,8 @@ use App\Enums\SalesStageEnum;
 use App\Models\Deal;
 use App\Models\SalesFunnel;
 use App\Models\SalesStage;
+use App\Models\User;
+use App\Services\DealService;
 use Illuminate\Database\Seeder;
 
 class SalesFunnelSeeder extends Seeder
@@ -15,6 +17,7 @@ class SalesFunnelSeeder extends Seeder
      */
     public function run(): void
     {
+        $dealService = app(DealService::class);
         $mockData = ['Оформление счёта', 'Банкротство', 'Урегулирование финансовых обязательств', 'Создание и реализация плана по выплате долгов', 'Слияние и поглощение компаний в рамках процедуры банкротства', 'Обеспечение финансовой поддержки в период реструктуризации', 'Разрешение споров между кредиторами и должником'];
         $salesFunnelTitles = ['Воронка ЛГБ', 'Работа с партнёрами', 'Реализация', 'Реализация с имуществом', 'Реструктуризация'];
 
@@ -43,11 +46,21 @@ class SalesFunnelSeeder extends Seeder
                     'sales_funnel_id' => $salesFunnel->id,
                 ])->create();
 
-                Deal::factory([
+                $draft = Deal::factory([
                     'title' => $arrayStagesTitles[array_rand($arrayStagesTitles)],
                     'sales_funnel_id' => $salesFunnel->id,
                     'sales_stage_id' => $salesStage->id,
-                ])->count(1)->create();
+                ])->make();
+
+                $dealService->createDeal([
+                    'title' => $draft->title,
+                    'sales_funnel_id' => $draft->sales_funnel_id,
+                    'sales_stage_id' => $draft->sales_stage_id,
+                    'responsible_id' => $draft->responsible_id,
+                    'note' => $draft->note,
+                    'amount' => $draft->amount,
+                    'client_id' => $draft->client,
+                ], User::findOrFail($draft->creator_id));
             }
         }
     }

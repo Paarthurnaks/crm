@@ -12,9 +12,11 @@ use App\Models\ReportField;
 use Carbon\Carbon;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class ReportService
 {
@@ -36,7 +38,7 @@ class ReportService
         return new LengthAwarePaginator([], 0, $limit);
     }
 
-    public function createReport(array $reportData)
+    public function createReport(array $reportData): Report
     {
         $report = Report::create([
             'title' => $reportData['title'],
@@ -60,7 +62,7 @@ class ReportService
         return $report;
     }
 
-    public function updateReport(Report $report, array $reportData)
+    public function updateReport(Report $report, array $reportData): Report
     {
         $report = DB::transaction(function () use ($report, $reportData) {
             $reportFields = [];
@@ -111,7 +113,7 @@ class ReportService
 
     public function setReportFieldsValues(
         Report $report,
-        $entityObj,
+        Deal $entityObj,
     ): void {
         foreach ($report->fields as $reportField) {
             if ($reportField->userField) {
@@ -133,64 +135,96 @@ class ReportService
         }
     }
 
-    public function getDealsByFilter(array $filters, array $queryParams)
+    public function getDealsByFilter(array $filters, array $queryParams): LengthAwarePaginator
     {
         $limit = $queryParams['limit'] ?? config('constants.paginator.limit');
         $query = Deal::query();
 
-        $this->filterQuery($query, $filters);
+        try {
+            $this->filterQuery($query, $filters);
 
-        return $query->paginate($limit);
+            return $query->paginate($limit);
+        } catch (\Throwable $exception) {
+            Log::error('report.deal_filter.failed', ['step' => 'paginate', 'filter_count' => count($filters), 'exception' => $exception::class]);
+            throw $exception;
+        }
     }
 
-    public function getDealsByFilterWithoutPaginate(array $filters, array $queryParams)
+    public function getDealsByFilterWithoutPaginate(array $filters, array $queryParams): EloquentCollection
     {
         $query = Deal::query();
 
-        $this->filterQuery($query, $filters);
+        try {
+            $this->filterQuery($query, $filters);
 
-        return $query->get();
+            return $query->get();
+        } catch (\Throwable $exception) {
+            Log::error('report.deal_filter.failed', ['step' => 'export', 'filter_count' => count($filters), 'exception' => $exception::class]);
+            throw $exception;
+        }
     }
 
-    public function filterQuery(Builder $query, array $filters)
+    public function filterQuery(Builder $query, array $filters): void
     {
         foreach ($filters as $filter) {
-            if (in_array($filter['key'], ['responsible', 'creator', 'sales_stage', 'sales_funnel'])) {
-                $filter['key'] = $filter['key'].'_id';
+            $condition = $filter['condition'];
+
+            if ($condition === 'Все' || $condition === 'Любой') {
+                $this->applyFilterGroup($query, $condition, $filter['value']);
+
+                continue;
             }
-            if ($filter['condition'] == 'Все') {
-                $query->where(function ($query) use ($filter) {
-                    $this->filterQuery($query, $filter['value']);
-                });
-            } elseif ($filter['condition'] == 'Любой') {
-                $query->orWhere(function ($query) use ($filter) {
-                    $this->filterQuery($query, $filter['value']);
-                });
-            } elseif ($filter['condition'] == 'Равно') {
-                $query->where($filter['key'], '=', $filter['value']);
-            } elseif ($filter['condition'] == 'Не равно') {
-                $query->where($filter['key'], '!=', $filter['value']);
-            } elseif ($filter['condition'] == 'Больше или равно') {
-                $query->where($filter['key'], '>=', $filter['value']);
-            } elseif ($filter['condition'] == 'Меньше или равно') {
-                $query->where($filter['key'], '<=', $filter['value']);
-            } elseif ($filter['condition'] == 'Больше') {
-                $query->where($filter['key'], '>', $filter['value']);
-            } elseif ($filter['condition'] == 'Меньше') {
-                $query->where($filter['key'], '<', $filter['value']);
-            } elseif ($filter['condition'] == 'Начинается с') {
-                $query->where($filter['key'], 'LIKE', $filter['value'].'%');
-            } elseif ($filter['condition'] == 'Содержит') {
-                $query->where($filter['key'], 'LIKE', '%'.$filter['value'].'%');
-            } elseif ($filter['condition'] == 'Не содержит') {
-                $query->whereNot($filter['key'], 'LIKE', '%'.$filter['value'].'%');
-            }
+
+            $this->applyFilterComparison($query, $this->normalizeFilterKey($filter['key']), $condition, $filter['value']);
+        }
+
+        Log::debug('report.filter.applied', ['filter_count' => count($filters)]);
+    }
+
+    private function normalizeFilterKey(string $key): string
+    {
+        return in_array($key, ['responsible', 'creator', 'sales_stage', 'sales_funnel'], true)
+            ? $key.'_id'
+            : $key;
+    }
+
+    private function applyFilterGroup(Builder $query, string $condition, array $children): void
+    {
+        $method = $condition === 'Все' ? 'where' : 'orWhere';
+
+        $query->{$method}(function ($nested) use ($children): void {
+            $this->filterQuery($nested, $children);
+        });
+    }
+
+    private function applyFilterComparison(Builder $query, string $key, string $condition, mixed $value): void
+    {
+        $operators = [
+            'Равно' => '=',
+            'Не равно' => '!=',
+            'Больше или равно' => '>=',
+            'Меньше или равно' => '<=',
+            'Больше' => '>',
+            'Меньше' => '<',
+        ];
+
+        if (isset($operators[$condition])) {
+            $query->where($key, $operators[$condition], $value);
+
+            return;
+        }
+
+        if ($condition === 'Начинается с') {
+            $query->where($key, 'LIKE', $value.'%');
+        } elseif ($condition === 'Содержит') {
+            $query->where($key, 'LIKE', '%'.$value.'%');
+        } elseif ($condition === 'Не содержит') {
+            $query->whereNot($key, 'LIKE', '%'.$value.'%');
         }
     }
 
     /**
-     * @param array @arrayFieldsIds
-     * @return Section $section
+     * @param  array<int, int>  $arrayFieldsIds
      */
     private function syncFields(Report $report, array $arrayFieldsIds): Report
     {

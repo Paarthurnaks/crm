@@ -13,6 +13,7 @@ use App\Models\SectionField;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class SectionService
 {
@@ -26,6 +27,7 @@ class SectionService
             ->orderBy('position')
             ->where('user_id', Auth::user()->id)
             ->filter($filter)
+            ->with('fields.userField', 'fields.field')
             ->get();
 
         if ($sections->count() === 0) {
@@ -35,6 +37,7 @@ class SectionService
                 ->orderBy('position')
                 ->where('user_id', 1)
                 ->filter($filter)
+                ->with('fields.userField', 'fields.field')
                 ->get();
         }
 
@@ -55,37 +58,51 @@ class SectionService
             $entityObj = null;
         }
 
-        foreach ($sections as $section) {
-            $this->setSectionsFieldsValues($section, $entityObj, $queryParams['type'] ?? 'view');
+        try {
+            $related = $entityObj ? $this->prepareRelatedFieldValues($sections, $entityObj) : null;
+
+            foreach ($sections as $section) {
+                $this->setSectionsFieldsValues($section, $entityObj, $queryParams['type'] ?? 'view', $related);
+            }
+        } catch (\Throwable $exception) {
+            Log::error('section.values.failed', ['entity' => $entity, 'entity_id' => $id, 'exception' => $exception::class]);
+            throw $exception;
         }
 
         return $sections;
     }
 
-    public function setSectionsFieldsValues(Section $section, $entityObj, string $type): void
+    public function setSectionsFieldsValues(Section $section, $entityObj, string $type, ?array $related = null): void
     {
+        $related ??= $entityObj ? $this->prepareRelatedFieldValues(collect([$section]), $entityObj) : [];
+
         if ($type !== 'view') {
             $availableFields = $section->fields()->whereDoesntHave('field', function ($query) {
                 $query->whereIn('code', ProhibitedFieldEnum::values());
-            });
+            })->with('userField', 'field')->get();
         } else {
             $availableFields = $section->fields;
         }
         foreach ($availableFields as $sectionField) {
             if ($entityObj) {
                 if ($sectionField->userField) {
-                    $sectionField->value = $sectionField->getUserFieldValue($entityObj->id);
+                    $sectionField->value = $related['values'][$sectionField->id]
+                        ?? $sectionField->getUserFieldValue($entityObj->id);
                     if ($sectionField->userField->type == 'user') {
-                        $user = User::where('id', $sectionField->value)->first();
+                        $user = $related['users'][(int) $sectionField->value] ?? null;
                         if ($user) {
                             $sectionField->model = UserResource::make($user);
                             $sectionField->value = $user->name.' '.$user->surname;
+                        } elseif ($sectionField->value) {
+                            Log::warning('section.related_user.missing', ['section_field_id' => $sectionField->id]);
                         }
                     } elseif ($sectionField->userField->type == 'deal') {
-                        $deal = Deal::where('id', $sectionField->value)->first();
+                        $deal = $related['deals'][(int) $sectionField->value] ?? null;
                         if ($deal) {
                             $sectionField->model = DealResource::make($deal);
                             $sectionField->value = $deal->title;
+                        } elseif ($sectionField->value) {
+                            Log::warning('section.related_deal.missing', ['section_field_id' => $sectionField->id]);
                         }
                     }
                 } elseif ($sectionField->field) {
@@ -102,7 +119,7 @@ class SectionService
                         $camelCaseCode = lcfirst(str_replace(' ', '', ucwords(str_replace('_', ' ', $sectionField->field->code))));
                         $obj = $entityObj->{$camelCaseCode};
                         $sectionField->model = $obj;
-                        $sectionField->value = $obj->title;
+                        $sectionField->value = $obj?->title;
                     } else {
                         $sectionField->value = $entityObj->{$sectionField->field->code};
 
@@ -110,6 +127,46 @@ class SectionService
                 }
             }
         }
+    }
+
+    private function prepareRelatedFieldValues($sections, $entityObj): array
+    {
+        $values = [];
+        $userIds = [];
+        $dealIds = [];
+
+        foreach ($sections as $section) {
+            foreach ($section->fields as $sectionField) {
+                $relatedType = $sectionField->userField?->type;
+                if (! in_array($relatedType, ['user', 'deal'], true)) {
+                    continue;
+                }
+
+                $value = $sectionField->getUserFieldValue($entityObj->id);
+                $values[$sectionField->id] = $value;
+
+                if (! is_numeric($value)) {
+                    continue;
+                }
+
+                if ($relatedType === 'user') {
+                    $userIds[] = (int) $value;
+                } else {
+                    $dealIds[] = (int) $value;
+                }
+            }
+        }
+
+        $users = User::whereIn('id', array_unique($userIds))->get()->keyBy('id')->all();
+        $deals = Deal::whereIn('id', array_unique($dealIds))->get()->keyBy('id')->all();
+
+        Log::debug('section.related_values.prepared', [
+            'section_count' => $sections->count(),
+            'user_count' => count($users),
+            'deal_count' => count($deals),
+        ]);
+
+        return compact('values', 'users', 'deals');
     }
 
     public function createSection(array $sectionData, array $queryParams): Section

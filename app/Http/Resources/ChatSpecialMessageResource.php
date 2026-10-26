@@ -4,7 +4,7 @@ namespace App\Http\Resources;
 
 use App\Enums\ChatTypeEnum;
 use App\Enums\DefaultRolesEnum;
-use App\Models\User;
+use App\Models\Chat;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Storage;
@@ -14,10 +14,13 @@ class ChatSpecialMessageResource extends JsonResource
 {
     private int $userId;
 
-    public function __construct($resource, $userId = null)
+    private ?Chat $chatContext;
+
+    public function __construct($resource, $userId = null, ?Chat $chatContext = null)
     {
         parent::__construct($resource);
         $this->userId = $userId ?? auth()->id();
+        $this->chatContext = $chatContext;
     }
 
     /**
@@ -27,19 +30,27 @@ class ChatSpecialMessageResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $chat = $this->chatContext ?? $this->chat;
+        $partnerClientIds = $chat->getAttribute('partner_client_ids');
+        $isPartnerClient = is_array($partnerClientIds)
+            ? in_array((int) $this->user_id, $partnerClientIds, true)
+            : null;
+
         $res = [
             'id' => $this->id,
             'text' => Str::limit($this->text, 15, '...'),
             'created_at' => $this->created_at,
             'attachments' => MediaResource::collection($this->getMedia()),
             'status' => $this->status,
-            'user' => UserResource::make($this->user),
+            'user' => UserResource::make($this->user, $isPartnerClient),
         ];
 
-        if ($this->chat->type === ChatTypeEnum::PARTNER->value) {
-            $user = User::find($this->userId);
+        if ($chat->type === ChatTypeEnum::PARTNER->value) {
+            $user = $chat->relationLoaded('members')
+                ? $chat->members->firstWhere('user_id', $this->userId)?->user
+                : \App\Models\User::find($this->userId);
 
-            if ($user && $user->hasRole(DefaultRolesEnum::PARTNER->value)) {
+            if ($user && ($user->role?->original_title === DefaultRolesEnum::PARTNER->value || $user->role?->title === DefaultRolesEnum::PARTNER->value)) {
                 $res['user'] = [
                     'name' => 'ЕСБ',
                     'surname' => 'Система',

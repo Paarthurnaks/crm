@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\ChatMessage;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class ChatAttachmentService
@@ -17,7 +18,7 @@ class ChatAttachmentService
      * @param  string  $operator  The operator for the MIME type comparison
      * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator
      */
-    private function getMediaByType(int $id, string $mimeType, string $operator = 'like'): LengthAwarePaginator
+    private function getMediaByType(int $id, string $mimeType, ?int $limit = null, string $operator = 'like'): LengthAwarePaginator
     {
         // Media модель из media-library не робит для получения, так что пишем костыль
         $chatMediaMessages = DB::table('media')
@@ -25,13 +26,15 @@ class ChatAttachmentService
             ->where('custom_properties->chat_id', $id)
             ->where('mime_type', $operator, $mimeType)
             ->orderByDesc('created_at')
-            ->paginate(request()->query('limit') ?? config('chats.attachments_limit'));
+            ->paginate($limit ?? config('chats.attachments_limit'));
 
         $chatMediaMessages->getCollection()->transform(function ($media) {
             $mediaModel = Media::find($media->id);
 
             return $mediaModel ? $mediaModel->model : null;
         });
+
+        Log::debug('chat.attachments.loaded', ['chat_id' => $id, 'count' => $chatMediaMessages->count()]);
 
         return $chatMediaMessages;
     }
@@ -41,9 +44,9 @@ class ChatAttachmentService
      *
      * @param  int  $id  Chat ID
      */
-    public function getAllChatMediaImages(int $id): LengthAwarePaginator
+    public function getAllChatMediaImages(int $id, ?int $limit = null): LengthAwarePaginator
     {
-        return $this->getMediaByType($id, 'image/%');
+        return $this->getMediaByType($id, 'image/%', $limit);
     }
 
     /**
@@ -51,9 +54,9 @@ class ChatAttachmentService
      *
      * @param  int  $id  Chat ID
      */
-    public function getAllChatMediaDocuments(int $id): LengthAwarePaginator
+    public function getAllChatMediaDocuments(int $id, ?int $limit = null): LengthAwarePaginator
     {
-        return $this->getMediaByType($id, 'image/%', 'not like');
+        return $this->getMediaByType($id, 'image/%', $limit, 'not like');
     }
 
     public function getAllChatLinks(int $id): LengthAwarePaginator

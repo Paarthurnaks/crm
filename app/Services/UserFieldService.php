@@ -16,9 +16,73 @@ use Exception;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class UserFieldService
 {
+    public function addAttachments(int $entityId, int $fieldId, array $attachments): UserFieldValue
+    {
+        $value = UserFieldValue::firstOrCreate(
+            ['entity_id' => $entityId, 'field_id' => $fieldId],
+            ['value' => null]
+        );
+        $createdMedia = [];
+
+        try {
+            foreach ($attachments as $attachment) {
+                $createdMedia[] = $value->addMedia($attachment)->toMediaCollection();
+            }
+        } catch (\Throwable $exception) {
+            foreach ($createdMedia as $media) {
+                try {
+                    $media->delete();
+                } catch (\Throwable $cleanupException) {
+                    Log::error('user_field.attachment.cleanup.failed', ['value_id' => $value->id, 'media_id' => $media->id, 'exception' => $cleanupException::class]);
+                }
+            }
+            if ($value->wasRecentlyCreated) {
+                try {
+                    $value->delete();
+                } catch (\Throwable $cleanupException) {
+                    Log::error('user_field.value.cleanup.failed', ['value_id' => $value->id, 'exception' => $cleanupException::class]);
+                }
+            }
+            Log::error('user_field.attachments.add.failed', ['value_id' => $value->id, 'exception' => $exception::class]);
+            throw $exception;
+        }
+
+        Log::info('user_field.attachments.added', ['value_id' => $value->id, 'count' => count($createdMedia)]);
+
+        return $value->refresh();
+    }
+
+    public function deleteAttachment(int $entityId, int $fieldId, int $mediaId): ?UserFieldValue
+    {
+        $value = UserFieldValue::where('entity_id', $entityId)
+            ->where('field_id', $fieldId)
+            ->first();
+
+        if (! $value) {
+            Log::warning('user_field.attachment.value_missing', ['entity_id' => $entityId, 'field_id' => $fieldId]);
+
+            return null;
+        }
+
+        /** @var Media|null $media */
+        $media = $value->media()->find($mediaId);
+        if (! $media) {
+            Log::warning('user_field.attachment.missing', ['value_id' => $value->id, 'media_id' => $mediaId]);
+
+            return null;
+        }
+
+        $value->deleteMedia($media);
+        Log::info('user_field.attachment.deleted', ['value_id' => $value->id, 'media_id' => $mediaId]);
+
+        return $value->refresh();
+    }
+
     private const ERROR_MESSAGES = [
         'createError' => 'Произошла ошибка во время создания пользовательского поля',
         'updateError' => 'Произошла ошибка во время обновления пользовательского поля',
