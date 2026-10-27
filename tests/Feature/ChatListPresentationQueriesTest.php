@@ -33,7 +33,11 @@ class ChatListPresentationQueriesTest extends TestCase
             ChatMember::create(['chat_id' => $chat->id, 'user_id' => $viewer->id, 'is_creator' => true]);
         }
 
-        $chats = app(ChatService::class)->getChatsList(['limit' => 10], new ChatFilter(Request::create('/', 'GET')));
+        $chats = app(ChatService::class)->getChatsList(
+            ['limit' => 10],
+            new ChatFilter(Request::create('/', 'GET')),
+            $viewer
+        );
         $this->assertCount(3, $chats);
 
         DB::enableQueryLog();
@@ -44,5 +48,26 @@ class ChatListPresentationQueriesTest extends TestCase
         $this->assertCount(3, $response['data']);
         $this->assertCount(0, DB::getQueryLog());
         DB::disableQueryLog();
+    }
+
+    public function test_search_never_returns_another_users_chat_without_http_context(): void
+    {
+        $viewer = User::withoutEvents(fn (): User => User::create([
+            'name' => 'Viewer', 'surname' => 'User',
+            'email' => 'chat-search-viewer@example.test', 'password' => 'unused',
+        ]));
+        $other = User::withoutEvents(fn (): User => User::create([
+            'name' => 'Other', 'surname' => 'User',
+            'email' => 'chat-search-other@example.test', 'password' => 'unused',
+        ]));
+        $ownChat = Chat::create(['type' => ChatTypeEnum::GROUP->value, 'name' => 'Project room']);
+        $otherChat = Chat::create(['type' => ChatTypeEnum::GROUP->value, 'name' => 'Project private']);
+        ChatMember::create(['chat_id' => $ownChat->id, 'user_id' => $viewer->id, 'is_creator' => true]);
+        ChatMember::create(['chat_id' => $otherChat->id, 'user_id' => $other->id, 'is_creator' => true]);
+        $filter = new ChatFilter(Request::create('/', 'GET', ['search_term' => 'project']));
+
+        $chats = app(ChatService::class)->getChatsList(['limit' => 10], $filter, $viewer);
+
+        $this->assertSame([$ownChat->id], $chats->getCollection()->pluck('id')->all());
     }
 }

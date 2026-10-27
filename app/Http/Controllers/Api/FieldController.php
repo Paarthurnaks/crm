@@ -75,7 +75,7 @@ class FieldController extends Controller
      */
     public function getFieldsAndUserFields(Request $request, string $entity): JsonResponse
     {
-        $fields = $this->fieldService->getFieldsAndUserFields($entity, $request->all());
+        $fields = $this->fieldService->getFieldsAndUserFields($entity, $request->all(), $request->user());
 
         $response = [
             'fields' => FieldResource::collection($fields['fields']),
@@ -144,6 +144,10 @@ class FieldController extends Controller
         $field = $validated['is_userfield'] ?
             UserField::find($validated['id']) :
             Field::find($validated['id']);
+
+        if (! $field) {
+            return ResponseService::notFound();
+        }
 
         $this->fieldService->update($validated, $field);
 

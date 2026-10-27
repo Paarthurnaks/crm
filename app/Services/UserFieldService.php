@@ -21,6 +21,11 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class UserFieldService
 {
+    private const ERROR_MESSAGES = [
+        'createError' => 'Произошла ошибка во время создания пользовательского поля',
+        'updateError' => 'Произошла ошибка во время обновления пользовательского поля',
+    ];
+
     public function addAttachments(int $entityId, int $fieldId, array $attachments): UserFieldValue
     {
         $value = UserFieldValue::firstOrCreate(
@@ -83,18 +88,12 @@ class UserFieldService
         return $value->refresh();
     }
 
-    private const ERROR_MESSAGES = [
-        'createError' => 'Произошла ошибка во время создания пользовательского поля',
-        'updateError' => 'Произошла ошибка во время обновления пользовательского поля',
-    ];
-
     public function getList(UserFieldFilter $filter, array $queryParams = []): LengthAwarePaginator
     {
         $limit = $queryParams['limit'] ?? config('constants.paginator.limit');
 
         return UserField::filter($filter)
             ->with('userFieldEnumValues')
-            ->orWhereDoesntHave('userFieldEnumValues')
             ->paginate($limit);
     }
 
@@ -148,9 +147,10 @@ class UserFieldService
                 ]);
 
                 if ($data['type'] === UserFieldTypeEnum::ENUM->value) {
-                    $options = collect($data['options'])->map(function ($option) {
+                    $existingOptions = $userField->userFieldEnumValues()->get()->keyBy('id');
+                    $options = collect($data['options'])->map(function ($option) use ($existingOptions) {
                         if (isset($option['id'])) {
-                            $enumValue = UserFieldEnumValue::find($option['id']);
+                            $enumValue = $existingOptions->get($option['id']);
                             if ($enumValue) {
                                 $enumValue->update([
                                     'option' => $option['option'],
@@ -214,10 +214,13 @@ class UserFieldService
 
     public function addUserFieldValues(int $entityId, array $fieldValues, SectionFieldEntityEnum $entityEnum): void
     {
+        $fieldsByCode = UserField::where('entity', $entityEnum->value)
+            ->whereIn('code', array_keys($fieldValues))
+            ->get()
+            ->keyBy('code');
+
         foreach ($fieldValues as $ufName => $ufValue) {
-            $userField = UserField::where('code', $ufName)
-                ->where('entity', $entityEnum->value)
-                ->first();
+            $userField = $fieldsByCode->get($ufName);
 
             if (! $userField) {
                 continue;
@@ -230,6 +233,8 @@ class UserFieldService
                 'value' => $ufValue,
             ]);
         }
+
+        Log::debug('user_field.values.saved', ['entity_id' => $entityId, 'field_count' => $fieldsByCode->count()]);
     }
 
     public function setupBooleanValues(?UserField $userField = null): void

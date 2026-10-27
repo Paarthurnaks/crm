@@ -4,8 +4,8 @@ namespace App\Services;
 
 use App\Enums\DefaultRolesEnum;
 use App\Models\UserTableSettings;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
 class UserTableSettingsService
@@ -44,16 +44,14 @@ class UserTableSettingsService
         return $settings;
     }
 
-    public function getUserTableSettings(array $queryParams): null|Collection|UserTableSettings
+    public function getUserTableSettings(array $queryParams, User $actor): null|Collection|UserTableSettings
     {
-        $user = Auth::user();
-
         if (! array_key_exists('entity', $queryParams)) {
-            return UserTableSettings::where('user_id', $user->id)->get();
+            return UserTableSettings::where('user_id', $actor->id)->get();
         }
 
         $settingsRecord = UserTableSettings::firstOrCreate([
-            'user_id' => $user->id,
+            'user_id' => $actor->id,
             'entity' => $queryParams['entity'],
         ], [
             'settings' => ['table_columns' => []],
@@ -82,27 +80,26 @@ class UserTableSettingsService
         }
 
         Log::debug('table_settings.source_selected', [
-            'actor_id' => $user->id,
+            'actor_id' => $actor->id,
             'entity' => $queryParams['entity'],
             'source' => $source,
             'template_id' => $template?->id ?? null,
         ]);
 
-        $settingsRecord->settings = $this->presenter->present($settings, $user);
+        $settingsRecord->settings = $this->presenter->present($settings, $actor);
 
         return $settingsRecord;
     }
 
-    public function updateUserTableSettings(array $userTableSettingsData): UserTableSettings
+    public function updateUserTableSettings(array $userTableSettingsData, User $actor): UserTableSettings
     {
-        $user = Auth::user();
         $settings = $this->simplifySettings($userTableSettingsData['settings']);
         $settingsRecord = UserTableSettings::updateOrCreate(
-            ['user_id' => $user->id, 'entity' => $userTableSettingsData['entity']],
+            ['user_id' => $actor->id, 'entity' => $userTableSettingsData['entity']],
             ['settings' => $settings]
         );
 
-        $settingsRecord->settings = $this->presenter->present($settings, $user);
+        $settingsRecord->settings = $this->presenter->present($settings, $actor);
 
         return $settingsRecord;
     }

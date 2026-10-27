@@ -10,21 +10,22 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use InvalidArgumentException;
 use RuntimeException;
 use Throwable;
-use ZipArchive;
 
 class FileSystemService
 {
+    private const AVAILABLE_DIRECTORY = 'entities/available';
+
+    private const TRASH_DIRECTORY = 'entities/trash';
+
     public function createFolder(array $data, User $actor): DiskEntity
     {
-        $path = $data['path'];
-        $folderPath = 'entities/available/'.trim($path, '/').'/'.$data['title'];
+        $path = $this->normalizeParentPath($data['path']);
+        $folderPath = $this->availablePath($path, $data['title']);
         $disk = Storage::disk('public');
         $created = ! $disk->exists($folderPath);
 
@@ -39,7 +40,7 @@ class FileSystemService
                     'title' => $data['title'],
                     'type' => DiskEntityTypeEnum::FOLDER->value,
                     'who_created_id' => $actor->id,
-                    'path' => substr_count($path, '/') > 1 ? rtrim($path, '/') : $path,
+                    'path' => $path,
                     'size' => 0,
                 ]);
                 $actor->role->availableDiskEntities()->attach($entity);
@@ -63,10 +64,10 @@ class FileSystemService
     {
         /** @var UploadedFile $file */
         $file = $data['file'];
-        $path = $data['path'];
+        $path = $this->normalizeParentPath($data['path']);
         $filename = $file->getClientOriginalName();
-        $folderPath = 'entities/available'.$path;
-        $storagePath = rtrim($folderPath, '/').'/'.$filename;
+        $folderPath = $this->availablePath($path);
+        $storagePath = $this->availablePath($path, $filename);
         $disk = Storage::disk('public');
 
         if ($disk->exists($storagePath)) {
@@ -80,13 +81,12 @@ class FileSystemService
         }
 
         try {
-            $entity = DB::transaction(function () use ($data, $actor, $file, $filename): DiskEntity {
-                $path = $data['path'];
+            $entity = DB::transaction(function () use ($path, $actor, $file, $filename): DiskEntity {
                 $entity = DiskEntity::create([
                     'title' => $filename,
                     'type' => DiskEntityTypeEnum::FILE->value,
                     'who_created_id' => $actor->id,
-                    'path' => substr_count($path, '/') > 1 ? rtrim($path, '/') : $path,
+                    'path' => $path,
                     'size' => $file->getSize(),
                     'mime_type' => $file->getClientMimeType(),
                 ]);
@@ -105,11 +105,6 @@ class FileSystemService
         return $entity;
     }
 
-    private const ERROR_MESSAGES = [
-        'zipCreateError' => 'Произошла ошибка при создании файла',
-        'noFilesError' => 'Папка пустая',
-    ];
-
     /**
      * Доступный элемент сначала перемещается в корзину, затем обновляются записи.
      * Для элемента в корзине сначала удаляется содержимое Storage, затем записи БД.
@@ -124,6 +119,20 @@ class FileSystemService
             $this->moveToTrash($diskEntity);
         }
 
+        $this->updateEntitiesAfterDeletion($diskEntity, $diskEntityPath);
+
+        if (! $diskEntity->deleted && $diskEntity->exists) {
+            $this->startDeletionJob($diskEntity);
+        }
+
+        Log::info('Disk entity state changed', [
+            'disk_entity_id' => $diskEntity->id,
+            'state' => $diskEntity->deleted ? 'removed' : 'trashed',
+        ]);
+    }
+
+    private function updateEntitiesAfterDeletion(DiskEntity $diskEntity, string $diskEntityPath): void
+    {
         DiskEntity::query()
             ->where(function ($query) use ($diskEntityPath, $diskEntity) {
                 $query->where(fn (Builder $pathQuery) => $this->wherePathWithin($pathQuery, 'path', $diskEntityPath))
@@ -140,21 +149,25 @@ class FileSystemService
                     $entity->update([
                         'deleted' => true,
                         'original_path' => $path,
-                        'path' => $entity->id === $diskEntity->id ?
-                            '/' :
-                            preg_replace('#^'.preg_quote($diskEntityPath, '#').'(?=/|$)#', '/'.$diskEntity->title, $path),
+                        'path' => $entity->id === $diskEntity->id
+                            ? '/'
+                            : $this->pathWithinTrash($diskEntity, $diskEntityPath, $path),
                     ]);
                 }
             });
+    }
 
-        if (! $diskEntity->deleted && $diskEntity->exists) {
-            $this->startDeletionJob($diskEntity);
+    private function pathWithinTrash(DiskEntity $root, string $rootPath, string $path): string
+    {
+        if ($path === $rootPath) {
+            return '/'.$root->title;
         }
 
-        Log::info('Disk entity state changed', [
-            'disk_entity_id' => $diskEntity->id,
-            'state' => $diskEntity->deleted ? 'removed' : 'trashed',
-        ]);
+        if (str_starts_with($path, $rootPath.'/')) {
+            return '/'.$root->title.substr($path, strlen($rootPath));
+        }
+
+        return $path;
     }
 
     private function startDeletionJob(DiskEntity $diskEntity): void
@@ -174,19 +187,23 @@ class FileSystemService
             ->where('deleted', true)
             ->first();
 
-        $sourcePath = 'entities/available'.$entityPath;
-
-        $destinationPath = 'entities/trash'.($duplicateInTrash ?
-            rtrim($duplicateInTrash->path, '/')."/$duplicateInTrash->id".'_'.$duplicateInTrash->title :
-            rtrim($entity->path, '/')."/$entity->id".'_'.$entity->title);
+        $sourcePath = $this->availablePath($entity->path, $entity->title);
+        $trashParent = $duplicateInTrash?->path ?? $entity->path;
+        $destinationPath = $this->storagePath(
+            self::TRASH_DIRECTORY,
+            $trashParent,
+            $entity->id.'_'.$entity->title
+        );
         $renamedTitle = null;
 
         if ($duplicateInTrash && $entity->type->value === DiskEntityTypeEnum::FILE->value) {
-            $fileDestinationPath = 'entities/trash'.rtrim($entity->path, '/')."/$entity->id".'_'.$entity->title;
-            // для уникальности и предотвращения коллизий в файловой системе
-            $destinationPath = Str::beforeLast($fileDestinationPath, '.').'_'.$entity->id.'.'.Str::afterLast($fileDestinationPath, '.');
-
-            $renamedTitle = Str::before($entity->title, '.').'_'.$entity->id.'.'.Str::afterLast($fileDestinationPath, '.');
+            $renamedTitle = $this->titleWithEntityId($entity);
+            $destinationPath = $this->storagePath(
+                self::TRASH_DIRECTORY,
+                $entity->path,
+                $entity->id.'_'.$renamedTitle
+            );
+            Log::debug('disk.file.trash_name_resolved', ['entity_id' => $entity->id]);
         }
 
         if (! Storage::disk('public')->exists($sourcePath)) {
@@ -210,13 +227,7 @@ class FileSystemService
         if (! is_dir(Storage::disk('public')->path($destinationPath))) {
             $this->moveOrFail($sourcePath, $destinationPath);
 
-            if ($renamedTitle !== null) {
-                $entity->update(['title' => $renamedTitle]);
-            }
-
-            if ($duplicateInTrash && $entity->type->value !== DiskEntityTypeEnum::FILE->value) {
-                $entity->delete();
-            }
+            $this->finishTrashMove($entity, $renamedTitle, $duplicateInTrash !== null);
 
             return;
         }
@@ -226,7 +237,11 @@ class FileSystemService
         }
 
         $this->moveEntities($sourcePath, $destinationPath);
+        $this->finishTrashMove($entity, $renamedTitle, $duplicateInTrash !== null);
+    }
 
+    private function finishTrashMove(DiskEntity $entity, ?string $renamedTitle, bool $duplicateInTrash): void
+    {
         if ($renamedTitle !== null) {
             $entity->update(['title' => $renamedTitle]);
         }
@@ -285,7 +300,6 @@ class FileSystemService
 
     private function restoreFromTrash(DiskEntity $entity): void
     {
-        $missingParents = [];
         $entityPath = rtrim($entity->original_path, '/')."/$entity->title";
 
         $duplicateInDisk = DiskEntity::query()
@@ -297,44 +311,18 @@ class FileSystemService
 
         $sourcePath = $this->locateTrashedEntityPath($entity);
 
-        $destinationPath = 'entities/available'.($duplicateInDisk ?
-             rtrim($duplicateInDisk->path, '/').'/'.$duplicateInDisk->title :
-             $entityPath);
+        $destinationPath = $this->availablePath(
+            $duplicateInDisk?->path ?? $entity->original_path,
+            $duplicateInDisk?->title ?? $entity->title
+        );
         $renamedTitle = null;
 
         if ($duplicateInDisk && $entity->type->value === DiskEntityTypeEnum::FILE->value) {
-            $filePath = 'entities/available'.rtrim($entity->original_path, '/')."/$entity->id".'_'.$entity->title;
-            $fileDestinationPath = Str::beforeLast($filePath, '/').'/'.ltrim(Str::afterLast($filePath, '/'), $entity->id.'_');
-            // для уникальности и предотвращения коллизий в файловой системе
-            $destinationPath = Str::beforeLast(ltrim($fileDestinationPath, $entity->id.'_'), '.').'_'.$entity->id.'.'.Str::afterLast($fileDestinationPath, '.');
-
-            $renamedTitle = Str::before($entity->title, '.').'_'.$entity->id.'.'.Str::afterLast($fileDestinationPath, '.');
+            $renamedTitle = $this->titleWithEntityId($entity);
+            $destinationPath = $this->availablePath($entity->original_path, $renamedTitle);
+            Log::debug('disk.file.restore_name_resolved', ['entity_id' => $entity->id]);
         }
-        if ($entity->path !== '/') {
-            $dirs = $this->getEntityHierarchy($entity, true);
-
-            foreach ($dirs as $dir) {
-                $path = $this->trashEntityPath($dir);
-                if (Storage::disk('public')->exists($path)) {
-                    $availableDirIsExists = DiskEntity::query()
-                        ->where('path', $dir->original_path)
-                        ->where('deleted', false)
-                        ->exists();
-
-                    // Создание новой иерархии родителей в бд при восстановлении
-                    if (! $availableDirIsExists) {
-                        $missingParents[] = [
-                            'path' => $dir->original_path,
-                            'title' => $dir->title,
-                            'size' => $dir->size,
-                            'who_created_id' => $dir->who_created_id,
-                            'type' => DiskEntityTypeEnum::FOLDER->value,
-                        ];
-                    }
-
-                }
-            }
-        }
+        $missingParents = $this->missingRestoreParents($entity);
 
         if (! Storage::disk('public')->exists($sourcePath)) {
             Log::error('Trashed disk entity source is missing', ['disk_entity_id' => $entity->id]);
@@ -382,6 +370,37 @@ class FileSystemService
         }
     }
 
+    private function missingRestoreParents(DiskEntity $entity): array
+    {
+        if ($entity->path === '/') {
+            return [];
+        }
+
+        $parents = [];
+        foreach ($this->getEntityHierarchy($entity, true) as $dir) {
+            if (! Storage::disk('public')->exists($this->trashEntityPath($dir))) {
+                continue;
+            }
+
+            $available = DiskEntity::query()
+                ->where('path', $dir->original_path)
+                ->where('deleted', false)
+                ->exists();
+
+            if (! $available) {
+                $parents[] = [
+                    'path' => $dir->original_path,
+                    'title' => $dir->title,
+                    'size' => $dir->size,
+                    'who_created_id' => $dir->who_created_id,
+                    'type' => DiskEntityTypeEnum::FOLDER->value,
+                ];
+            }
+        }
+
+        return $parents;
+    }
+
     /**
      * Восстановление перемещает содержимое в доступный каталог до смены состояния записей.
      */
@@ -395,6 +414,13 @@ class FileSystemService
 
         $this->restoreFromTrash($entity);
 
+        $this->updateRestoredEntities($entity);
+
+        Log::info('Disk entity state changed', ['disk_entity_id' => $entity->id, 'state' => 'available']);
+    }
+
+    private function updateRestoredEntities(DiskEntity $entity): void
+    {
         DiskEntity::query()
             ->where(function (Builder $query) use ($entity) {
                 $entityPath = rtrim($entity->original_path, '/').'/'.$entity->title;
@@ -410,71 +436,11 @@ class FileSystemService
                     'original_path' => null,
                 ]);
             });
-
-        Log::info('Disk entity state changed', ['disk_entity_id' => $entity->id, 'state' => 'available']);
     }
 
     public function createExportedZip(string $path): string
     {
-        $parts = explode('/', str_replace('\\', '/', $path));
-        if (in_array('..', $parts, true) || in_array('.', $parts, true) || str_contains($path, "\0")) {
-            throw new InvalidArgumentException('Недопустимый путь экспорта');
-        }
-
-        $normalizedPath = str_replace('\\', '/', $path);
-        $trimmedPath = rtrim('/'.trim($normalizedPath, '/'), '/');
-
-        $diskEntities = DiskEntity::query()
-            ->where(fn (Builder $query) => $this->wherePathWithin($query, 'path', $trimmedPath ?: '/'))
-            ->where('deleted', false)
-            ->get();
-
-        if ($diskEntities->isEmpty()) {
-            throw new \Exception(self::ERROR_MESSAGES['noFilesError']);
-        }
-
-        $zip = new ZipArchive;
-        $zipDirectory = storage_path('app/tmp/exports');
-        File::ensureDirectoryExists($zipDirectory);
-        $zipFilePath = $zipDirectory.DIRECTORY_SEPARATOR.Str::random(24).'.zip';
-
-        if ($zip->open($zipFilePath, ZipArchive::CREATE) !== true) {
-            throw new RuntimeException(self::ERROR_MESSAGES['zipCreateError']);
-        }
-
-        $closed = false;
-        try {
-            foreach ($diskEntities as $entity) {
-                $localPath = Storage::disk('public')->path('entities/available'."{$entity->path}/{$entity->title}");
-                $relativePath = trim(Str::replaceFirst($trimmedPath, '', "{$entity->path}/{$entity->title}"), '/');
-
-                if (is_dir($localPath)) {
-                    $added = $zip->addEmptyDir($relativePath);
-                } elseif (is_file($localPath)) {
-                    $added = $zip->addFile($localPath, $relativePath);
-                } else {
-                    $added = false;
-                }
-
-                if (! $added) {
-                    throw new RuntimeException(self::ERROR_MESSAGES['zipCreateError']);
-                }
-            }
-
-            $closed = $zip->close();
-            if (! $closed) {
-                throw new RuntimeException(self::ERROR_MESSAGES['zipCreateError']);
-            }
-
-            Log::info('Disk entities exported', ['entity_count' => $diskEntities->count()]);
-
-            return $zipFilePath;
-        } finally {
-            if (! $closed) {
-                $zip->close();
-                File::delete($zipFilePath);
-            }
-        }
+        return (new FileSystemZipExporter)->export($path);
     }
 
     private function deleteByPath(DiskEntity $entity): void
@@ -554,9 +520,38 @@ class FileSystemService
         return rtrim($entity->path, '/').'/'.$entity->title;
     }
 
+    private function normalizeParentPath(string $path): string
+    {
+        return rtrim($path, '/') ?: '/';
+    }
+
+    private function availablePath(string $parentPath, ?string $title = null): string
+    {
+        return $this->storagePath(self::AVAILABLE_DIRECTORY, $parentPath, $title);
+    }
+
+    private function storagePath(string $directory, string $parentPath, ?string $title = null): string
+    {
+        $path = $directory.'/'.trim($parentPath, '/');
+
+        return rtrim($path, '/').($title === null ? '' : '/'.$title);
+    }
+
+    private function titleWithEntityId(DiskEntity $entity): string
+    {
+        $extension = pathinfo($entity->title, PATHINFO_EXTENSION);
+        $name = pathinfo($entity->title, PATHINFO_FILENAME).'_'.$entity->id;
+
+        return $extension === '' ? $name : $name.'.'.$extension;
+    }
+
     private function trashEntityPath(DiskEntity $entity): string
     {
-        return 'entities/trash'.rtrim($entity->original_path, '/').'/'.$entity->id.'_'.$entity->title;
+        return $this->storagePath(
+            self::TRASH_DIRECTORY,
+            $entity->original_path,
+            $entity->id.'_'.$entity->title
+        );
     }
 
     private function locateTrashedEntityPath(DiskEntity $entity): string

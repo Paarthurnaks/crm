@@ -5,17 +5,14 @@ namespace App\Services;
 use App\Enums\DefaultRolesEnum;
 use App\Http\Filters\RoleFilter;
 use App\Models\Role;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class RoleService
 {
     public function __construct(private PermissionService $permissionService) {}
 
-    /**
-     * @return Collection
-     */
     public function getRoles(RoleFilter $filter, array $queryParams): LengthAwarePaginator
     {
         $limit = $queryParams['limit'] ?? config('constants.paginator.limit');
@@ -23,9 +20,6 @@ class RoleService
         return Role::filter($filter)->paginate($limit);
     }
 
-    /**
-     * @param array
-     */
     public function createRole(array $roleData): Role
     {
         $role = DB::transaction(function () use ($roleData) {
@@ -37,24 +31,7 @@ class RoleService
                 $this->permissionService->createPermission($permissionData, $role->id);
             }
 
-            if (isset($roleData['available_view_fields'])) {
-                $role->fields()->attach($roleData['available_view_fields'], ['type' => 'view']);
-            }
-            if (isset($roleData['available_view_user_fields'])) {
-                $role->userFields()->attach($roleData['available_view_user_fields'], ['type' => 'view']);
-            }
-            if (isset($roleData['available_create_fields'])) {
-                $role->fields()->attach($roleData['available_create_fields'], ['type' => 'create']);
-            }
-            if (isset($roleData['available_create_user_fields'])) {
-                $role->userFields()->attach($roleData['available_create_user_fields'], ['type' => 'create']);
-            }
-            if (isset($roleData['available_update_fields'])) {
-                $role->fields()->attach($roleData['available_update_fields'], ['type' => 'update']);
-            }
-            if (isset($roleData['available_update_user_fields'])) {
-                $role->userFields()->attach($roleData['available_update_user_fields'], ['type' => 'update']);
-            }
+            $this->syncFieldAccess($role, $roleData, false);
             if (isset($roleData['available_disk_entities'])) {
                 $role->availableDiskEntities()->attach($roleData['available_disk_entities']);
             }
@@ -73,7 +50,11 @@ class RoleService
             }
             if (isset($roleData['permissions'])) {
                 foreach ($roleData['permissions'] as $permissionData) {
-                    array_key_exists('id', $permissionData) ? $this->permissionService->updatePermission($permissionData) : $this->permissionService->createPermission($permissionData, $role->id);
+                    if (array_key_exists('id', $permissionData)) {
+                        $this->permissionService->updatePermission($permissionData, $role->id);
+                    } else {
+                        $this->permissionService->createPermission($permissionData, $role->id);
+                    }
                 }
             }
 
@@ -82,46 +63,7 @@ class RoleService
                 $role->availableDiskEntities()->attach($roleData['available_disk_entities']);
             }
 
-            if (isset($roleData['available_view_fields'])) {
-                $role->fields()->wherePivot('type', 'view')->detach();
-                $role->fields()->attach($roleData['available_view_fields'], ['type' => 'view']);
-
-                if ($role->original_title === DefaultRolesEnum::PARTNER->value) {
-                    $clientRole = Role::where('original_title', DefaultRolesEnum::CLIENT->value)->first();
-
-                    $clientRole->fields()->wherePivot('type', 'view')->detach();
-                    $clientRole->fields()->attach($roleData['available_view_fields'], ['type' => 'view']);
-                }
-            }
-            if (isset($roleData['available_view_user_fields'])) {
-                $role->userFields()->wherePivot('type', 'view')->detach();
-                $role->userFields()->attach($roleData['available_view_user_fields'], ['type' => 'view']);
-
-                if ($role->original_title === DefaultRolesEnum::PARTNER->value) {
-                    $clientRole = Role::where('original_title', DefaultRolesEnum::CLIENT->value)->first();
-
-                    $clientRole->userFields()->wherePivot('type', 'view')->detach();
-                    $clientRole->userFields()->attach($roleData['available_view_user_fields'], ['type' => 'view']);
-                }
-            }
-
-            if (isset($roleData['available_create_fields'])) {
-                $role->fields()->wherePivot('type', 'create')->detach();
-                $role->fields()->attach($roleData['available_create_fields'], ['type' => 'create']);
-            }
-            if (isset($roleData['available_create_user_fields'])) {
-                $role->userFields()->wherePivot('type', 'create')->detach();
-                $role->userFields()->attach($roleData['available_create_user_fields'], ['type' => 'create']);
-            }
-
-            if (isset($roleData['available_update_fields'])) {
-                $role->fields()->wherePivot('type', 'update')->detach();
-                $role->fields()->attach($roleData['available_update_fields'], ['type' => 'update']);
-            }
-            if (isset($roleData['available_update_user_fields'])) {
-                $role->userFields()->wherePivot('type', 'update')->detach();
-                $role->userFields()->attach($roleData['available_update_user_fields'], ['type' => 'update']);
-            }
+            $this->syncFieldAccess($role, $roleData, true);
         });
 
         return $role;
@@ -130,5 +72,40 @@ class RoleService
     public function deleteRole(Role $role): void
     {
         $role->delete();
+    }
+
+    private function syncFieldAccess(Role $role, array $data, bool $replace): void
+    {
+        $clientRole = $replace && $role->original_title === DefaultRolesEnum::PARTNER->value
+            ? Role::where('original_title', DefaultRolesEnum::CLIENT->value)->first()
+            : null;
+
+        foreach (['view', 'create', 'update'] as $action) {
+            foreach (['fields' => 'fields', 'user_fields' => 'userFields'] as $suffix => $relation) {
+                $key = "available_{$action}_{$suffix}";
+                if (! isset($data[$key])) {
+                    continue;
+                }
+
+                $this->syncRoleRelation($role, $relation, $action, $data[$key], $replace);
+                if ($action === 'view' && $clientRole) {
+                    $this->syncRoleRelation($clientRole, $relation, $action, $data[$key], true);
+                }
+                Log::debug('role.field_access.synced', [
+                    'role_id' => $role->id,
+                    'action' => $action,
+                    'field_count' => count($data[$key]),
+                ]);
+            }
+        }
+    }
+
+    private function syncRoleRelation(Role $role, string $relation, string $action, array $ids, bool $replace): void
+    {
+        if ($replace) {
+            $role->{$relation}()->wherePivot('type', $action)->detach();
+        }
+
+        $role->{$relation}()->attach($ids, ['type' => $action]);
     }
 }

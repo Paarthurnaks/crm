@@ -315,9 +315,9 @@ class AuthController extends Controller
      */
     public function changeAvatar(Request $request): JsonResponse
     {
-        if ($request->has('avatar')) {
-            Auth::user()->clearMediaCollection();
-            Auth::user()->addMedia($request->avatar)->toMediaCollection();
+        $validated = $request->validate(['avatar' => ['sometimes', 'file', 'image', 'max:2048']]);
+        if (isset($validated['avatar'])) {
+            $this->authService->changeAvatar($request->user(), $validated['avatar']);
         }
 
         return ResponseService::success(message: 'Аватар успешно изменен');

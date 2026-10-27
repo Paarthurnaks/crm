@@ -92,7 +92,7 @@ class ChatMessageController extends Controller
     {
         $validated = $request->validated();
 
-        $messages = $this->service->getMessagesList($chatId, $validated);
+        $messages = $this->service->getMessagesList($chatId, $validated, $request->user());
 
         return ResponseService::success(
             $messages
@@ -136,7 +136,7 @@ class ChatMessageController extends Controller
         $validated = $request->validated();
 
         try {
-            $message = $this->service->sendMessage($validated, $chatId);
+            $message = $this->service->sendMessage($validated, $chatId, $request->user());
 
             return ResponseService::success(
                 new ChatMessageResource($message, auth()->id())
@@ -263,7 +263,7 @@ class ChatMessageController extends Controller
         $validated = $request->validated();
 
         try {
-            $this->service->updateMessage($validated, $message);
+            $this->service->updateMessage($validated, $message, $request->user());
 
             return ResponseService::success(
                 ChatMessageResource::make($message)
@@ -324,7 +324,7 @@ class ChatMessageController extends Controller
      *     )
      * )
      */
-    public function destroy(string $messageId): JsonResponse
+    public function destroy(Request $request, string $messageId): JsonResponse
     {
         $message = ChatMessage::find($messageId);
 
@@ -334,7 +334,7 @@ class ChatMessageController extends Controller
             );
         }
 
-        $this->service->destroy($message);
+        $this->service->destroy($message, $request->user());
 
         return ResponseService::success();
     }
@@ -401,7 +401,7 @@ class ChatMessageController extends Controller
             return ResponseService::forbidden(message: 'Нет доступа к этому чату');
         }
 
-        $messages = $this->service->updateMessageStatus($validated, $chatId);
+        $messages = $this->service->updateMessageStatus($validated, $chatId, $request->user());
 
         return ResponseService::success(
             $messages->map(function ($message) {
@@ -447,7 +447,7 @@ class ChatMessageController extends Controller
             );
         }
 
-        $this->service->hideMessage($message->id);
+        $this->service->hideMessage($message->id, $request->user());
 
         return ResponseService::success();
     }
@@ -479,7 +479,7 @@ class ChatMessageController extends Controller
         $validated = $request->validated();
 
         try {
-            $messages = $this->service->forwardMessage($validated);
+            $messages = $this->service->forwardMessage($validated, $request->user());
 
             return ResponseService::success(
                 $messages->map(function ($message) {

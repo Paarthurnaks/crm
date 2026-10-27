@@ -32,9 +32,9 @@ class FieldAccessConsistencyTest extends TestCase
         $this->actingAs($user);
 
         $service = app(FieldService::class);
-        $this->assertSame([$viewField->id], $service->getFieldsAndUserFields('deals', ['type' => 'view'])['fields']->pluck('id')->all());
-        $this->assertSame([$updateField->id], $service->getFieldsAndUserFields('deals', ['type' => 'update'])['fields']->pluck('id')->all());
-        $this->assertSame([], $service->getFieldsAndUserFields('deals', ['type' => 'create'])['fields']->pluck('id')->all());
+        $this->assertSame([$viewField->id], $service->getFieldsAndUserFields('deals', ['type' => 'view'], $user)['fields']->pluck('id')->all());
+        $this->assertSame([$updateField->id], $service->getFieldsAndUserFields('deals', ['type' => 'update'], $user)['fields']->pluck('id')->all());
+        $this->assertSame([], $service->getFieldsAndUserFields('deals', ['type' => 'create'], $user)['fields']->pluck('id')->all());
         $this->assertSame([$viewField->id], $section->availableFieldsView()->pluck('field_id')->all());
         $this->assertSame([$updateField->id], $section->availableFieldsUpdate()->pluck('field_id')->all());
     }

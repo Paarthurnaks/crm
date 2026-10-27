@@ -24,6 +24,7 @@ class SectionUpdateRequest extends FormRequest
         return [
             'title' => ['string'],
             'position' => ['integer'],
+            'type' => ['string', 'in:view,create,edit'],
             'section_fields' => ['array'],
             'section_fields.*.id' => ['integer'],
             'section_fields.*.field_id' => ['integer', 'exists:fields,id'],

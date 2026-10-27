@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Deal;
 use App\Models\DocumentTemplate;
+use App\Models\User;
 use App\Services\Document\DocxToPdfConverter;
 use App\Services\DocumentService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -19,12 +20,28 @@ class DocumentGenerationTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_generation_endpoint_returns_not_found_for_missing_deal(): void
+    {
+        $user = User::withoutEvents(fn (): User => User::create([
+            'name' => 'Тест',
+            'surname' => 'Пользователь',
+            'email' => 'document-contract@example.test',
+            'password' => 'unused',
+        ]));
+
+        $this->actingAs($user, 'api')
+            ->postJson('/api/deals/999999/generateDocument/999999', ['title' => 'Документ'])
+            ->assertNotFound();
+    }
+
     public function test_generation_returns_filled_docx_and_pdf_paths(): void
     {
         $temporaryPath = tempnam(sys_get_temp_dir(), 'template-');
         $templatePath = $temporaryPath.'.docx';
         $word = new PhpWord;
-        $word->addSection()->addText('${title}');
+        $section = $word->addSection();
+        $section->addText('${title}');
+        $section->addText('${client}');
         $word->save($templatePath, 'Word2007');
 
         $media = Mockery::mock(Media::class)->makePartial();
@@ -60,6 +77,9 @@ class DocumentGenerationTest extends TestCase
             $this->assertSame(['docx', 'pdf'], array_keys($result));
             $this->assertFileExists($result['docx']);
             $this->assertFileExists($result['pdf']);
+            $this->assertSame('docx', pathinfo($result['docx'], PATHINFO_EXTENSION));
+            $this->assertSame('pdf', pathinfo($result['pdf'], PATHINFO_EXTENSION));
+            $this->assertSame('PDF fixture', File::get($result['pdf']));
 
             $zip = new ZipArchive;
             $this->assertTrue($zip->open($result['docx']));
@@ -68,6 +88,8 @@ class DocumentGenerationTest extends TestCase
                 $documentXml = $zip->getFromName('word/document.xml');
                 $this->assertIsString($documentXml);
                 $this->assertStringContainsString('Проверка документа', $documentXml);
+                $this->assertStringContainsString('Тестовый клиент', $documentXml);
+                $this->assertStringNotContainsString('${title}', $documentXml);
             } finally {
                 $zip->close();
             }

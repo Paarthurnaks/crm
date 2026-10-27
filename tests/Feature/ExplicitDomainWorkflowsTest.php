@@ -4,9 +4,12 @@ namespace Tests\Feature;
 
 use App\Enums\DealEventTypeEnum;
 use App\Models\DealEvent;
+use App\Models\Field;
 use App\Models\SalesFunnel;
 use App\Models\SalesStage;
+use App\Models\Section;
 use App\Models\User;
+use App\Models\UserField;
 use App\Services\ChatService;
 use App\Services\DealService;
 use App\Services\EntityActivityService;
@@ -77,6 +80,25 @@ class ExplicitDomainWorkflowsTest extends TestCase
             $this->assertDatabaseMissing('users', ['email' => 'rollback@example.test']);
             $this->assertSame(0, DB::table('sections')->whereNotNull('user_id')->count());
         }
+    }
+
+    public function test_user_provisioning_gives_funnel_fields_distinct_positions(): void
+    {
+        $funnel = SalesFunnel::firstOrFail();
+        $field = Field::create(['name' => 'Title', 'entity' => 'deals', 'type' => 'string', 'code' => 'title']);
+        $userField = UserField::create(['name' => 'Custom', 'entity' => 'deals', 'type' => 'string', 'code' => 'custom']);
+        $funnel->fields()->attach($field->id);
+        $funnel->userFields()->attach($userField->id);
+        $chats = Mockery::mock(ChatService::class);
+        $chats->shouldReceive('setupChats')->once();
+
+        $user = (new UserService($chats))->createProvisionedUser([
+            'name' => 'Иван', 'surname' => 'Иванов',
+            'email' => 'positions@example.test', 'password' => 'unused',
+        ]);
+
+        $section = Section::where('user_id', $user->id)->where('sales_funnel_id', $funnel->id)->firstOrFail();
+        $this->assertSame([1, 2], $section->fields->pluck('position')->sort()->values()->all());
     }
 
     public function test_deal_creation_rolls_back_event_when_initialization_fails(): void

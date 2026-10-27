@@ -5,7 +5,6 @@ namespace App\Http\Resources;
 use App\Enums\ChatTypeEnum;
 use App\Enums\DefaultChatNameEnum;
 use App\Enums\DefaultRolesEnum;
-use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Storage;
@@ -135,7 +134,7 @@ class ChatMessageResource extends JsonResource
     private function getUserResource(): UserResource|array
     {
         if ($this->chat->type === ChatTypeEnum::PARTNER->value) {
-            $user = User::find($this->userId);
+            $user = $this->chat->members->firstWhere('user_id', $this->userId)?->user;
 
             if ($user && $user->hasRole(DefaultRolesEnum::PARTNER->value) && $this->user->id !== $this->userId) {
                 return [

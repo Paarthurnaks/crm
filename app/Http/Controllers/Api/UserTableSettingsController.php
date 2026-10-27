@@ -55,7 +55,7 @@ class UserTableSettingsController extends Controller
     public function index(Request $request): JsonResponse
     {
         $queryParams = $request->all();
-        $tableSettings = $this->userTableSettingsService->getUserTableSettings($queryParams);
+        $tableSettings = $this->userTableSettingsService->getUserTableSettings($queryParams, $request->user());
 
         if (is_null($tableSettings)) {
             return ResponseService::success();
@@ -120,7 +120,7 @@ class UserTableSettingsController extends Controller
      */
     public function update(UpdateUserTableSettingsRequest $request): JsonResponse
     {
-        $tableSettings = $this->userTableSettingsService->updateUserTableSettings($request->validated());
+        $tableSettings = $this->userTableSettingsService->updateUserTableSettings($request->validated(), $request->user());
 
         return ResponseService::success(
             UserTableSettingsResource::make($tableSettings)

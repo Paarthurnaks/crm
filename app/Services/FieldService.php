@@ -12,7 +12,7 @@ use App\Models\SalesFunnel;
 use App\Models\Section;
 use App\Models\SectionField;
 use App\Models\UserField;
-use Illuminate\Support\Facades\Auth;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
@@ -24,15 +24,14 @@ class FieldService
     ];
 
     /** @return array{fields: \Illuminate\Support\Collection, user_fields: \Illuminate\Support\Collection} */
-    public function getFieldsAndUserFields(string $entity, array $queryParams): array
+    public function getFieldsAndUserFields(string $entity, array $queryParams, User $actor): array
     {
         $action = $queryParams['type'] ?? 'view';
-        $actor = Auth::user();
         $fields = Field::where('entity', $entity);
         $userFields = UserField::where('entity', $entity);
 
-        if (! FieldAccess::supports($action) || ! $actor?->role) {
-            Log::warning('field.list.denied', ['actor_id' => $actor?->id, 'action' => $action]);
+        if (! FieldAccess::supports($action) || ! $actor->role) {
+            Log::warning('field.list.denied', ['actor_id' => $actor->id, 'action' => $action]);
 
             return ['fields' => collect(), 'user_fields' => collect()];
         }
@@ -72,38 +71,28 @@ class FieldService
     {
         $isUserfield = $field instanceof UserField;
 
-        if ($field->is_required) {
-            $this->addFieldToFunnels($field, $isUserfield);
+        if (! $field->is_required) {
+            return;
         }
+
+        $this->addFieldToFunnels($field, $isUserfield);
 
         $sections = Section::where('entity', SectionFieldEntityEnum::DEALS->value)
             ->where('is_template', true)
             ->where('main_section', true)
-            ->whereDoesntHave('fields', function ($query) use ($field) {
-                $query->where('field_id', $field->id)
-                    ->orWhere('user_field_id', $field->id);
+            ->whereDoesntHave('fields', function ($query) use ($field, $isUserfield) {
+                $query->where($isUserfield ? 'user_field_id' : 'field_id', $field->id);
             })
             ->get();
 
         foreach ($sections as $section) {
             $sectionFieldsLastPosition = $section->fields()->max('position') ?? 0;
-
-            $fieldIsExists = $section->fields()
-                ->where(function ($query) use ($field) {
-                    $query->where('field_id', $field->id)
-                        ->orWhere('user_field_id', $field->id);
-                })
-                ->where('position', $sectionFieldsLastPosition + 1)
-                ->exists();
-
-            if (! $fieldIsExists) {
-                SectionField::create([
-                    'section_id' => $section->id,
-                    'position' => $sectionFieldsLastPosition + 1,
-                    'field_id' => $isUserfield ? null : $field->id,
-                    'user_field_id' => $isUserfield ? $field->id : null,
-                ]);
-            }
+            SectionField::create([
+                'section_id' => $section->id,
+                'position' => $sectionFieldsLastPosition + 1,
+                'field_id' => $isUserfield ? null : $field->id,
+                'user_field_id' => $isUserfield ? $field->id : null,
+            ]);
         }
     }
 
@@ -131,13 +120,15 @@ class FieldService
 
     private function setupRolesByField(Field|UserField $field): void
     {
-        $roles = Role::all();
+        $roles = Role::with(['permissions' => function ($query): void {
+            $query->where('entity', PermissionEntityEnum::DEALS->value);
+        }])->get();
 
         foreach ($roles as $role) {
             $permissions = [
-                'view' => $role->permissions()->where('entity', PermissionEntityEnum::DEALS->value)->where('view', '!=', PermissionTypeEnum::FORBIDDEN->value)->exists(),
-                'update' => $role->permissions()->where('entity', PermissionEntityEnum::DEALS->value)->where('update', '!=', PermissionTypeEnum::FORBIDDEN->value)->exists(),
-                'create' => $role->permissions()->where('entity', PermissionEntityEnum::DEALS->value)->where('create', '!=', PermissionTypeEnum::FORBIDDEN->value)->exists(),
+                'view' => $role->permissions->contains(fn ($permission) => $permission->view !== null && $permission->view !== PermissionTypeEnum::FORBIDDEN->value),
+                'update' => $role->permissions->contains(fn ($permission) => $permission->update !== null && $permission->update !== PermissionTypeEnum::FORBIDDEN->value),
+                'create' => $role->permissions->contains(fn ($permission) => $permission->create !== null && $permission->create !== PermissionTypeEnum::FORBIDDEN->value),
             ];
 
             $isUserField = $field instanceof UserField;

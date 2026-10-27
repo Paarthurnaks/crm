@@ -8,12 +8,22 @@ use App\Enums\DefaultChatNameEnum;
 use App\Enums\DefaultRolesEnum;
 use App\Http\Filters\Abstract\QueryFilter;
 use App\Models\ChatCategory;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class ChatFilter extends QueryFilter
 {
+    private ?User $viewer = null;
+
+    public function forUser(User $viewer): self
+    {
+        $this->viewer = $viewer;
+
+        return $this;
+    }
+
     public function category_id(string $id): void
     {
         $this->builder->whereHas('categories', function ($query) use ($id) {
@@ -35,7 +45,7 @@ class ChatFilter extends QueryFilter
         Log::debug('chat.search.applied', ['category_type' => $typeByCategory]);
 
         $this->builder->when($searchTerm, function ($query) use ($searchTerm, $typeByCategory) {
-            $user = auth()->user();
+            $user = $this->viewer ?? $this->request->user();
 
             $this->applySystemChatFilters($query, $searchTerm, $user);
             $this->applyCategoryBasedFilters($query, $typeByCategory, $searchTerm);
@@ -57,9 +67,9 @@ class ChatFilter extends QueryFilter
 
     private function applyCategoryBasedFilters($query, $typeByCategory, $searchTerm): void
     {
-        if ($typeByCategory === ChatTypeEnum::PARTNER->value || auth()->user()->hasRole(DefaultRolesEnum::CLIENT->value)) {
+        if ($typeByCategory === ChatTypeEnum::PARTNER->value || $this->viewer->hasRole(DefaultRolesEnum::CLIENT->value)) {
             $this->applyPartnerFilter($query, $searchTerm);
-        } elseif ($typeByCategory === ChatTypeEnum::CLIENT->value || auth()->user()->hasRole(DefaultRolesEnum::PARTNER->value)) {
+        } elseif ($typeByCategory === ChatTypeEnum::CLIENT->value || $this->viewer->hasRole(DefaultRolesEnum::PARTNER->value)) {
             $this->applyClientFilter($query, $searchTerm);
         }
     }
@@ -112,6 +122,6 @@ class ChatFilter extends QueryFilter
         }
 
         $query->where(DB::raw("LOWER(CONCAT(users.name, ' ', users.surname))"), 'LIKE', "%{$searchTerm}%")
-            ->where('users.id', '!=', auth()->id());
+            ->where('users.id', '!=', $this->viewer->id);
     }
 }

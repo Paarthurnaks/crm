@@ -29,9 +29,8 @@ class TaskService
 
     public function getList(TaskFilter $filter, array $queryParams, User $actor): LengthAwarePaginator
     {
-        $user = $actor;
         $limit = $queryParams['limit'] ?? config('constants.paginator.limit');
-        Log::debug('task.list.started', ['actor_id' => $user->id, 'limit' => $limit]);
+        Log::debug('task.list.started', ['actor_id' => $actor->id, 'limit' => $limit]);
 
         $taskScopes = [
             PermissionTypeEnum::ALL->value => 'allTasks',
@@ -39,21 +38,13 @@ class TaskService
             PermissionTypeEnum::OPENED->value => 'openedTasks',
         ];
 
+        $docketRequested = ($queryParams['type'] ?? null) === TaskTypeEnum::DOCKET->value;
+
         foreach ($taskScopes as $type => $scopeMethod) {
-            // для судебных дел
-            if (isset($queryParams['type']) &&
-                $queryParams['type'] === TaskTypeEnum::DOCKET->value &&
-                $user->hasAccess(PermissionEntityEnum::DOCKET->value, 'view', $type)) {
-                $tasks = $scopeMethod === 'ownTasks' ? Task::ownTasks($user->id) : Task::$scopeMethod();
-
-                return $tasks
-                    ->filter($filter)
-                    ->paginate($limit);
-            }
-
-            // для всех остальных задач
-            if ($user->hasAccess(PermissionEntityEnum::TASKS->value, 'view', $type)) {
-                $tasks = $scopeMethod === 'ownTasks' ? Task::ownTasks($user->id) : Task::$scopeMethod();
+            $canViewDocket = $docketRequested && $actor->hasAccess(PermissionEntityEnum::DOCKET->value, 'view', $type);
+            $canViewTasks = $actor->hasAccess(PermissionEntityEnum::TASKS->value, 'view', $type);
+            if ($canViewDocket || $canViewTasks) {
+                $tasks = $scopeMethod === 'ownTasks' ? Task::ownTasks($actor->id) : Task::$scopeMethod();
 
                 return $tasks->filter($filter)->paginate($limit);
             }
@@ -73,39 +64,9 @@ class TaskService
         }
 
         try {
-            $fields = [
-                'creator_id' => $data['creator_id'] ?? $actor->id,
-                'title' => $data['title'],
-                'description' => $data['description'] ?? null,
-                'status' => TaskStatusEnum::NEW->value,
-                'type' => $type,
-            ];
-
-            if (isset($data['deal_id'])) {
-                $fields['deal_id'] = $data['deal_id'];
-            }
-
-            if ($type === TaskTypeEnum::STANDARD->value || $type === TaskTypeEnum::DOCKET->value) {
-                $fields['deadline'] = isset($data['deadline']) ? Carbon::parse($data['deadline'])->format('Y-m-d H:i:s') : null;
-                $fields['start_time'] = isset($data['start_time']) ? Carbon::parse($data['start_time'])->format('Y-m-d H:i:s') : null;
-
-                if ($fields['deadline'] !== null && Carbon::parse($fields['deadline'])->isPast()) {
-                    $fields['status'] = TaskStatusEnum::EXPIRED->value;
-                }
-            }
-
+            $fields = $this->taskFields($data, $actor, $type);
             if ($type === TaskTypeEnum::HELPDESK->value) {
-                $data['executors'] = User::whereHas('role', function ($query) {
-                    $query->whereHas('permissions', function ($subQuery) {
-                        $subQuery->where('entity', PermissionEntityEnum::HELPDESK)
-                            ->where('view', '!=', PermissionTypeEnum::FORBIDDEN->value);
-                    });
-                })->where('id', '!=', $fields['creator_id'])->pluck('id')->toArray();
-
-                $fields['docket_number'] = $data['docket_number'] ?? null;
-                $fields['service'] = $data['service'] ?? null;
-                $fields['client_full_name'] = $data['client_full_name'] ?? null;
-                $fields['email'] = $data['email'] ?? null;
+                $data['executors'] = $this->helpdeskExecutorIds($fields['creator_id']);
             }
 
             Log::debug('task.create.scenario_selected', ['actor_id' => $actor->id, 'type' => $type]);
@@ -127,11 +88,7 @@ class TaskService
                     DB::afterCommit(fn () => $this->sendTaskEventNotifications($task, $data['observers']));
                 }
 
-                if (isset($data['attachments'])) {
-                    foreach ($data['attachments'] as $attachment) {
-                        $task->addMedia($attachment)->toMediaCollection();
-                    }
-                }
+                $this->addAttachments($task, $data['attachments'] ?? []);
 
                 return $task;
             });
@@ -139,6 +96,46 @@ class TaskService
             Log::error('task.create.failed', ['actor_id' => $actor->id, 'exception' => $e::class]);
             throw new Exception($this::ERROR_MESSAGES['createError'], 0, $e);
         }
+    }
+
+    private function taskFields(array $data, User $actor, string $type): array
+    {
+        $fields = [
+            'creator_id' => $data['creator_id'] ?? $actor->id,
+            'title' => $data['title'],
+            'description' => $data['description'] ?? null,
+            'status' => TaskStatusEnum::NEW->value,
+            'type' => $type,
+        ];
+
+        if (isset($data['deal_id'])) {
+            $fields['deal_id'] = $data['deal_id'];
+        }
+
+        if ($type === TaskTypeEnum::STANDARD->value || $type === TaskTypeEnum::DOCKET->value) {
+            $fields['deadline'] = isset($data['deadline']) ? Carbon::parse($data['deadline'])->format('Y-m-d H:i:s') : null;
+            $fields['start_time'] = isset($data['start_time']) ? Carbon::parse($data['start_time'])->format('Y-m-d H:i:s') : null;
+
+            if ($fields['deadline'] !== null && Carbon::parse($fields['deadline'])->isPast()) {
+                $fields['status'] = TaskStatusEnum::EXPIRED->value;
+            }
+        }
+
+        if ($type === TaskTypeEnum::HELPDESK->value) {
+            foreach (['docket_number', 'service', 'client_full_name', 'email'] as $field) {
+                $fields[$field] = $data[$field] ?? null;
+            }
+        }
+
+        return $fields;
+    }
+
+    private function helpdeskExecutorIds(int $creatorId): array
+    {
+        return User::whereHas('role.permissions', function ($query) {
+            $query->where('entity', PermissionEntityEnum::HELPDESK->value)
+                ->where('view', '!=', PermissionTypeEnum::FORBIDDEN->value);
+        })->where('id', '!=', $creatorId)->pluck('id')->toArray();
     }
 
     public function sendTaskEventNotifications(Task $task, array $executors): void
@@ -175,6 +172,39 @@ class TaskService
     public function delete(Task $task): void
     {
         $task->delete();
+    }
+
+    public function addAttachments(Task $task, array $attachments): void
+    {
+        $createdMedia = [];
+        try {
+            foreach ($attachments as $attachment) {
+                $media = $task->addMedia($attachment)->toMediaCollection();
+                $createdMedia[] = $media;
+                Log::info('task.attachment.added', ['task_id' => $task->id, 'media_id' => $media->id]);
+            }
+        } catch (\Throwable $exception) {
+            foreach ($createdMedia as $media) {
+                $media->delete();
+            }
+            Log::error('task.attachment.add_failed', ['task_id' => $task->id, 'exception' => $exception::class]);
+            throw $exception;
+        }
+    }
+
+    public function deleteAttachment(Task $task, int $attachmentId): bool
+    {
+        $media = $task->media()->find($attachmentId);
+        if (! $media) {
+            Log::warning('task.attachment.missing', ['task_id' => $task->id, 'media_id' => $attachmentId]);
+
+            return false;
+        }
+
+        $task->deleteMedia($media);
+        Log::info('task.attachment.deleted', ['task_id' => $task->id, 'media_id' => $attachmentId]);
+
+        return true;
     }
 
     public function getActivity(Task $task, array $queryParams): array

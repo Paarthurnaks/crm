@@ -3,8 +3,12 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Chat;
+use App\Models\ChatHiddenMessage;
+use App\Models\ChatMessage;
 use App\Services\ResponseService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Response;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -55,12 +59,26 @@ class DownloadController extends Controller
      *     )
      * )
      */
-    public function __invoke(int $id): BinaryFileResponse|JsonResponse
+    public function __invoke(Request $request, int $id): BinaryFileResponse|JsonResponse
     {
         $media = Media::find($id);
 
         if (! $media) {
             return ResponseService::badRequest(message: 'Ничего не найдено.');
+        }
+
+        if ($media->model_type === Chat::class && ! $request->user()->isMemberOfChat($media->model_id)) {
+            return ResponseService::forbidden();
+        }
+
+        if ($media->model_type === ChatMessage::class) {
+            $message = ChatMessage::withoutGlobalScopes()->find($media->model_id);
+            $hidden = ChatHiddenMessage::where('chat_message_id', $media->model_id)
+                ->where('user_id', $request->user()->id)
+                ->exists();
+            if (! $message || ! $request->user()->isMemberOfChat($message->chat_id) || $hidden) {
+                return ResponseService::forbidden();
+            }
         }
 
         return Response::download($media->getPath(), $media->file_name);

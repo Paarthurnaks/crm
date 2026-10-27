@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Mail\SendLinkChangePasswordMail;
 use App\Models\User;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Redis;
@@ -49,5 +51,24 @@ class AuthService
 
         $user->update(['password' => Hash::make($changePasswordData['password'])]);
 
+        Redis::del('reset_password_code_'.$changePasswordData['email']);
+
+    }
+
+    public function changeAvatar(User $user, UploadedFile $avatar): void
+    {
+        $oldMedia = $user->getMedia();
+        try {
+            $newMedia = $user->addMedia($avatar)->toMediaCollection();
+            foreach ($oldMedia as $media) {
+                if ($media->id !== $newMedia->id) {
+                    $media->delete();
+                }
+            }
+            Log::info('auth.avatar.changed', ['user_id' => $user->id, 'media_id' => $newMedia->id]);
+        } catch (\Throwable $exception) {
+            Log::error('auth.avatar.change_failed', ['user_id' => $user->id, 'exception' => $exception::class]);
+            throw $exception;
+        }
     }
 }

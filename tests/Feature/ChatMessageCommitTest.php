@@ -32,8 +32,8 @@ class ChatMessageCommitTest extends TestCase
         ChatMember::create(['chat_id' => $chat->id, 'user_id' => $recipient->id, 'is_creator' => false]);
 
         try {
-            DB::transaction(function () use ($chat): void {
-                (new ChatMessageService)->sendMessage(['text' => 'Сообщение'], $chat->id);
+            DB::transaction(function () use ($chat, $sender): void {
+                (new ChatMessageService)->sendMessage(['text' => 'Сообщение'], $chat->id, $sender);
                 throw new RuntimeException('rollback');
             });
             $this->fail('Ожидался откат транзакции.');
@@ -65,6 +65,95 @@ class ChatMessageCommitTest extends TestCase
         Event::assertDispatched(GlobalChatsMessageSentBroadcast::class, function ($event) use ($recipient): bool {
             return (string) $event->broadcastOn()[0]->name === 'private-global-chats.'.$recipient->id;
         });
+    }
+
+    public function test_unread_recipients_come_from_message_sender_without_http_context(): void
+    {
+        $sender = $this->createBareUser('background-sender@example.test');
+        $recipient = $this->createBareUser('background-recipient@example.test');
+        $chat = Chat::create(['type' => ChatTypeEnum::GROUP->value, 'name' => 'Background']);
+        ChatMember::create(['chat_id' => $chat->id, 'user_id' => $sender->id, 'is_creator' => true]);
+        ChatMember::create(['chat_id' => $chat->id, 'user_id' => $recipient->id, 'is_creator' => false]);
+
+        $message = ChatMessage::create([
+            'chat_id' => $chat->id,
+            'user_id' => $sender->id,
+            'text' => 'Background message',
+            'status' => ChatMessageTypeEnum::DELIVERED->value,
+        ]);
+
+        $this->assertDatabaseHas('unread_chat_messages', [
+            'chat_message_id' => $message->id,
+            'user_id' => $recipient->id,
+        ]);
+        $this->assertDatabaseMissing('unread_chat_messages', [
+            'chat_message_id' => $message->id,
+            'user_id' => $sender->id,
+        ]);
+    }
+
+    public function test_service_sends_message_with_explicit_actor_without_http_context(): void
+    {
+        Event::fake([GlobalChatsMessageSentBroadcast::class]);
+        $sender = $this->createBareUser('service-sender@example.test');
+        $recipient = $this->createBareUser('service-recipient@example.test');
+        $chat = Chat::create(['type' => ChatTypeEnum::GROUP->value, 'name' => 'Service']);
+        ChatMember::create(['chat_id' => $chat->id, 'user_id' => $sender->id, 'is_creator' => true]);
+        ChatMember::create(['chat_id' => $chat->id, 'user_id' => $recipient->id, 'is_creator' => false]);
+
+        $message = (new ChatMessageService)->sendMessage(['text' => 'Without request'], $chat->id, $sender);
+
+        $this->assertSame($sender->id, $message->user_id);
+        $this->assertDatabaseHas('unread_chat_messages', [
+            'chat_message_id' => $message->id,
+            'user_id' => $recipient->id,
+        ]);
+        Event::assertDispatchedTimes(GlobalChatsMessageSentBroadcast::class, 1);
+    }
+
+    public function test_message_pages_keep_upward_and_downward_order(): void
+    {
+        config()->set('chats.messages_limit', 2);
+        $viewer = $this->createBareUser('page-viewer@example.test');
+        $chat = Chat::create(['type' => ChatTypeEnum::GROUP->value, 'name' => 'Page']);
+        ChatMember::create(['chat_id' => $chat->id, 'user_id' => $viewer->id, 'is_creator' => true]);
+        $ids = [];
+        foreach (range(1, 7) as $number) {
+            $ids[] = ChatMessage::withoutEvents(fn (): ChatMessage => ChatMessage::create([
+                'chat_id' => $chat->id,
+                'user_id' => $viewer->id,
+                'text' => "Page {$number}",
+                'status' => ChatMessageTypeEnum::DELIVERED->value,
+            ]))->id;
+        }
+
+        $page = (new ChatMessageService)->getMessagesList($chat->id, [
+            'direction' => 'both',
+            'last_message_id' => $ids[3],
+        ], $viewer);
+
+        $this->assertTrue($page['has_more_upward']);
+        $this->assertTrue($page['has_more_downward']);
+        $this->assertCount(5, $page['messages']);
+    }
+
+    public function test_hidden_message_is_excluded_for_explicit_viewer(): void
+    {
+        $viewer = $this->createBareUser('hidden-viewer@example.test');
+        $chat = Chat::create(['type' => ChatTypeEnum::GROUP->value, 'name' => 'Hidden']);
+        ChatMember::create(['chat_id' => $chat->id, 'user_id' => $viewer->id, 'is_creator' => true]);
+        $message = ChatMessage::withoutEvents(fn (): ChatMessage => ChatMessage::create([
+            'chat_id' => $chat->id,
+            'user_id' => $viewer->id,
+            'text' => 'Hidden message',
+            'status' => ChatMessageTypeEnum::DELIVERED->value,
+        ]));
+        $service = new ChatMessageService;
+
+        $service->hideMessage($message->id, $viewer);
+
+        $page = $service->getMessagesList($chat->id, [], $viewer);
+        $this->assertCount(0, $page['messages']);
     }
 
     private function createBareUser(string $email): User

@@ -31,7 +31,9 @@ class StoreFolderRequest extends FormRequest
     public function withValidator($validator): void
     {
         $validator->after(function ($validator) {
-            if (DiskEntity::where('path', rtrim($this->input('path'), '/'))
+            $parentPath = rtrim((string) $this->input('path'), '/') ?: '/';
+
+            if (DiskEntity::where('path', $parentPath)
                 ->where('title', $this->input('title'))
                 ->where('deleted', false)
                 ->exists()) {

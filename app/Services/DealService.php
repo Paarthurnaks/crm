@@ -40,33 +40,54 @@ class DealService
         private readonly UserFieldService $userFieldService,
     ) {}
 
-    public function getDeals(DealFilter $filter, array $queryParams): LengthAwarePaginator
+    public function getDeals(DealFilter $filter, array $queryParams, User $actor): LengthAwarePaginator
     {
-        $user = auth()->user();
         $limit = $queryParams['limit'] ?? config('constants.paginator.limit');
 
-        if ($user->hasRole(DefaultRolesEnum::CLIENT->value)) {
+        if ($actor->hasRole(DefaultRolesEnum::CLIENT->value)) {
             // клиенту выводим его единственную сделку с партнером
-            return auth()->user()->partnerDeals()->filter($filter)->paginate($limit);
-        } else {
-            $dealScopes = [
-                PermissionTypeEnum::ALL->value => 'allDeals',
-                PermissionTypeEnum::OWN->value => 'ownDeals',
-                PermissionTypeEnum::OPENED->value => 'openedDeals',
-            ];
-
-            foreach ($dealScopes as $type => $scopeMethod) {
-                if ($user->hasAccess(PermissionEntityEnum::DEALS->value, 'view', $type)) {
-                    // вызов соответствующего скоупа из модели Deal
-                    return Deal::with(['userFieldValues', 'responsible', 'creator', 'salesFunnel', 'salesStage'])
-                        ->$scopeMethod()
-                        ->filter($filter)
-                        ->paginate($limit);
-                }
-            }
-
-            return new LengthAwarePaginator([], 0, $limit);
+            return $this->preloadClients($actor->partnerDeals()->filter($filter)->paginate($limit));
         }
+
+        $dealScopes = [
+            PermissionTypeEnum::ALL->value => 'allDeals',
+            PermissionTypeEnum::OWN->value => 'ownDeals',
+            PermissionTypeEnum::OPENED->value => 'openedDeals',
+        ];
+
+        foreach ($dealScopes as $type => $scopeMethod) {
+            if ($actor->hasAccess(PermissionEntityEnum::DEALS->value, 'view', $type)) {
+                $query = Deal::with(['userFieldValues', 'responsible', 'creator', 'salesFunnel', 'salesStage']);
+                if ($scopeMethod === 'ownDeals') {
+                    $query->ownDeals($actor->id);
+                } else {
+                    $query->{$scopeMethod}();
+                }
+
+                return $this->preloadClients($query->filter($filter)->paginate($limit));
+            }
+        }
+
+        return new LengthAwarePaginator([], 0, $limit);
+    }
+
+    private function preloadClients(LengthAwarePaginator $deals): LengthAwarePaginator
+    {
+        $ids = $deals->getCollection()
+            ->map(fn (Deal $deal) => (string) $deal->getRawOriginal('client'))
+            ->filter(fn (string $value) => ctype_digit($value))
+            ->unique()
+            ->values();
+        $clients = User::query()->whereIn('id', $ids)->get()->keyBy('id');
+
+        $deals->getCollection()->each(function (Deal $deal) use ($clients): void {
+            $id = (string) $deal->getRawOriginal('client');
+            $deal->setRelation('resolvedClient', ctype_digit($id) ? $clients->get((int) $id) : null);
+        });
+
+        Log::debug('deal.clients.preloaded', ['deal_count' => $deals->count(), 'client_count' => $clients->count()]);
+
+        return $deals;
     }
 
     public function createDeal(array $dealData, ?User $actor = null): Deal
@@ -170,70 +191,99 @@ class DealService
     private function recordDealChanges(Deal $deal, array $changes, array $original, ?int $actorId): void
     {
         if (array_key_exists('sales_stage_id', $changes)) {
-            $this->replicateForStageTransitions($deal, $actorId);
-
-            $oldStage = SalesStage::find($original['sales_stage_id'] ?? null);
-            $newStage = $deal->salesStage;
-
-            if ($actorId !== null) {
-                DealEvent::create([
-                    'deal_id' => $deal->id,
-                    'initiator_id' => $actorId,
-                    'type' => DealEventTypeEnum::CHANGE_STAGE->value,
-                    'changed_field' => trans('deals.sales_stage_id'),
-                    'old_value' => $oldStage?->title,
-                    'new_value' => $newStage?->title,
-                ]);
-            }
-
-            if ($oldStage && $newStage && ($oldStage->type === SalesStageEnum::DEFAULT->value) !== ($newStage->type === SalesStageEnum::DEFAULT->value)) {
-                DB::afterCommit(fn () => $this->broadcastPartnerDealCounts($deal));
-            }
+            $this->recordStageChange($deal, $original, $actorId);
         }
 
         if (array_key_exists('responsible_id', $changes)) {
-            $oldResponsible = User::find($original['responsible_id'] ?? null);
-            $newResponsible = $deal->responsible;
-
-            if ($actorId !== null && $oldResponsible && $newResponsible) {
-                $event = DealEvent::create([
-                    'deal_id' => $deal->id,
-                    'initiator_id' => $actorId,
-                    'type' => DealEventTypeEnum::CHANGE_RESPONSIBLE->value,
-                    'changed_field' => trans('deals.responsible_id'),
-                    'old_value' => $oldResponsible->name.' '.$oldResponsible->surname,
-                    'new_value' => $newResponsible->name.' '.$newResponsible->surname,
-                ]);
-
-                DB::afterCommit(function () use ($oldResponsible, $event): void {
-                    try {
-                        $oldResponsible->notify(new DealEventNotification($event, ['oldResponsibleId' => $oldResponsible->id]));
-                    } catch (\Throwable $exception) {
-                        Log::error('deal.responsible_notification.failed', [
-                            'deal_id' => $event->deal_id,
-                            'user_id' => $oldResponsible->id,
-                            'exception' => $exception::class,
-                        ]);
-                    }
-                });
-            }
+            $this->recordResponsibleChange($deal, $original, $actorId);
         }
 
         if (array_key_exists('client', $changes) && $actorId !== null) {
-            DealEvent::create([
-                'deal_id' => $deal->id,
-                'initiator_id' => $actorId,
-                'type' => DealEventTypeEnum::CHANGE_CLIENT->value,
-                'changed_field' => trans('deals.client'),
-                'old_value' => $this->formatClientValue($original['client'] ?? null),
-                'new_value' => $this->formatClientValue($deal->getRawOriginal('client')),
-            ]);
+            $this->recordClientChange($deal, $original, $actorId);
         }
 
         if ($actorId === null) {
             return;
         }
 
+        $this->recordOtherFieldChanges($deal, $changes, $original, $actorId);
+    }
+
+    private function recordStageChange(Deal $deal, array $original, ?int $actorId): void
+    {
+        $this->replicateForStageTransitions($deal, $actorId);
+        $oldStage = SalesStage::find($original['sales_stage_id'] ?? null);
+        $newStage = $deal->salesStage;
+
+        if ($actorId !== null) {
+            DealEvent::create([
+                'deal_id' => $deal->id,
+                'initiator_id' => $actorId,
+                'type' => DealEventTypeEnum::CHANGE_STAGE->value,
+                'changed_field' => trans('deals.sales_stage_id'),
+                'old_value' => $oldStage?->title,
+                'new_value' => $newStage?->title,
+            ]);
+        }
+
+        $wasDefault = $oldStage?->type === SalesStageEnum::DEFAULT->value;
+        $isDefault = $newStage?->type === SalesStageEnum::DEFAULT->value;
+        if ($oldStage && $newStage && $wasDefault !== $isDefault) {
+            DB::afterCommit(fn () => $this->broadcastPartnerDealCounts($deal));
+        }
+
+        Log::debug('deal.stage_change.recorded', ['deal_id' => $deal->id, 'actor_id' => $actorId]);
+    }
+
+    private function recordResponsibleChange(Deal $deal, array $original, ?int $actorId): void
+    {
+        $oldResponsible = User::find($original['responsible_id'] ?? null);
+        $newResponsible = $deal->responsible;
+
+        if ($actorId === null || ! $oldResponsible || ! $newResponsible) {
+            return;
+        }
+
+        $event = DealEvent::create([
+            'deal_id' => $deal->id,
+            'initiator_id' => $actorId,
+            'type' => DealEventTypeEnum::CHANGE_RESPONSIBLE->value,
+            'changed_field' => trans('deals.responsible_id'),
+            'old_value' => $oldResponsible->name.' '.$oldResponsible->surname,
+            'new_value' => $newResponsible->name.' '.$newResponsible->surname,
+        ]);
+
+        DB::afterCommit(function () use ($oldResponsible, $event): void {
+            try {
+                $oldResponsible->notify(new DealEventNotification($event, ['oldResponsibleId' => $oldResponsible->id]));
+            } catch (\Throwable $exception) {
+                Log::error('deal.responsible_notification.failed', [
+                    'deal_id' => $event->deal_id,
+                    'user_id' => $oldResponsible->id,
+                    'exception' => $exception::class,
+                ]);
+            }
+        });
+
+        Log::debug('deal.responsible_change.recorded', ['deal_id' => $deal->id, 'actor_id' => $actorId]);
+    }
+
+    private function recordClientChange(Deal $deal, array $original, int $actorId): void
+    {
+        DealEvent::create([
+            'deal_id' => $deal->id,
+            'initiator_id' => $actorId,
+            'type' => DealEventTypeEnum::CHANGE_CLIENT->value,
+            'changed_field' => trans('deals.client'),
+            'old_value' => $this->formatClientValue($original['client'] ?? null),
+            'new_value' => $this->formatClientValue($deal->getRawOriginal('client')),
+        ]);
+
+        Log::debug('deal.client_change.recorded', ['deal_id' => $deal->id, 'actor_id' => $actorId]);
+    }
+
+    private function recordOtherFieldChanges(Deal $deal, array $changes, array $original, int $actorId): void
+    {
         foreach (Lang::get('deals') as $key => $label) {
             if (in_array($key, ['responsible_id', 'sales_stage_id', 'client'], true) || ! array_key_exists($key, $changes)) {
                 continue;
@@ -317,7 +367,7 @@ class DealService
         return 'Сделка #'.$dealId;
     }
 
-    public function getActivity(Deal $deal, DealActivityFilter $filter, array $pagination = []): LengthAwarePaginator
+    public function getActivity(Deal $deal, DealActivityFilter $filter, array $pagination, User $actor): LengthAwarePaginator
     {
         $activityMap = [
             DealEvent::class => ['type' => DealActivityEnum::EVENT, 'resource' => DealEventResource::class],
@@ -325,7 +375,24 @@ class DealService
             Task::class => ['type' => DealActivityEnum::TASK, 'resource' => TaskResource::class],
         ];
 
-        return $this->activityService->getActivity($deal, $filter, $activityMap, $pagination);
+        $scope = null;
+        if ($actor->hasRole(DefaultRolesEnum::CLIENT->value)) {
+            $scope = function ($query) use ($actor): void {
+                $query->where('activityable_type', \BeyondCode\Comments\Comment::class)
+                    ->whereHasMorph('activityable', [\BeyondCode\Comments\Comment::class], function ($comments) use ($actor) {
+                        $comments->where('user_id', $actor->id)
+                            ->orWhere('user_id', $actor->partner?->id);
+                    });
+            };
+        }
+
+        Log::debug('deal.activity.scope_selected', [
+            'deal_id' => $deal->id,
+            'actor_id' => $actor->id,
+            'client_scope' => $scope !== null,
+        ]);
+
+        return $this->activityService->getActivity($deal, $filter, $activityMap, $pagination, $scope);
 
     }
 

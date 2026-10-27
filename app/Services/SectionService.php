@@ -11,7 +11,7 @@ use App\Models\Deal;
 use App\Models\Section;
 use App\Models\SectionField;
 use App\Models\User;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -19,32 +19,35 @@ class SectionService
 {
     public function __construct(private SectionFieldService $sectionFieldService) {}
 
-    public function getSectionsByEntity(string $entity, int $id, SectionFilter $filter, array $queryParams): mixed
+    public function getSectionsByEntity(string $entity, int $id, SectionFilter $sectionFilter, array $queryParams, User $actor): mixed
     {
         $sections = Section::query()
             ->where('entity', $entity)
             ->where('is_template', false)
             ->orderBy('position')
-            ->where('user_id', Auth::user()->id)
-            ->filter($filter)
+            ->where('user_id', $actor->id)
+            ->filter($sectionFilter)
             ->with('fields.userField', 'fields.field')
             ->get();
 
         if ($sections->count() === 0) {
+            Log::debug('section.source.selected', ['entity' => $entity, 'actor_id' => $actor->id, 'source' => 'default']);
             $sections = Section::query()
                 ->where('entity', $entity)
                 ->where('is_template', false)
                 ->orderBy('position')
-                ->where('user_id', 1)
-                ->filter($filter)
+                ->where('user_id', config('sections.default_template_user_id'))
+                ->filter($sectionFilter)
                 ->with('fields.userField', 'fields.field')
                 ->get();
+        } else {
+            Log::debug('section.source.selected', ['entity' => $entity, 'actor_id' => $actor->id, 'source' => 'personal']);
         }
 
-        $filter = [];
-        $sections = $sections->filter(function ($section) use (&$filter) {
-            if (! isset($filter[$section->title])) {
-                $filter[$section->title] = true;
+        $seenTitles = [];
+        $sections = $sections->filter(function ($section) use (&$seenTitles) {
+            if (! isset($seenTitles[$section->title])) {
+                $seenTitles[$section->title] = true;
 
                 return true;
             }
@@ -75,58 +78,78 @@ class SectionService
     public function setSectionsFieldsValues(Section $section, $entityObj, string $type, ?array $related = null): void
     {
         $related ??= $entityObj ? $this->prepareRelatedFieldValues(collect([$section]), $entityObj) : [];
-
-        if ($type !== 'view') {
-            $availableFields = $section->fields()->whereDoesntHave('field', function ($query) {
-                $query->whereIn('code', ProhibitedFieldEnum::values());
-            })->with('userField', 'field')->get();
-        } else {
-            $availableFields = $section->fields;
+        if (! $entityObj) {
+            return;
         }
-        foreach ($availableFields as $sectionField) {
-            if ($entityObj) {
-                if ($sectionField->userField) {
-                    $sectionField->value = $related['values'][$sectionField->id]
-                        ?? $sectionField->getUserFieldValue($entityObj->id);
-                    if ($sectionField->userField->type == 'user') {
-                        $user = $related['users'][(int) $sectionField->value] ?? null;
-                        if ($user) {
-                            $sectionField->model = UserResource::make($user);
-                            $sectionField->value = $user->name.' '.$user->surname;
-                        } elseif ($sectionField->value) {
-                            Log::warning('section.related_user.missing', ['section_field_id' => $sectionField->id]);
-                        }
-                    } elseif ($sectionField->userField->type == 'deal') {
-                        $deal = $related['deals'][(int) $sectionField->value] ?? null;
-                        if ($deal) {
-                            $sectionField->model = DealResource::make($deal);
-                            $sectionField->value = $deal->title;
-                        } elseif ($sectionField->value) {
-                            Log::warning('section.related_deal.missing', ['section_field_id' => $sectionField->id]);
-                        }
-                    }
-                } elseif ($sectionField->field) {
-                    if (in_array($sectionField->field->code, ['client', 'responsible', 'creator', 'who_changed'])) {
-                        $relatedUser = $entityObj->{$sectionField->field->code};
 
-                        if ($relatedUser instanceof User) {
-                            $sectionField->model = UserResource::make($relatedUser);
-                            $sectionField->value = $relatedUser->name.' '.$relatedUser->surname;
-                        } else {
-                            $sectionField->value = $relatedUser;
-                        }
-                    } elseif ($sectionField->field->code == 'sales_stage' || $sectionField->field->code == 'sales_funnel') {
-                        $camelCaseCode = lcfirst(str_replace(' ', '', ucwords(str_replace('_', ' ', $sectionField->field->code))));
-                        $obj = $entityObj->{$camelCaseCode};
-                        $sectionField->model = $obj;
-                        $sectionField->value = $obj?->title;
-                    } else {
-                        $sectionField->value = $entityObj->{$sectionField->field->code};
-
-                    }
-                }
+        foreach ($this->availableFields($section, $type) as $sectionField) {
+            if ($sectionField->userField) {
+                $this->setUserFieldValue($sectionField, $entityObj, $related);
+            } elseif ($sectionField->field) {
+                $this->setSystemFieldValue($sectionField, $entityObj);
             }
         }
+    }
+
+    private function availableFields(Section $section, string $type): EloquentCollection
+    {
+        if ($type === 'view') {
+            return $section->fields;
+        }
+
+        return $section->fields()->whereDoesntHave('field', function ($query) {
+            $query->whereIn('code', ProhibitedFieldEnum::values());
+        })->with('userField', 'field')->get();
+    }
+
+    private function setUserFieldValue(SectionField $sectionField, Deal $deal, array $related): void
+    {
+        $sectionField->value = $related['values'][$sectionField->id]
+            ?? $sectionField->getUserFieldValue($deal->id);
+        if ($sectionField->userField->type === 'user') {
+            $user = $related['users'][(int) $sectionField->value] ?? null;
+            if ($user) {
+                $sectionField->model = UserResource::make($user);
+                $sectionField->value = $user->name.' '.$user->surname;
+            } elseif ($sectionField->value) {
+                Log::warning('section.related_user.missing', ['section_field_id' => $sectionField->id]);
+            }
+        } elseif ($sectionField->userField->type === 'deal') {
+            $relatedDeal = $related['deals'][(int) $sectionField->value] ?? null;
+            if ($relatedDeal) {
+                $sectionField->model = DealResource::make($relatedDeal);
+                $sectionField->value = $relatedDeal->title;
+            } elseif ($sectionField->value) {
+                Log::warning('section.related_deal.missing', ['section_field_id' => $sectionField->id]);
+            }
+        }
+    }
+
+    private function setSystemFieldValue(SectionField $sectionField, Deal $deal): void
+    {
+        $code = $sectionField->field->code;
+        if (in_array($code, ['client', 'responsible', 'creator', 'who_changed'], true)) {
+            $relatedUser = $deal->{$code};
+            if ($relatedUser instanceof User) {
+                $sectionField->model = UserResource::make($relatedUser);
+                $sectionField->value = $relatedUser->name.' '.$relatedUser->surname;
+            } else {
+                $sectionField->value = $relatedUser;
+            }
+
+            return;
+        }
+
+        if ($code === 'sales_stage' || $code === 'sales_funnel') {
+            $relation = $code === 'sales_stage' ? 'salesStage' : 'salesFunnel';
+            $relatedModel = $deal->{$relation};
+            $sectionField->model = $relatedModel;
+            $sectionField->value = $relatedModel?->title;
+
+            return;
+        }
+
+        $sectionField->value = $deal->{$code};
     }
 
     private function prepareRelatedFieldValues($sections, $entityObj): array
@@ -169,11 +192,11 @@ class SectionService
         return compact('values', 'users', 'deals');
     }
 
-    public function createSection(array $sectionData, array $queryParams): Section
+    public function createSection(array $sectionData, array $queryParams, User $actor): Section
     {
-        $section = DB::transaction(function () use ($sectionData, $queryParams) {
+        $section = DB::transaction(function () use ($sectionData, $queryParams, $actor) {
             $section = Section::create([
-                'user_id' => Auth::user()->id,
+                'user_id' => $actor->id,
                 'is_template' => $queryParams['from_create_page'] ?? false,
                 'deal_id' => ($sectionData['entity'] == 'deals' && isset($queryParams['entity_id'])) ? $queryParams['entity_id'] : null,
                 'entity' => $sectionData['entity'],
@@ -184,7 +207,7 @@ class SectionService
             ]);
 
             if (isset($sectionData['sales_funnel_id'])) {
-                $this->switchFunnelSectionsToCustomized($sectionData['sales_funnel_id']);
+                $this->switchFunnelSectionsToCustomized($sectionData['sales_funnel_id'], $actor);
             }
 
             foreach ($sectionData['section_fields'] as $sectionFieldData) {
@@ -203,11 +226,11 @@ class SectionService
         return $section;
     }
 
-    private function switchFunnelSectionsToCustomized(string $salesFunnelId): void
+    private function switchFunnelSectionsToCustomized(string $salesFunnelId, User $actor): void
     {
         Section::where('sales_funnel_id', $salesFunnelId)
             ->where('is_template', true)
-            ->where('user_id', Auth::user()->id)
+            ->where('user_id', $actor->id)
             ->update(['is_customized' => true]);
     }
 

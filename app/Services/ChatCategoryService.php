@@ -17,56 +17,44 @@ class ChatCategoryService
     {
         $user->chatCategories()->detach();
 
-        $systemPartnersCategoryId = ChatCategory::where('name', ChatCategoryEnum::SYSTEM_PARTNERS->value)->value('id');
-        $systemPartnerClientsCategoryId = ChatCategory::where('name', ChatCategoryEnum::SYSTEM_PARTNER_CLIENTS->value)->value('id');
-        $data = collect();
+        $categoryIds = ChatCategory::whereIn('name', [
+            ChatCategoryEnum::SYSTEM_PARTNERS->value,
+            ChatCategoryEnum::SYSTEM_PARTNER_CLIENTS->value,
+        ])->pluck('id', 'name');
+        $data = [];
 
         if ($user->hasAccess(PermissionEntityEnum::PARTNERS_CHATS->value, 'view', PermissionTypeEnum::ALL->value)) {
-            $partnerChats = $user->chats()
+            $chatsByType = $user->chats()
                 ->withoutGlobalScopes()
-                ->where('chats.type', ChatTypeEnum::PARTNER->value)
-                ->pluck('chats.id')
-                ->unique();
+                ->whereIn('chats.type', [ChatTypeEnum::PARTNER->value, ChatTypeEnum::CLIENT->value])
+                ->get(['chats.id', 'chats.type'])
+                ->unique('id');
 
-            $clientChats = $user->chats()
-                ->withoutGlobalScopes()
-                ->where('chats.type', ChatTypeEnum::CLIENT->value)
-                ->pluck('chats.id')
-                ->unique();
-
-            if ($systemPartnersCategoryId === null || $systemPartnerClientsCategoryId === null) {
+            if (! $categoryIds->has(ChatCategoryEnum::SYSTEM_PARTNERS->value) ||
+                ! $categoryIds->has(ChatCategoryEnum::SYSTEM_PARTNER_CLIENTS->value)) {
                 Log::warning('chat.categories.missing', ['user_id' => $user->id]);
             }
 
-            $partnerChats->each(function ($chatId) use ($systemPartnersCategoryId, $user, &$data) {
-                if ($systemPartnersCategoryId === null) {
-                    return;
+            foreach ($chatsByType as $chat) {
+                $categoryName = $chat->type === ChatTypeEnum::PARTNER->value
+                    ? ChatCategoryEnum::SYSTEM_PARTNERS->value
+                    : ChatCategoryEnum::SYSTEM_PARTNER_CLIENTS->value;
+                if (! $categoryIds->has($categoryName)) {
+                    continue;
                 }
 
-                $data->push([
-                    'chat_category_id' => $systemPartnersCategoryId,
-                    'chat_id' => $chatId,
+                $data[] = [
+                    'chat_category_id' => $categoryIds->get($categoryName),
+                    'chat_id' => $chat->id,
                     'user_id' => $user->id,
-                ]);
-            });
-
-            $clientChats->each(function ($chatId) use ($systemPartnerClientsCategoryId, $user, &$data) {
-                if ($systemPartnerClientsCategoryId === null) {
-                    return;
-                }
-
-                $data->push([
-                    'chat_category_id' => $systemPartnerClientsCategoryId,
-                    'chat_id' => $chatId,
-                    'user_id' => $user->id,
-                ]);
-            });
+                ];
+            }
         }
 
-        if ($data->isNotEmpty()) {
-            ChatCategoryMapping::insert($data->toArray());
+        if ($data !== []) {
+            ChatCategoryMapping::insert($data);
         }
 
-        Log::debug('chat.categories.initialized', ['user_id' => $user->id, 'mapping_count' => $data->count()]);
+        Log::debug('chat.categories.initialized', ['user_id' => $user->id, 'mapping_count' => count($data)]);
     }
 }

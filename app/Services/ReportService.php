@@ -9,12 +9,14 @@ use App\Http\Resources\UserResource;
 use App\Models\Deal;
 use App\Models\Report;
 use App\Models\ReportField;
+use App\Models\RoleUserField;
+use App\Models\User;
+use App\Enums\DefaultRolesEnum;
 use Carbon\Carbon;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -22,40 +24,43 @@ class ReportService
 {
     public function __construct(private ReportFieldService $reportFieldService) {}
 
-    public function getReports(array $queryParams): LengthAwarePaginator
+    public function getReports(array $queryParams, User $actor): LengthAwarePaginator
     {
-        $user = auth()->user();
         $limit = $queryParams['limit'] ?? config('constants.paginator.limit');
 
-        if ($user->hasAccess(PermissionEntityEnum::ANALYTICS->value, 'view', PermissionTypeEnum::ALL->value)) {
-            return Report::whereHas('userAccess', function ($query) {
-                $query->where('user_id', Auth::id());
+        if ($actor->hasAccess(PermissionEntityEnum::ANALYTICS->value, 'view', PermissionTypeEnum::ALL->value)) {
+            return Report::whereHas('userAccess', function ($query) use ($actor) {
+                $query->where('user_id', $actor->id);
             })->orWhereDoesntHave('userAccess')
-                ->orWhere('author_id', Auth::id())
+                ->orWhere('author_id', $actor->id)
                 ->paginate($limit);
         }
 
         return new LengthAwarePaginator([], 0, $limit);
     }
 
-    public function createReport(array $reportData): Report
+    public function createReport(array $reportData, User $actor): Report
     {
-        $report = Report::create([
-            'title' => $reportData['title'],
-            'description' => $reportData['description'] ?? null,
-            'period_from' => $reportData['period_from'] ?? Carbon::minValue()->format('Y-m-d H:i:s'),
-            'period_to' => $reportData['period_to'] ?? Carbon::maxValue()->format('Y-m-d H:i:s'),
-            'filter' => $reportData['filter'],
-            'author_id' => Auth::user()->id,
-        ]);
+        $report = DB::transaction(function () use ($reportData, $actor): Report {
+            $report = Report::create([
+                'title' => $reportData['title'],
+                'description' => $reportData['description'] ?? null,
+                'period_from' => $reportData['period_from'] ?? Carbon::minValue()->format('Y-m-d H:i:s'),
+                'period_to' => $reportData['period_to'] ?? Carbon::maxValue()->format('Y-m-d H:i:s'),
+                'filter' => $reportData['filter'],
+                'author_id' => $actor->id,
+            ]);
 
-        foreach ($reportData['report_fields'] as $reportFieldData) {
-            $this->reportFieldService->createReportField($reportFieldData, $report->id);
-        }
+            foreach ($reportData['report_fields'] as $reportFieldData) {
+                $this->reportFieldService->createReportField($reportFieldData, $report->id);
+            }
 
-        if (! empty($reportData['user_access'])) {
-            $report->userAccess()->attach($reportData['user_access']);
-        }
+            if (! empty($reportData['user_access'])) {
+                $report->userAccess()->attach($reportData['user_access']);
+            }
+
+            return $report;
+        });
 
         $report->deals = $this->getDealsByFilter($report->filter, []);
 
@@ -102,13 +107,33 @@ class ReportService
         return $report;
     }
 
-    public function deleteReport(Report $report): void
+    public function deleteReport(Report $report, User $actor): void
     {
-        if (auth()->user()->hasAccess(EntityTypeEnum::ANALYTICS->value, 'delete', PermissionTypeEnum::ALL->value)) {
+        if ($actor->hasAccess(EntityTypeEnum::ANALYTICS->value, 'delete', PermissionTypeEnum::ALL->value)) {
             $report->delete();
         } else {
             throw new AuthorizationException('Недостаточно прав');
         }
+    }
+
+    public function loadVisibleFields(Report $report, User $actor): void
+    {
+        if ($actor->role?->original_title === DefaultRolesEnum::SUPER_ADMIN->value) {
+            $report->load('fields.field', 'fields.userField');
+
+            return;
+        }
+
+        $userFieldIds = RoleUserField::where('role_id', $actor->role_id)->pluck('user_field_id');
+        $report->load(['fields' => function ($query) use ($userFieldIds): void {
+            $query->with(['field', 'userField'])
+                ->where(function ($visible) use ($userFieldIds): void {
+                    $visible->whereIn('user_field_id', $userFieldIds)
+                        ->orWhereNull('user_field_id');
+                });
+        }]);
+
+        Log::debug('report.fields.loaded', ['report_id' => $report->id, 'field_count' => $report->fields->count()]);
     }
 
     public function setReportFieldsValues(
@@ -133,6 +158,34 @@ class ReportService
                 }
             }
         }
+    }
+
+    public function exportRows(Report $report, EloquentCollection $deals): array
+    {
+        $rows = [];
+        foreach ($deals as $deal) {
+            $row = [];
+            foreach ($report->fields as $reportField) {
+                if ($reportField->field) {
+                    $value = $deal->{$reportField->field->code};
+                    $label = $reportField->field->name;
+                } elseif ($reportField->userField) {
+                    $value = $deal->getCustomFieldValue($reportField->userField);
+                    $label = $reportField->userField->name;
+                } else {
+                    continue;
+                }
+
+                $row[$label] = is_scalar($value) || $value === null
+                    ? $value
+                    : json_encode($value, JSON_UNESCAPED_UNICODE);
+            }
+            $rows[] = $row;
+        }
+
+        Log::debug('report.export.rows_prepared', ['report_id' => $report->id, 'row_count' => count($rows)]);
+
+        return $rows;
     }
 
     public function getDealsByFilter(array $filters, array $queryParams): LengthAwarePaginator

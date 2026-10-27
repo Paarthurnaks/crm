@@ -7,6 +7,8 @@ use App\Models\Permission;
 use App\Models\Report;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\PermissionService;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -80,6 +82,26 @@ class ResourcePermissionTest extends TestCase
         $this->assertTrue($report->canBeViewedBy($author->id));
         $this->assertTrue($report->canBeViewedBy($allowedUser->id));
         $this->assertFalse($report->canBeViewedBy($otherUser->id));
+    }
+
+    public function test_permission_update_cannot_target_another_role(): void
+    {
+        $owner = Role::create(['title' => 'Owner']);
+        $other = Role::create(['title' => 'Other']);
+        $permission = Permission::create([
+            'role_id' => $other->id,
+            'entity' => 'users',
+            'view' => PermissionTypeEnum::ALL->value,
+            'create' => PermissionTypeEnum::ALL->value,
+            'update' => PermissionTypeEnum::ALL->value,
+            'delete' => PermissionTypeEnum::ALL->value,
+        ]);
+
+        $this->expectException(ModelNotFoundException::class);
+        app(PermissionService::class)->updatePermission([
+            'id' => $permission->id,
+            'view' => PermissionTypeEnum::FORBIDDEN->value,
+        ], $owner->id);
     }
 
     private function createUser(?Role $role = null): User

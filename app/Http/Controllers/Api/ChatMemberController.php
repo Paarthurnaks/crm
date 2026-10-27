@@ -10,6 +10,7 @@ use App\Models\ChatMember;
 use App\Services\ChatMemberService;
 use App\Services\ResponseService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class ChatMemberController extends Controller
 {
@@ -110,7 +111,7 @@ class ChatMemberController extends Controller
      *     )
      * )
      */
-    public function index(string $chatId): JsonResponse
+    public function index(Request $request, string $chatId): JsonResponse
     {
         $chat = Chat::find($chatId);
 
@@ -118,7 +119,7 @@ class ChatMemberController extends Controller
             return ResponseService::notFound(message: 'Чат не найден');
         }
 
-        $members = $this->service->getMembers($chat);
+        $members = $this->service->getMembers($chat, $request->user());
 
         return ResponseService::success(
             ChatMemberResource::collection($members)
@@ -190,7 +191,7 @@ class ChatMemberController extends Controller
         $validated = $request->validated();
 
         try {
-            $members = $this->service->create($validated, $chat);
+            $members = $this->service->create($validated, $chat, $request->user()->id);
 
             return ResponseService::success(
                 ChatMemberResource::collection($members)
@@ -287,7 +288,7 @@ class ChatMemberController extends Controller
      *     )
      * )
      */
-    public function destroy(string $memberId): JsonResponse
+    public function destroy(Request $request, string $memberId): JsonResponse
     {
         $member = ChatMember::find($memberId);
 
@@ -296,7 +297,7 @@ class ChatMemberController extends Controller
         }
 
         try {
-            $this->service->delete($member);
+            $this->service->delete($member, $request->user());
 
             return ResponseService::success(message: __('Пользователь удален из чата.'));
         } catch (\Throwable $e) {

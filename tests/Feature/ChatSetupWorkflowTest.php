@@ -7,7 +7,12 @@ use App\Models\Chat;
 use App\Models\ChatMember;
 use App\Models\User;
 use App\Services\ChatService;
+use App\Services\ChatCategoryService;
+use App\Services\ChatMemberService;
+use Exception;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Mockery;
+use RuntimeException;
 use Tests\TestCase;
 
 class ChatSetupWorkflowTest extends TestCase
@@ -47,6 +52,42 @@ class ChatSetupWorkflowTest extends TestCase
 
             $this->assertSame($type->value, $chat->type);
             $this->assertSame(2, ChatMember::where('chat_id', $chat->id)->count());
+        }
+    }
+
+    public function test_duplicate_single_chat_is_rejected_without_an_http_user(): void
+    {
+        $creator = $this->createBareUser('single-creator@example.test');
+        $recipient = $this->createBareUser('single-recipient@example.test');
+        $service = app(ChatService::class);
+        $data = [
+            'type' => ChatTypeEnum::SINGLE->value,
+            'user_ids' => [$recipient->id],
+        ];
+        $service->create($data, $creator->id);
+
+        try {
+            $service->create($data, $creator->id);
+            $this->fail('Ожидался отказ повторного создания чата.');
+        } catch (Exception $exception) {
+            $this->assertSame('Чат между данными пользователями уже существует', $exception->getMessage());
+            $this->assertSame(1, Chat::withoutGlobalScopes()->where('type', ChatTypeEnum::SINGLE->value)->count());
+        }
+    }
+
+    public function test_failed_category_setup_rolls_back_default_chat_membership(): void
+    {
+        $user = $this->createBareUser('setup-rollback@example.test');
+        $categories = Mockery::mock(ChatCategoryService::class);
+        $categories->shouldReceive('setupSystemCategories')->once()->andThrow(new RuntimeException('setup failed'));
+        $service = new ChatService(app(ChatMemberService::class), $categories);
+
+        try {
+            $service->setupChats($user);
+            $this->fail('Ожидался откат инициализации чата.');
+        } catch (RuntimeException) {
+            $this->assertSame(0, ChatMember::where('user_id', $user->id)->count());
+            $this->assertSame(0, Chat::withoutGlobalScopes()->where('type', ChatTypeEnum::DEFAULT->value)->count());
         }
     }
 

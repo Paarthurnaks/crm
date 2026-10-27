@@ -4,20 +4,17 @@ namespace App\Services;
 
 use App\Http\Resources\NotificationResource;
 use Carbon\Carbon;
+use App\Models\User;
 use Illuminate\Notifications\DatabaseNotification;
-use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 class NotificationService
 {
-    /**
-     * @return LengthAwarePaginator
-     */
-    public function getNotifications(array $data): array
+    public function getNotifications(array $data, User $actor): array
     {
         // Получаем пагинированный список уведомлений
-        $notifications = auth()->user()
+        $notifications = $actor
             ->notifications()
             ->when(isset($data['search_term']), function ($query) use ($data) {
                 $searchTerm = $data['search_term'];
@@ -46,7 +43,7 @@ class NotificationService
             ->orderByDesc('created_at')
             ->paginate(config('notifications.pagination_items'));
 
-        $totalNotifications = auth()->user()->unreadNotifications()->count();
+        $totalNotifications = $actor->unreadNotifications()->count();
 
         return [
             'notifications' => NotificationResource::collection($notifications)->response()->getData(true),
@@ -54,9 +51,9 @@ class NotificationService
         ];
     }
 
-    public function markAsRead(array $data): void
+    public function markAsRead(array $data, User $actor): void
     {
-        auth()->user()->unreadNotifications()
+        $actor->unreadNotifications()
             ->whereIn('id', $data['notification_ids'])
             ->get()
             ->markAsRead();
@@ -67,9 +64,9 @@ class NotificationService
         $notification->delete();
     }
 
-    public function markAsReadAll(): void
+    public function markAsReadAll(User $actor): void
     {
-        auth()->user()->unreadNotifications()
+        $actor->unreadNotifications()
             ->get()
             ->markAsRead();
     }

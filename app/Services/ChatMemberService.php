@@ -17,20 +17,19 @@ use Illuminate\Support\Facades\Log;
 
 class ChatMemberService
 {
-    public function __construct(private readonly ChatCategoryService $chatCategoryService) {}
-
     private const ERROR_MESSAGES = [
         'chatCreatorError' => 'Пользователь не является создателем чата',
         'userAlreadyInChat' => 'Пользователь уже состоит в чате',
     ];
 
-    public function getMembers(Chat $chat): Collection
+    public function __construct(private readonly ChatCategoryService $chatCategoryService) {}
+
+    public function getMembers(Chat $chat, User $actor): Collection
     {
         $query = ChatMember::where('chat_id', $chat->id);
 
-        if (in_array($chat->type, [ChatTypeEnum::PARTNER->value, ChatTypeEnum::CLIENT->value]) &&
-            auth()->user()->hasRole(DefaultRolesEnum::havePersonalAccount())
-        ) {
+        $personalChat = in_array($chat->type, [ChatTypeEnum::PARTNER->value, ChatTypeEnum::CLIENT->value], true);
+        if ($personalChat && $actor->hasRole(DefaultRolesEnum::havePersonalAccount())) {
             $query->where('chat_id', $chat->id)->whereHas('user.role', function ($query) {
                 $query->whereIn('original_title', DefaultRolesEnum::havePersonalAccount());
             });
@@ -44,16 +43,12 @@ class ChatMemberService
      */
     public function create(array $data, Chat $chat, ?int $creatorId = null): Collection
     {
-        $user = User::find($creatorId) ?? auth()->user();
-
         $chatId = $chat->id;
-        if ($user &&
-            $chat &&
-            $chat->type === ChatTypeEnum::GROUP->value &&
-            $chat->members()->exists() &&
-            ! $user->isCreatorOfChat($chat->id)
-        ) {
-            throw new Exception(self::ERROR_MESSAGES['chatCreatorError']);
+        if ($chat->type === ChatTypeEnum::GROUP->value && $chat->members()->exists()) {
+            $actor = $creatorId !== null ? User::find($creatorId) : auth()->user();
+            if (! $actor?->isCreatorOfChat($chatId)) {
+                throw new Exception(self::ERROR_MESSAGES['chatCreatorError']);
+            }
         }
 
         $membersData = [];
@@ -118,7 +113,13 @@ class ChatMemberService
                 $this->chatCategoryService->setupSystemCategories($user);
             });
         }
-        $chat = $chat->fresh(['lastMessage' => ['chat', 'user', 'forward'], 'category', 'unreadMessages.message.user', 'members.user.role', 'messages.forward']);
+        $chat = Chat::withoutGlobalScopes()->with([
+            'lastMessage' => ['chat', 'user', 'forward'],
+            'category',
+            'unreadMessages.message.user',
+            'members.user.role',
+            'messages.forward',
+        ])->findOrFail($chat->id);
 
         DB::afterCommit(function () use ($user_ids, $chat): void {
             foreach ($user_ids as $userId) {
@@ -134,9 +135,9 @@ class ChatMemberService
     /**
      * @throws Exception
      */
-    public function delete(ChatMember $chatMember): void
+    public function delete(ChatMember $chatMember, User $actor): void
     {
-        if (! auth()->user()->isCreatorOfChat($chatMember->chat_id)) {
+        if (! $actor->isCreatorOfChat($chatMember->chat_id)) {
             throw new Exception(self::ERROR_MESSAGES['chatCreatorError']);
         }
 

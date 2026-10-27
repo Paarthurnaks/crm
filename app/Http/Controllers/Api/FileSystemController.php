@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Filters\DiskEntityFilter;
+use App\Http\Requests\DiskEntityIdRequest;
 use App\Http\Requests\StoreFileRequest;
 use App\Http\Requests\StoreFolderRequest;
 use App\Http\Resources\DiskEntityResource;
@@ -353,9 +354,9 @@ class FileSystemController extends Controller
      *     ),
      * )
      */
-    public function deleteDiskEntity(Request $request): JsonResponse
+    public function deleteDiskEntity(DiskEntityIdRequest $request): JsonResponse
     {
-        $diskEntity = DiskEntity::find($request->query('disk_entity_id'));
+        $diskEntity = DiskEntity::find($request->validated('disk_entity_id'));
 
         if (! $diskEntity) {
             return ResponseService::badRequest(
@@ -405,10 +406,9 @@ class FileSystemController extends Controller
      *     ),
      * )
      */
-    public function returnDiskEntity(Request $request): JsonResponse
+    public function returnDiskEntity(DiskEntityIdRequest $request): JsonResponse
     {
-        $queryParams = $request->all();
-        $diskEntity = DiskEntity::find($queryParams['disk_entity_id']);
+        $diskEntity = DiskEntity::find($request->validated('disk_entity_id'));
 
         if (! $diskEntity) {
             return ResponseService::notFound(

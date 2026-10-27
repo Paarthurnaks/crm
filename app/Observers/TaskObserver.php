@@ -38,13 +38,14 @@ class TaskObserver
             ]);
         }
 
-        if ($task->type === TaskTypeEnum::DOCKET->value || $task->type === TaskTypeEnum::STANDARD->value) {
+        if ($task->deadline &&
+            ($task->type === TaskTypeEnum::DOCKET->value || $task->type === TaskTypeEnum::STANDARD->value)) {
             $deadline = Carbon::parse($task->deadline);
             $now = Carbon::now();
 
             if ($deadline->isFuture()) {
                 $delay = $deadline->diffInSeconds($now);
-                TaskDeadlineExpirationJob::dispatch($task)->delay($delay);
+                TaskDeadlineExpirationJob::dispatch($task)->delay($delay)->afterCommit();
             }
         }
     }
@@ -71,9 +72,9 @@ class TaskObserver
                 $task->status = TaskStatusEnum::PENDING->value;
 
                 $delay = Carbon::parse($task->deadline)->diffInSeconds(now());
-                TaskDeadlineExpirationJob::dispatch($task)->delay($delay);
+                TaskDeadlineExpirationJob::dispatch($task)->delay($delay)->afterCommit();
             } elseif (Carbon::parse($task->deadline)->isPast()) {
-                TaskDeadlineExpirationJob::dispatch($task);
+                TaskDeadlineExpirationJob::dispatch($task)->afterCommit();
             }
         }
     }

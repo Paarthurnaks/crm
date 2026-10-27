@@ -6,12 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Account\StoreRequest;
 use App\Http\Requests\Account\UpdateRequest;
 use App\Models\Comment;
-use App\Models\EntityActivity;
 use App\Services\CommentService;
 use App\Services\ResponseService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 
 class CommentController extends Controller
 {
@@ -155,10 +154,10 @@ class CommentController extends Controller
      *     ),
      * )
      */
-    public function destroy(int $id): JsonResponse
+    public function destroy(Request $request, int $id): JsonResponse
     {
         try {
-            $comment = Comment::where('user_id', Auth::id())
+            $comment = Comment::where('user_id', $request->user()->id)
                 ->where('id', $id)
                 ->first();
 
@@ -168,20 +167,11 @@ class CommentController extends Controller
                 );
             }
 
-            DB::transaction(function () use ($comment) {
-                if ($this->service->delete($comment)) {
-                    EntityActivity::where([
-                        'entity_type' => $comment->commentable_type,
-                        'entity_id' => $comment->commentable_id,
-                        'activityable_type' => $comment->getMorphClass(),
-                        'activityable_id' => $comment->id,
-                    ])->delete();
-                }
-            });
+            $this->service->delete($comment);
 
             return ResponseService::success(message: 'Комментарий удален');
         } catch (\Throwable $e) {
-            return ResponseService::badRequest($e->getMessage());
+            return ResponseService::badRequest(message: 'Не удалось удалить комментарий');
         }
     }
 }

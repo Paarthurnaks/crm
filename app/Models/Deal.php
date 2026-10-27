@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Enums\DefaultRolesEnum;
 use App\Http\Filters\Traits\Filterable;
 use App\Traits\HasUserFields;
 use BeyondCode\Comments\Traits\HasComments;
@@ -193,19 +192,7 @@ class Deal extends Model implements HasMedia
 
     public function activities(): MorphMany
     {
-        $user = auth()->user();
-
-        if ($user?->hasRole(DefaultRolesEnum::CLIENT->value)) {
-            return $this->morphMany(EntityActivity::class, 'entity')
-                ->where('activityable_type', \BeyondCode\Comments\Comment::class)
-                ->whereHasMorph('activityable', [\BeyondCode\Comments\Comment::class], function ($query) use ($user) {
-                    $query->where('user_id', $user->id)
-                        ->orWhere('user_id', $user->partner?->id);
-                });
-        }
-
         return $this->morphMany(EntityActivity::class, 'entity');
-
     }
 
     public function scopeAllDeals($query): Builder
@@ -213,11 +200,11 @@ class Deal extends Model implements HasMedia
         return $query;
     }
 
-    public function scopeOwnDeals($query): Builder
+    public function scopeOwnDeals($query, int $actorId): Builder
     {
-        return $query->where(function ($query) {
-            $query->where('creator_id', auth()->id())
-                ->orWhere('responsible_id', auth()->id());
+        return $query->where(function ($query) use ($actorId) {
+            $query->where('creator_id', $actorId)
+                ->orWhere('responsible_id', $actorId);
         });
     }
 
@@ -241,10 +228,18 @@ class Deal extends Model implements HasMedia
 
     public function getClientAttribute($value): User|string|null
     {
-        if (ctype_digit($value)) {
+        if ($value === null) {
+            return null;
+        }
+
+        if (ctype_digit((string) $value)) {
+            if ($this->relationLoaded('resolvedClient')) {
+                return $this->getRelation('resolvedClient');
+            }
+
             return User::find((int) $value);
         }
 
-        return $value ? substr($value, 4) : null; // удаляем префикс "str_" перед возвратом значения
+        return str_starts_with($value, 'str_') ? substr($value, 4) : $value;
     }
 }

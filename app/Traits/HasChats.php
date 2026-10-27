@@ -13,17 +13,17 @@ trait HasChats
 {
     public function isCreatorOfChat($chatId): bool
     {
-        return ChatMember::where('user_id', auth()->id())->where('chat_id', $chatId)->where('is_creator', true)->exists();
+        return ChatMember::where('user_id', $this->getKey())->where('chat_id', $chatId)->where('is_creator', true)->exists();
     }
 
     public function isMemberOfChat($chatId): bool
     {
-        return ChatMember::where('user_id', auth()->id())->where('chat_id', $chatId)->exists();
+        return ChatMember::where('user_id', $this->getKey())->where('chat_id', $chatId)->exists();
     }
 
     public function isAuthorOfChatMessage($messageId): bool
     {
-        return ChatMessage::where('id', $messageId)->where('user_id', auth()->id())->exists();
+        return ChatMessage::withoutGlobalScopes()->where('id', $messageId)->where('user_id', $this->getKey())->exists();
     }
 
     public function chats(): HasManyThrough

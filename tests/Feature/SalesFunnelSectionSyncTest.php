@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Field;
 use App\Models\SalesFunnel;
 use App\Models\Section;
+use App\Models\Role;
 use App\Models\User;
 use App\Models\UserField;
 use App\Services\SalesFunnelService;
@@ -39,5 +40,19 @@ class SalesFunnelSectionSyncTest extends TestCase
             $this->assertCount(2, $section->fields);
             $this->assertSame([1, 2], $section->fields->pluck('position')->sort()->values()->all());
         }
+    }
+
+    public function test_empty_extra_funnel_can_be_deleted_by_administrator(): void
+    {
+        $role = Role::create(['title' => 'Руководитель']);
+        $admin = User::withoutEvents(fn (): User => User::create([
+            'name' => 'Admin', 'surname' => 'User', 'email' => 'funnel-admin@example.test',
+            'password' => 'unused', 'role_id' => $role->id,
+        ]));
+        $funnel = SalesFunnel::create(['title' => 'Extra', 'position' => 99]);
+
+        app(SalesFunnelService::class)->deleteSalesFunnel($funnel, $admin);
+
+        $this->assertDatabaseMissing('sales_funnels', ['id' => $funnel->id]);
     }
 }

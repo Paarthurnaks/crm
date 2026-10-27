@@ -49,7 +49,7 @@ class NotificationSearchPortabilityTest extends TestCase
             'data' => ['html' => '<b>other</b> message'],
         ]);
 
-        $result = (new NotificationService)->getNotifications(['search_term' => 'visible message']);
+        $result = (new NotificationService)->getNotifications(['search_term' => 'visible message'], $user);
 
         $this->assertSame(1, $result['notifications']['meta']['total']);
     }

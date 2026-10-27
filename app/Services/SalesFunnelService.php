@@ -12,7 +12,6 @@ use App\Models\Section;
 use App\Models\SectionField;
 use App\Models\User;
 use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
@@ -20,26 +19,28 @@ use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 
 class SalesFunnelService
 {
+    private const ADMIN_ROLE_TITLE = 'Руководитель';
+
     public function __construct(private SalesStageService $salesStageService) {}
 
-    public function getSalesFunnels(SalesFunnelFilter $filter, DealFilter $dealFilter, array $queryParams): LengthAwarePaginator
+    public function getSalesFunnels(SalesFunnelFilter $filter, DealFilter $dealFilter, array $queryParams, User $actor): LengthAwarePaginator
     {
         $limit = $queryParams['limit'] ?? config('constants.paginator.limit');
         $salesFunnels = SalesFunnel::filter($filter)->orderBy('position')->paginate($limit);
 
         foreach ($salesFunnels as $salesFunnel) {
-            $this->getMetricsFromAllStages($salesFunnel, $dealFilter);
+            $this->getMetricsFromAllStages($salesFunnel, $dealFilter, $actor);
         }
 
         return $salesFunnels;
     }
 
-    public function getMetricsFromAllStages(SalesFunnel $salesFunnel, DealFilter $dealFilter): SalesFunnel
+    public function getMetricsFromAllStages(SalesFunnel $salesFunnel, DealFilter $dealFilter, User $actor): SalesFunnel
     {
         foreach ($salesFunnel->salesStages as $stage) {
-            $deals = $stage->deals()->where(function ($query) {
-                $query->where('creator_id', auth()->id())
-                    ->orWhere('responsible_id', auth()->id());
+            $deals = $stage->deals()->where(function ($query) use ($actor) {
+                $query->where('creator_id', $actor->id)
+                    ->orWhere('responsible_id', $actor->id);
             })->filter($dealFilter)->get();
 
             $stage->metrics = [
@@ -51,10 +52,10 @@ class SalesFunnelService
         return $salesFunnel;
     }
 
-    public function createSalesFunnel(array $salesFunnelData): SalesFunnel
+    public function createSalesFunnel(array $salesFunnelData, User $actor): SalesFunnel
     {
 
-        if (Auth::user()->role->title != 'Руководитель') {
+        if ($actor->role?->title !== self::ADMIN_ROLE_TITLE) {
             throw new AccessDeniedHttpException;
         }
 
@@ -195,17 +196,17 @@ class SalesFunnelService
         Log::debug('sales_funnel.template_sections.synced', ['funnel_id' => $salesFunnel->id, 'user_count' => $processed]);
     }
 
-    public function deleteSalesFunnel(SalesFunnel $salesFunnel): void
+    public function deleteSalesFunnel(SalesFunnel $salesFunnel, User $actor): void
     {
         if (SalesFunnel::count() === 1) {
             throw new AccessDeniedHttpException('Невозможно удалить направление, так как оно является последним');
         }
 
-        if (Auth::user()->role->title != 'Руководитель') {
+        if ($actor->role?->title !== self::ADMIN_ROLE_TITLE) {
             throw new AccessDeniedHttpException('Удалять направления может только администратор');
         }
 
-        if (empty($salesFunnel->deals)) {
+        if ($salesFunnel->deals()->exists()) {
             throw new AccessDeniedHttpException('Невозможно удалить направление: есть сделки');
         }
 

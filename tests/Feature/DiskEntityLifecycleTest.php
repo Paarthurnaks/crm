@@ -201,6 +201,25 @@ class DiskEntityLifecycleTest extends TestCase
         $this->assertFalse((bool) $active->fresh()->deleted);
     }
 
+    public function test_restore_preserves_multiple_dots_in_colliding_filename(): void
+    {
+        Queue::fake();
+        Storage::fake('public');
+        $service = new FileSystemService;
+        $trashed = $this->createEntity('/a', 'archive.tar.gz', DiskEntityTypeEnum::FILE);
+        Storage::disk('public')->put('entities/available/a/archive.tar.gz', 'old');
+        $service->deleteDiskEntity($trashed);
+
+        $this->createEntity('/a', 'archive.tar.gz', DiskEntityTypeEnum::FILE);
+        Storage::disk('public')->put('entities/available/a/archive.tar.gz', 'new');
+        $service->restore($trashed->fresh());
+
+        $renamed = "archive.tar_{$trashed->id}.gz";
+        $this->assertSame('new', Storage::disk('public')->get('entities/available/a/archive.tar.gz'));
+        $this->assertSame('old', Storage::disk('public')->get('entities/available/a/'.$renamed));
+        $this->assertSame($renamed, $trashed->fresh()->title);
+    }
+
     public function test_nested_child_can_be_deleted_from_trashed_folder(): void
     {
         Queue::fake();

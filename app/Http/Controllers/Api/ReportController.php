@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Enums\DefaultRolesEnum;
 use App\Exports\ReportExport;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ReportStoreRequest;
@@ -11,13 +10,11 @@ use App\Http\Resources\ListResource;
 use App\Http\Resources\ReportDetailResource;
 use App\Http\Resources\ReportListResource;
 use App\Models\Report;
-use App\Models\RoleUserField;
 use App\Services\ReportService;
 use App\Services\ResponseService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
@@ -61,7 +58,7 @@ class ReportController extends Controller
     public function index(Request $request)
     {
         $queryParams = $request->all();
-        $reports = $this->reportService->getReports($queryParams);
+        $reports = $this->reportService->getReports($queryParams, $request->user());
         $total = $reports->toArray()['total'];
 
         return ResponseService::success(
@@ -130,7 +127,7 @@ class ReportController extends Controller
     {
         $validated = $request->validated();
 
-        $report = $this->reportService->createReport($validated);
+        $report = $this->reportService->createReport($validated, $request->user());
 
         return ResponseService::success(
             ReportDetailResource::make($report, 10)
@@ -181,27 +178,12 @@ class ReportController extends Controller
     public function show(Request $request, Report $report): JsonResponse
     {
         if (! $request->user()->can('view', $report)) {
-            Log::warning('Report access denied', ['report_id' => $report->id, 'actor_id' => Auth::id(), 'action' => 'view']);
+            Log::warning('Report access denied', ['report_id' => $report->id, 'actor_id' => $request->user()->id, 'action' => 'view']);
 
             return ResponseService::forbidden(message: 'Вы не имеете доступ к этому отчёту');
         }
 
-        // Проверяем доступ к полям, для всех ролей кроме Руководительа.
-        if (Auth::user()->role->original_title !== DefaultRolesEnum::SUPER_ADMIN->value) {
-            // Идентификаторы пользовательских полей доступных
-            // для просмотра авторизованному пользователю.
-            $userFieldIds = RoleUserField::where('role_id', '=', Auth::user()->role_id)
-                ->get()
-                ->pluck('user_field_id');
-
-            $report->load([
-                'fields' => function ($query) use ($userFieldIds) {
-                    $query->with(['field', 'userField'])
-                        ->whereIn('user_field_id', $userFieldIds)
-                        ->orWhereNull('user_field_id');
-                },
-            ]);
-        }
+        $this->reportService->loadVisibleFields($report, $request->user());
 
         $report->deals = $this->reportService->getDealsByFilter($report->filter, $request->all());
 
@@ -223,27 +205,12 @@ class ReportController extends Controller
         }
 
         if (! $request->user()->can('view', $report)) {
-            Log::warning('Report access denied', ['report_id' => $report->id, 'actor_id' => Auth::id(), 'action' => 'export']);
+            Log::warning('Report access denied', ['report_id' => $report->id, 'actor_id' => $request->user()->id, 'action' => 'export']);
 
             return ResponseService::forbidden(message: 'Вы не имеете доступ к этому отчёту');
         }
 
-        // Проверяем доступ к полям, для всех ролей кроме Руководительа.
-        if (Auth::user()->role->original_title !== DefaultRolesEnum::SUPER_ADMIN->value) {
-            // Идентификаторы пользовательских полей доступных
-            // для просмотра авторизованному пользователю.
-            $userFieldIds = RoleUserField::where('role_id', '=', Auth::user()->role_id)
-                ->get()
-                ->pluck('user_field_id');
-
-            $report->load([
-                'fields' => function ($query) use ($userFieldIds) {
-                    $query->with(['field', 'userField'])
-                        ->whereIn('user_field_id', $userFieldIds)
-                        ->orWhereNull('user_field_id');
-                },
-            ]);
-        }
+        $this->reportService->loadVisibleFields($report, $request->user());
 
         $report->deals = $this->reportService->getDealsByFilterWithoutPaginate($report->filter ?? [], $request->all());
 
@@ -251,20 +218,15 @@ class ReportController extends Controller
             $this->reportService->setReportFieldsValues($report, $deal);
         }
 
-        $exportData = collect([]);
-
-        foreach ($report->deals as $deal) {
-            $datum = [];
-            foreach ($report->fields as $field) {
-                $datum[$field->field->name] = $deal->{$field->field->code};
-            }
-            $exportData->push($datum);
-        }
-
-        $fileContent = Excel::raw(new ReportExport($exportData->toArray()), \Maatwebsite\Excel\Excel::XLSX);
+        $rows = $this->reportService->exportRows($report, $report->deals);
+        $fileContent = Excel::raw(new ReportExport($rows), \Maatwebsite\Excel\Excel::XLSX);
 
         $fileName = uniqid().'_report.xlsx';
-        Storage::disk('public')->put($fileName, $fileContent);
+        if (! Storage::disk('public')->put($fileName, $fileContent)) {
+            Log::error('report.export.write_failed', ['report_id' => $report->id]);
+            throw new \RuntimeException('Не удалось сохранить экспорт отчёта');
+        }
+        Log::info('report.export.completed', ['report_id' => $report->id, 'row_count' => count($rows)]);
 
         return ResponseService::success(
             ['url' => Storage::disk('public')->url($fileName)]
@@ -353,10 +315,10 @@ class ReportController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Report $report): JsonResponse
+    public function destroy(Request $request, Report $report): JsonResponse
     {
         try {
-            $this->reportService->deleteReport($report);
+            $this->reportService->deleteReport($report, $request->user());
 
             return ResponseService::success(message: 'Отчёт успешно удалён');
         } catch (AuthorizationException $e) {

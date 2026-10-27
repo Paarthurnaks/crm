@@ -66,7 +66,7 @@ class UserService
             'email' => $userData['email'],
             'password' => Str::random(60),
             'role_id' => $userData['role_id'] ?? null,
-        ], $actor);
+        ], $actor, $avatar);
 
         $key = 'reset_password_code_'.$userData['email'];
         $code = Str::random(64);
@@ -80,19 +80,15 @@ class UserService
             }
         });
 
-        if ($avatar !== null) {
-            $user->addMedia($avatar)->toMediaCollection();
-        }
-
         return $user;
     }
 
-    public function createProvisionedUser(array $attributes, ?User $actor = null): User
+    public function createProvisionedUser(array $attributes, ?User $actor = null, ?UploadedFile $avatar = null): User
     {
         Log::info('user.provision.started', ['actor_id' => $actor?->id]);
 
         try {
-            return DB::transaction(function () use ($attributes, $actor): User {
+            return DB::transaction(function () use ($attributes, $actor, $avatar): User {
                 $user = User::create($attributes);
                 $this->initializeSections($user);
 
@@ -103,6 +99,9 @@ class UserService
                 }
 
                 $this->chatService->setupChats($user);
+                if ($avatar !== null) {
+                    $user->addMedia($avatar)->toMediaCollection();
+                }
                 Log::info('user.provision.completed', ['user_id' => $user->id, 'actor_id' => $actor?->id]);
 
                 return $user;
@@ -147,7 +146,8 @@ class UserService
                 'sales_funnel_id' => $funnel->id,
             ]);
 
-            foreach ($funnel->fields()->pluck('fields.id') as $index => $fieldId) {
+            $funnelFieldIds = $funnel->fields()->pluck('fields.id');
+            foreach ($funnelFieldIds as $index => $fieldId) {
                 SectionField::create([
                     'section_id' => $section->id,
                     'position' => $index + 1,
@@ -158,7 +158,7 @@ class UserService
             foreach ($funnel->userFields()->pluck('user_fields.id') as $index => $userFieldId) {
                 SectionField::create([
                     'section_id' => $section->id,
-                    'position' => $index + 1,
+                    'position' => $funnelFieldIds->count() + $index + 1,
                     'user_field_id' => $userFieldId,
                 ]);
             }

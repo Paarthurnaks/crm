@@ -279,7 +279,7 @@ class AccountController extends Controller
         $validated = $request->validated();
 
         try {
-            $account = $this->accountService->create($validated);
+            $account = $this->accountService->create($validated, $request->user());
 
             return ResponseService::created(
                 AccountResource::make($account)

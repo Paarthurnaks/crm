@@ -20,7 +20,6 @@ class ChatAttachmentService
      */
     private function getMediaByType(int $id, string $mimeType, ?int $limit = null, string $operator = 'like'): LengthAwarePaginator
     {
-        // Media модель из media-library не робит для получения, так что пишем костыль
         $chatMediaMessages = DB::table('media')
             ->where('model_type', ChatMessage::class)
             ->where('custom_properties->chat_id', $id)
@@ -28,11 +27,11 @@ class ChatAttachmentService
             ->orderByDesc('created_at')
             ->paginate($limit ?? config('chats.attachments_limit'));
 
-        $chatMediaMessages->getCollection()->transform(function ($media) {
-            $mediaModel = Media::find($media->id);
-
-            return $mediaModel ? $mediaModel->model : null;
-        });
+        $mediaById = Media::with('model')
+            ->whereIn('id', $chatMediaMessages->getCollection()->pluck('id'))
+            ->get()
+            ->keyBy('id');
+        $chatMediaMessages->getCollection()->transform(fn ($media) => $mediaById->get($media->id)?->model);
 
         Log::debug('chat.attachments.loaded', ['chat_id' => $id, 'count' => $chatMediaMessages->count()]);
 
@@ -61,8 +60,14 @@ class ChatAttachmentService
 
     public function getAllChatLinks(int $id): LengthAwarePaginator
     {
+        $driver = DB::connection()->getDriverName();
+        $operator = $driver === 'pgsql' ? '~' : 'REGEXP';
+        $pattern = $driver === 'pgsql'
+            ? '(https?://|www\\.)[^[:space:]]+'
+            : '\\b(?:https?://|www\\.)\\S+\\b';
+
         return ChatMessage::where('chat_id', $id)
-            ->where('text', 'REGEXP', '\\b(?:https?://|www\\.)\\S+\\b')
+            ->where('text', $operator, $pattern)
             ->orderByDesc('created_at')
             ->paginate(config('chats.attachments_limit'));
     }

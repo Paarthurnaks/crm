@@ -6,8 +6,7 @@ use App\Enums\DefaultRolesEnum;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\PartnerLogo\SetLogoRequest;
 use App\Http\Resources\MediaResource;
-use App\Models\PartnerClient;
-use App\Models\User;
+use App\Services\PartnerProfileService;
 use App\Services\ResponseService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -15,6 +14,8 @@ use OpenApi\Attributes as OA;
 
 class PartnerController extends Controller
 {
+    public function __construct(private readonly PartnerProfileService $profileService) {}
+
     /**
      * @OA\Get(
      *     path="/api/partner-logo",
@@ -101,8 +102,7 @@ class PartnerController extends Controller
         $user = $request->user();
 
         if ($user->hasRole(DefaultRolesEnum::PARTNER->value)) {
-            $user->clearMediaCollection('logo');
-            $logo = $user->addMedia($request->validated('logo'))->toMediaCollection('logo');
+            $logo = $this->profileService->replaceLogo($user, $request->validated('logo'));
 
             return ResponseService::success(
                 MediaResource::make($logo)
@@ -147,17 +147,7 @@ class PartnerController extends Controller
         $partner = $request->user();
 
         if ($partner->hasRole(DefaultRolesEnum::PARTNER->value)) {
-            $userIds = PartnerClient::where('partner_id', $partner->id)
-                ->get()
-                ->pluck('client_id')
-                ->toArray();
-
-            // Идентификаторы клиентов и партнера у которых нужно обновить цвет.
-            $userIds[] = $partner->id;
-
-            User::whereIn('id', $userIds)->update([
-                'color' => $request->input('color'),
-            ]);
+            $this->profileService->setColor($partner, $request->input('color'));
 
             return ResponseService::success($request->input('color'));
         }

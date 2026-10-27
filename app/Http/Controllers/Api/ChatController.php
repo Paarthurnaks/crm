@@ -73,7 +73,7 @@ class ChatController extends Controller
     {
         $validated = $request->all();
 
-        $chats = $this->service->getChatsList($validated, $filter);
+        $chats = $this->service->getChatsList($validated, $filter, $request->user());
 
         return ResponseService::success(
             ChatResource::collection($chats)->response()->getData(true)

@@ -146,10 +146,7 @@ class TaskController extends Controller
 
     public function addAttachment(TaskAddAttachmentRequest $request, Task $task): JsonResponse
     {
-        foreach ($request->validated('attachments') as $attachment) {
-            $media = $task->addMedia($attachment)->toMediaCollection();
-            Log::info('Task attachment added', ['task_id' => $task->id, 'media_id' => $media->id]);
-        }
+        $this->service->addAttachments($task, $request->validated('attachments'));
 
         return ResponseService::success(
             TaskResource::make($task)
@@ -158,15 +155,10 @@ class TaskController extends Controller
 
     public function deleteAttachment(Task $task, int $attachmentId): JsonResponse
     {
-        $media = $task->media()->find($attachmentId);
-        if (! $media) {
-            Log::warning('Task attachment not found', ['task_id' => $task->id, 'media_id' => $attachmentId]);
-
+        if (! $this->service->deleteAttachment($task, $attachmentId)) {
             return ResponseService::notFound();
         }
 
-        $task->deleteMedia($media);
-        Log::info('Task attachment deleted', ['task_id' => $task->id, 'media_id' => $attachmentId]);
         $task->refresh();
 
         return ResponseService::success(

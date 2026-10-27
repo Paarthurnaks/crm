@@ -3,18 +3,29 @@
 namespace App\Services;
 
 use App\Http\Filters\Abstract\QueryFilter;
+use Closure;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Log;
 
 class EntityActivityService
 {
-    public function getActivity(Model $model, QueryFilter $filter, array $activityMap, array $pagination = []): LengthAwarePaginator
+    public function getActivity(
+        Model $model,
+        QueryFilter $filter,
+        array $activityMap,
+        array $pagination = [],
+        ?Closure $scope = null
+    ): LengthAwarePaginator
     {
         $limit = $pagination['limit'] ?? config('constants.paginator.limit');
 
-        $activities = $model->activities()
-            ->with('activityable')
+        $query = $model->activities()->with('activityable');
+        if ($scope !== null) {
+            $scope($query);
+        }
+
+        $activities = $query
             ->filter($filter)
             ->latest()
             ->paginate($limit);

@@ -161,7 +161,7 @@ class SectionController extends Controller
     {
         $queryParams = $request->all();
 
-        $sections = $this->sectionService->getSectionsByEntity($entity, $id, $filter, $queryParams);
+        $sections = $this->sectionService->getSectionsByEntity($entity, $id, $filter, $queryParams, $request->user());
 
         $serializedData = $sections->map(function ($section) use ($queryParams) {
             return new SectionResource($section, $queryParams['type'] ?? 'view');
@@ -249,10 +249,9 @@ class SectionController extends Controller
      */
     public function store(SectionStoreRequest $request): JsonResponse
     {
-        $queryParams = $request->all();
         $validated = $request->validated();
 
-        $section = $this->sectionService->createSection($validated, $queryParams);
+        $section = $this->sectionService->createSection($validated, $validated, $request->user());
 
         return ResponseService::created(
             SectionResource::make($section, 'view')
@@ -338,14 +337,12 @@ class SectionController extends Controller
      */
     public function update(Section $section, SectionUpdateRequest $request): JsonResponse
     {
-        $queryParams = $request->all();
-
         $validated = $request->validated();
 
-        $section = $this->sectionService->updateSection($section, $validated, $queryParams);
+        $section = $this->sectionService->updateSection($section, $validated, $validated);
 
         return ResponseService::success(
-            new SectionResource($section, $queryParams['type'] ?? 'view')
+            new SectionResource($section, $validated['type'] ?? 'view')
         );
     }
 

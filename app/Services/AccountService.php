@@ -4,10 +4,10 @@ namespace App\Services;
 
 use App\Http\Filters\AccountFilter;
 use App\Models\Account;
+use App\Models\User;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Facades\Auth;
 
 class AccountService
 {
@@ -27,18 +27,16 @@ class AccountService
      *
      * @throws Exception
      */
-    public function create(array $data): Account
+    public function create(array $data, User $actor): Account
     {
         try {
-            $user = Auth::user();
-
-            $dataInvoiceDate = $data['invoice_date'] ?? date('Y-m-d');
+            $dataInvoiceDate = $data['invoice_date'] ?? now()->toDateString();
 
             $invoiceDate = Carbon::parse($dataInvoiceDate)->format('Y-m-d');
 
             return Account::create([
                 'deal_id' => $data['deal_id'],
-                'author_id' => $data['author_id'] ?? $user->id,
+                'author_id' => $data['author_id'] ?? $actor->id,
                 'sum' => $data['sum'] ?? 0,
                 'invoice_date' => $invoiceDate,
             ]);

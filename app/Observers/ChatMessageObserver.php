@@ -13,7 +13,7 @@ class ChatMessageObserver
         $recipientIds = ChatMember::where('chat_id', $chatMessage->chat_id)->pluck('user_id');
 
         foreach ($recipientIds as $recipientId) {
-            if ($recipientId === auth()->id()) {
+            if ((int) $recipientId === (int) $chatMessage->user_id) {
                 continue;
             }
 

@@ -24,7 +24,7 @@ class SalesFunnelController extends Controller
     public function index(Request $request, SalesFunnelFilter $salesFunnelFilter, DealFilter $dealFilter): JsonResponse
     {
         $queryParams = $request->all();
-        $salesFunnels = $this->salesFunnelService->getSalesFunnels($salesFunnelFilter, $dealFilter, $queryParams);
+        $salesFunnels = $this->salesFunnelService->getSalesFunnels($salesFunnelFilter, $dealFilter, $queryParams, $request->user());
         $total = $salesFunnels->toArray()['total'];
 
         return ResponseService::success(
@@ -32,9 +32,9 @@ class SalesFunnelController extends Controller
         );
     }
 
-    public function show(SalesFunnel $salesFunnel, DealFilter $dealFilter): JsonResponse
+    public function show(Request $request, SalesFunnel $salesFunnel, DealFilter $dealFilter): JsonResponse
     {
-        $this->salesFunnelService->getMetricsFromAllStages($salesFunnel, $dealFilter);
+        $this->salesFunnelService->getMetricsFromAllStages($salesFunnel, $dealFilter, $request->user());
 
         return ResponseService::success(
             SalesFunnelResource::make($salesFunnel)
@@ -46,7 +46,7 @@ class SalesFunnelController extends Controller
 
         try {
             $validated = $request->validated();
-            $salesFunnel = $this->salesFunnelService->createSalesFunnel($validated);
+            $salesFunnel = $this->salesFunnelService->createSalesFunnel($validated, $request->user());
 
             return ResponseService::created(
                 SalesFunnelResource::make($salesFunnel)
@@ -75,10 +75,10 @@ class SalesFunnelController extends Controller
         }
     }
 
-    public function destroy(SalesFunnel $salesFunnel): JsonResponse
+    public function destroy(Request $request, SalesFunnel $salesFunnel): JsonResponse
     {
         try {
-            $this->salesFunnelService->deleteSalesFunnel($salesFunnel);
+            $this->salesFunnelService->deleteSalesFunnel($salesFunnel, $request->user());
 
             return ResponseService::success(message: 'Направление успешно удалено');
         } catch (AccessDeniedHttpException $e) {

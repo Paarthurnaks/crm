@@ -150,6 +150,10 @@ class ChatMessage extends Model implements HasMedia
             return false;
         }
 
+        if ($this->relationLoaded('unreadMessages')) {
+            return ! $this->unreadMessages->contains(fn ($unread) => (int) $unread->user_id === $userId);
+        }
+
         return ! $this->unreadMessages()->where('user_id', $userId)->exists();
     }
 }

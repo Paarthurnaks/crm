@@ -8,6 +8,7 @@ use App\Http\Requests\Notification\MarkAsReadRequest;
 use App\Services\NotificationService;
 use App\Services\ResponseService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use OpenApi\Attributes as OA;
 
 class NotificationController extends Controller
@@ -74,7 +75,7 @@ class NotificationController extends Controller
     {
         $validated = $request->validated();
 
-        $notifications = $this->service->getNotifications($validated);
+        $notifications = $this->service->getNotifications($validated, $request->user());
 
         return ResponseService::success(
             $notifications
@@ -113,7 +114,7 @@ class NotificationController extends Controller
     {
         $validated = $request->validated();
 
-        $this->service->markAsRead($validated);
+        $this->service->markAsRead($validated, $request->user());
 
         return ResponseService::success();
     }
@@ -183,9 +184,9 @@ class NotificationController extends Controller
         ],
         security: [['bearer_token' => []]]
     )]
-    public function markAsReadAll(): JsonResponse
+    public function markAsReadAll(Request $request): JsonResponse
     {
-        $this->service->markAsReadAll();
+        $this->service->markAsReadAll($request->user());
 
         return ResponseService::success();
     }

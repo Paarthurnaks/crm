@@ -37,7 +37,7 @@ class UserTableSettingsAccessTest extends TestCase
         ]);
         $this->actingAs($user, 'api');
 
-        $settings = (new UserTableSettingsService)->getUserTableSettings(['entity' => 'deals'])->settings;
+        $settings = (new UserTableSettingsService)->getUserTableSettings(['entity' => 'deals'], $user)->settings;
 
         $this->assertCount(2, $settings['table_columns']);
         $this->assertCount(1, $settings['filters']);
@@ -59,7 +59,7 @@ class UserTableSettingsAccessTest extends TestCase
         ]);
         $this->actingAs($client, 'api');
 
-        $settings = (new UserTableSettingsService)->getUserTableSettings(['entity' => 'deals']);
+        $settings = (new UserTableSettingsService)->getUserTableSettings(['entity' => 'deals'], $client);
 
         $this->assertSame($client->id, $settings->user_id);
         $this->assertCount(1, $settings->settings['table_columns']);
@@ -80,7 +80,7 @@ class UserTableSettingsAccessTest extends TestCase
                 'is_userfield' => false,
                 'name' => 'Не сохранять имя из запроса',
             ]]],
-        ]);
+        ], $user);
 
         $stored = $result->fresh()->settings['table_columns'][0];
         $this->assertSame(['id' => $field->id, 'is_userfield' => false], $stored);

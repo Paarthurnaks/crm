@@ -10,11 +10,11 @@ class PermissionService
      * @param array
      * @param int
      */
-    public function createPermission(array $permissionData, int $role_id): void
+    public function createPermission(array $permissionData, int $roleId): void
     {
         Permission::create([
             'entity' => $permissionData['entity'],
-            'role_id' => $role_id,
+            'role_id' => $roleId,
             'view' => $permissionData['view'],
             'create' => $permissionData['create'],
             'update' => $permissionData['update'],
@@ -27,9 +27,9 @@ class PermissionService
     /**
      * @param array
      */
-    public function updatePermission(array $permissionData): void
+    public function updatePermission(array $permissionData, int $roleId): void
     {
-        $permission = Permission::find($permissionData['id']);
+        $permission = Permission::where('role_id', $roleId)->findOrFail($permissionData['id']);
         unset($permissionData['id']); // id не обновляем, поэтому убираем из объекта
         $permission->update($permissionData);
     }

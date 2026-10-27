@@ -33,7 +33,7 @@ class DealController extends Controller
     {
         $queryParams = $request->all();
 
-        $deals = $this->dealService->getDeals($filter, $queryParams);
+        $deals = $this->dealService->getDeals($filter, $queryParams, $request->user());
         $total = $deals->toArray()['total'];
 
         return ResponseService::success(
@@ -138,7 +138,7 @@ class DealController extends Controller
             'limit' => $request->query('limit', config('constants.paginator.limit')),
             'path' => $request->url(),
             'query' => $request->query(),
-        ]);
+        ], $request->user());
 
         return ResponseService::success($activity);
     }
