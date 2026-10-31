@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Enums\ChatTypeEnum;
+use App\Events\Chat\GlobalChatDeleteBroadcast;
+use App\Events\Chat\GlobalChatUpdateBroadcast;
 use App\Models\Chat;
 use App\Models\ChatMember;
 use App\Models\User;
@@ -11,6 +13,7 @@ use App\Services\ChatCategoryService;
 use App\Services\ChatMemberService;
 use Exception;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Event;
 use Mockery;
 use RuntimeException;
 use Tests\TestCase;
@@ -89,6 +92,51 @@ class ChatSetupWorkflowTest extends TestCase
             $this->assertSame(0, ChatMember::where('user_id', $user->id)->count());
             $this->assertSame(0, Chat::withoutGlobalScopes()->where('type', ChatTypeEnum::DEFAULT->value)->count());
         }
+    }
+
+    public function test_chat_update_and_delete_broadcast_to_other_member_only(): void
+    {
+        Event::fake([GlobalChatUpdateBroadcast::class, GlobalChatDeleteBroadcast::class]);
+        $actor = $this->createBareUser('chat-actor@example.test');
+        $recipient = $this->createBareUser('chat-recipient@example.test');
+        $this->actingAs($actor, 'api');
+        $chat = Chat::create(['type' => ChatTypeEnum::GROUP->value, 'name' => 'Before']);
+        ChatMember::create(['chat_id' => $chat->id, 'user_id' => $actor->id, 'is_creator' => true]);
+        ChatMember::create(['chat_id' => $chat->id, 'user_id' => $recipient->id, 'is_creator' => false]);
+        $service = app(ChatService::class);
+
+        $service->update($chat, ['name' => 'After']);
+        $service->broadcastDeleteToGlobal($chat);
+
+        Event::assertDispatchedTimes(GlobalChatUpdateBroadcast::class, 1);
+        Event::assertDispatchedTimes(GlobalChatDeleteBroadcast::class, 1);
+        Event::assertDispatched(GlobalChatUpdateBroadcast::class, fn ($event): bool =>
+            $event->broadcastOn()[0]->name === 'private-global-chats.'.$recipient->id);
+        Event::assertDispatched(GlobalChatDeleteBroadcast::class, fn ($event): bool =>
+            $event->broadcastOn()[0]->name === 'private-global-chats.'.$recipient->id);
+    }
+
+    public function test_only_group_creator_can_delete_group_chat(): void
+    {
+        Event::fake([GlobalChatDeleteBroadcast::class]);
+        $creator = $this->createBareUser('group-creator@example.test');
+        $member = $this->createBareUser('group-member@example.test');
+        $chat = Chat::create(['type' => ChatTypeEnum::GROUP->value, 'name' => 'Group']);
+        ChatMember::create(['chat_id' => $chat->id, 'user_id' => $creator->id, 'is_creator' => true]);
+        ChatMember::create(['chat_id' => $chat->id, 'user_id' => $member->id, 'is_creator' => false]);
+        $service = app(ChatService::class);
+
+        $this->actingAs($member, 'api');
+        try {
+            $service->delete($chat);
+            $this->fail('Ожидался отказ для участника чата.');
+        } catch (Exception $exception) {
+            $this->assertSame('Пользователь не является создателем чата', $exception->getMessage());
+        }
+
+        $this->actingAs($creator, 'api');
+        $service->delete($chat);
+        $this->assertDatabaseMissing('chats', ['id' => $chat->id]);
     }
 
     private function createBareUser(string $email): User

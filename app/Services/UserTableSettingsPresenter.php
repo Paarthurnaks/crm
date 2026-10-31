@@ -14,12 +14,32 @@ class UserTableSettingsPresenter
 {
     public function present(array $settings, User $user): array
     {
-        $settings = $this->filterForRole($settings, $user);
+        $settings = $this->filterForRole($this->removeInvalidColumns($settings, $user), $user);
 
         foreach (['table_columns', 'filters'] as $key) {
             if (isset($settings[$key]) && is_array($settings[$key])) {
                 $settings[$key] = $this->enrichColumns($settings[$key], $user);
             }
+        }
+
+        return $settings;
+    }
+
+    private function removeInvalidColumns(array $settings, User $user): array
+    {
+        foreach (['table_columns', 'filters'] as $key) {
+            if (! isset($settings[$key]) || ! is_array($settings[$key])) {
+                continue;
+            }
+
+            $settings[$key] = array_values(array_filter($settings[$key], function ($column) use ($user, $key): bool {
+                $valid = is_array($column) && isset($column['id'], $column['is_userfield']);
+                if (! $valid) {
+                    Log::warning('table_settings.column_invalid', ['actor_id' => $user->id, 'section' => $key]);
+                }
+
+                return $valid;
+            }));
         }
 
         return $settings;
@@ -32,13 +52,8 @@ class UserTableSettingsPresenter
             ->with('userFieldEnumValues')->get()->keyBy('id');
         $fields = Field::whereIn('id', $items->where('is_userfield', false)->pluck('id'))->get()->keyBy('id');
 
-        return $items->map(function ($column) use ($fields, $userFields, $user) {
-            if (! is_array($column) || ! isset($column['id'], $column['is_userfield'])) {
-                Log::warning('table_settings.column_invalid', ['actor_id' => $user->id]);
-
-                return null;
-            }
-
+        $enriched = [];
+        foreach ($items as $column) {
             $isUserField = (bool) $column['is_userfield'];
             $field = $isUserField ? $userFields->get($column['id']) : $fields->get($column['id']);
 
@@ -49,13 +64,15 @@ class UserTableSettingsPresenter
                     'is_userfield' => $isUserField,
                 ]);
 
-                return null;
+                continue;
             }
 
-            return $isUserField
+            $enriched[] = $isUserField
                 ? (new UserFieldResource($field))->toArray(request())
                 : (new FieldResource($field))->toArray(request());
-        })->filter()->values()->toArray();
+        }
+
+        return $enriched;
     }
 
     private function filterForRole(array $settings, User $user): array
@@ -74,12 +91,6 @@ class UserTableSettingsPresenter
             }
 
             $settings[$key] = array_values(array_filter($settings[$key], function ($column) use ($fieldIds, $userFieldIds, $user, $key): bool {
-                if (! is_array($column) || ! isset($column['id'], $column['is_userfield'])) {
-                    Log::warning('table_settings.column_invalid', ['actor_id' => $user->id, 'section' => $key]);
-
-                    return false;
-                }
-
                 $allowedIds = $column['is_userfield'] ? $userFieldIds : $fieldIds;
                 $allowed = in_array((int) $column['id'], $allowedIds, true);
 

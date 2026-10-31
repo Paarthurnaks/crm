@@ -163,6 +163,30 @@ class DiskEntityLifecycleTest extends TestCase
         }
     }
 
+    public function test_failed_restore_move_keeps_entity_in_trash(): void
+    {
+        Queue::fake();
+        Storage::fake('public');
+        $disk = Storage::disk('public');
+        $entity = $this->createEntity('/a', 'restore.txt', DiskEntityTypeEnum::FILE);
+        $disk->put('entities/available/a/restore.txt', 'content');
+        $service = new FileSystemService;
+        $service->deleteDiskEntity($entity);
+
+        $failedDisk = Mockery::mock($disk)->makePartial();
+        $failedDisk->shouldReceive('move')->once()->andReturn(false);
+        Storage::shouldReceive('disk')->with('public')->andReturn($failedDisk);
+
+        try {
+            $service->restore($entity->fresh());
+            $this->fail('Ожидалась ошибка восстановления.');
+        } catch (RuntimeException) {
+            $this->assertTrue((bool) $entity->fresh()->deleted);
+            $this->assertTrue($disk->exists("entities/trash/a/{$entity->id}_restore.txt"));
+            $this->assertFalse($disk->exists('entities/available/a/restore.txt'));
+        }
+    }
+
     public function test_same_named_files_remain_distinct_in_trash(): void
     {
         Queue::fake();

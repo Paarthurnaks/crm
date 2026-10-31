@@ -74,10 +74,6 @@ class TaskService
             return DB::transaction(function () use ($fields, $data) {
                 $task = Task::create($fields);
 
-                if (! $task) {
-                    throw new Exception($this::ERROR_MESSAGES['createError']);
-                }
-
                 if (isset($data['executors'])) {
                     $task->executors()->sync($data['executors']);
                     DB::afterCommit(fn () => $this->sendTaskEventNotifications($task, $data['executors']));
@@ -235,6 +231,8 @@ class TaskService
 
     public function getCommentsActivity(Task $task, array $data): EloquentCollection
     {
+        [$dateFrom, $dateTo] = $this->activityDateBounds($data);
+
         return $task->comments()
             ->with(['commentator', 'media'])
             ->approved()
@@ -244,11 +242,11 @@ class TaskService
             ->when(isset($data['search']), function ($query) use ($data) {
                 return $query->where('comment', 'like', "%{$data['search']}%");
             })
-            ->when(isset($data['dateFrom']), function ($query) use ($data) {
-                return $query->where('created_at', '>=', Carbon::parse($data['dateFrom'])->startOfDay());
+            ->when($dateFrom !== null, function ($query) use ($dateFrom) {
+                return $query->where('created_at', '>=', Carbon::parse($dateFrom)->startOfDay());
             })
-            ->when(isset($data['dateTo']), function ($query) use ($data) {
-                return $query->where('created_at', '<=', Carbon::parse($data['dateTo'])->startOfDay());
+            ->when($dateTo !== null, function ($query) use ($dateTo) {
+                return $query->where('created_at', '<=', Carbon::parse($dateTo)->startOfDay());
             })
             ->orderByDesc('created_at')
             ->get();
@@ -256,19 +254,29 @@ class TaskService
 
     private function getEventsActivity(Task $task, array $data): EloquentCollection
     {
+        [$dateFrom, $dateTo] = $this->activityDateBounds($data);
+
         return $task->events()
             ->with('initiator')
             ->when(isset($data['author_id']), function ($query) use ($data) {
                 return $query->where('initiator_id', $data['author_id']);
             })
-            ->when(isset($data['date_from']), function ($query) use ($data) {
-                return $query->where('created_at', '>=', Carbon::parse($data['date_from'])->startOfDay());
+            ->when($dateFrom !== null, function ($query) use ($dateFrom) {
+                return $query->where('created_at', '>=', Carbon::parse($dateFrom)->startOfDay());
             })
-            ->when(isset($data['date_to']), function ($query) use ($data) {
-                return $query->where('created_at', '<=', Carbon::parse($data['date_to'])->startOfDay());
+            ->when($dateTo !== null, function ($query) use ($dateTo) {
+                return $query->where('created_at', '<=', Carbon::parse($dateTo)->startOfDay());
             })
             ->orderByDesc('created_at')
             ->get();
+    }
+
+    private function activityDateBounds(array $data): array
+    {
+        return [
+            $data['date_from'] ?? $data['dateFrom'] ?? null,
+            $data['date_to'] ?? $data['dateTo'] ?? null,
+        ];
     }
 
     public function addComment(Task $task, array $data): Comment

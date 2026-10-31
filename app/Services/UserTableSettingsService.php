@@ -57,7 +57,8 @@ class UserTableSettingsService
             'settings' => ['table_columns' => []],
         ]);
 
-        if (! isset($settingsRecord->settings)) {
+        // Существующие записи могут иметь NULL в nullable JSON-колонке settings.
+        if ($settingsRecord->settings === null) {
             return null;
         }
 

@@ -3,9 +3,10 @@
 namespace Tests\Feature;
 
 use App\Models\Field;
-use App\Models\SalesFunnel;
-use App\Models\Section;
 use App\Models\Role;
+use App\Models\SalesFunnel;
+use App\Models\SalesStage;
+use App\Models\Section;
 use App\Models\User;
 use App\Models\UserField;
 use App\Services\SalesFunnelService;
@@ -54,5 +55,33 @@ class SalesFunnelSectionSyncTest extends TestCase
         app(SalesFunnelService::class)->deleteSalesFunnel($funnel, $admin);
 
         $this->assertDatabaseMissing('sales_funnels', ['id' => $funnel->id]);
+    }
+
+    public function test_stage_sync_removes_omitted_stage_and_refreshes_funnel_relation(): void
+    {
+        $funnel = SalesFunnel::create(['title' => 'Stages', 'position' => 2]);
+        $stages = collect([
+            ['title' => 'First', 'type' => 'default', 'position' => 1],
+            ['title' => 'Removed', 'type' => 'default', 'position' => 2],
+            ['title' => 'Won', 'type' => 'success', 'position' => 3],
+            ['title' => 'Lost', 'type' => 'unsuccess', 'position' => 4],
+        ])->map(fn (array $data): SalesStage => SalesStage::create($data + [
+            'color' => '#ffffff',
+            'sales_funnel_id' => $funnel->id,
+        ]));
+        $funnel->load('salesStages');
+
+        $result = app(SalesFunnelService::class)->updateSalesFunnel($funnel, [
+            'stages' => $stages->except(1)->map(fn (SalesStage $stage): array => [
+                'id' => $stage->id,
+                'title' => $stage->title,
+                'type' => $stage->type,
+                'position' => $stage->position,
+            ])->values()->all(),
+        ]);
+
+        $this->assertSame($funnel, $result);
+        $this->assertDatabaseMissing('sales_stages', ['id' => $stages[1]->id]);
+        $this->assertEqualsCanonicalizing($stages->except(1)->pluck('id')->all(), $result->salesStages->pluck('id')->all());
     }
 }

@@ -156,6 +156,69 @@ class ChatMessageCommitTest extends TestCase
         $this->assertCount(0, $page['messages']);
     }
 
+    public function test_message_pages_preserve_order_and_flags_at_limit_boundary(): void
+    {
+        config()->set('chats.messages_limit', 2);
+        $viewer = $this->createBareUser('direction-viewer@example.test');
+        $chat = Chat::create(['type' => ChatTypeEnum::GROUP->value, 'name' => 'Directions']);
+        ChatMember::create(['chat_id' => $chat->id, 'user_id' => $viewer->id, 'is_creator' => true]);
+
+        $ids = [];
+        foreach (range(1, 7) as $number) {
+            $ids[] = ChatMessage::withoutEvents(fn (): ChatMessage => ChatMessage::create([
+                'chat_id' => $chat->id,
+                'user_id' => $viewer->id,
+                'text' => "Message {$number}",
+                'status' => ChatMessageTypeEnum::DELIVERED->value,
+            ]))->id;
+        }
+
+        $service = new ChatMessageService;
+        $cases = [
+            [[], [$ids[6], $ids[5]], true, false],
+            [['direction' => 'upward', 'last_message_id' => $ids[3]], [$ids[2], $ids[1]], true, true],
+            [['direction' => 'downward', 'last_message_id' => $ids[3]], [$ids[5], $ids[6]], true, true],
+            [['direction' => 'both', 'last_message_id' => $ids[3]], [$ids[2], $ids[1], $ids[3], $ids[5], $ids[6]], true, true],
+            [['direction' => 'upward', 'last_message_id' => $ids[1]], [$ids[0]], false, true],
+        ];
+
+        foreach ($cases as [$params, $expectedIds, $hasMoreUpward, $hasMoreDownward]) {
+            $page = $service->getMessagesList($chat->id, $params, $viewer);
+
+            $this->assertSame($expectedIds, $page['messages']->map(fn ($resource) => $resource->resource->id)->all());
+            $this->assertSame($hasMoreUpward, $page['has_more_upward']);
+            $this->assertSame($hasMoreDownward, $page['has_more_downward']);
+        }
+    }
+
+    public function test_message_search_filters_neighbors_but_keeps_requested_anchor(): void
+    {
+        config()->set('chats.messages_limit', 2);
+        $viewer = $this->createBareUser('search-viewer@example.test');
+        $chat = Chat::create(['type' => ChatTypeEnum::GROUP->value, 'name' => 'Search']);
+        ChatMember::create(['chat_id' => $chat->id, 'user_id' => $viewer->id, 'is_creator' => true]);
+
+        $ids = [];
+        foreach (['match one', 'anchor', 'match two'] as $text) {
+            $ids[] = ChatMessage::withoutEvents(fn (): ChatMessage => ChatMessage::create([
+                'chat_id' => $chat->id,
+                'user_id' => $viewer->id,
+                'text' => $text,
+                'status' => ChatMessageTypeEnum::DELIVERED->value,
+            ]))->id;
+        }
+
+        $page = (new ChatMessageService)->getMessagesList($chat->id, [
+            'direction' => 'both',
+            'last_message_id' => $ids[1],
+            'search_term' => 'match',
+        ], $viewer);
+
+        $this->assertSame([$ids[0], $ids[1], $ids[2]], $page['messages']->map(fn ($resource) => $resource->resource->id)->all());
+        $this->assertFalse($page['has_more_upward']);
+        $this->assertFalse($page['has_more_downward']);
+    }
+
     private function createBareUser(string $email): User
     {
         return User::withoutEvents(fn (): User => User::create([

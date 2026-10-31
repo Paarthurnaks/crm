@@ -98,8 +98,6 @@ class UserFieldService
     }
 
     /**
-     * @param array
-     *
      * @throws Exception
      */
     public function create(array $data): UserField

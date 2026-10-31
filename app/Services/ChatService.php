@@ -14,6 +14,7 @@ use App\Models\Chat;
 use App\Models\ChatMember;
 use App\Models\PartnerClient;
 use App\Models\User;
+use Closure;
 use Exception;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -175,20 +176,8 @@ class ChatService
 
     private function broadcastUpdateToGlobal(Chat $chat, bool $sendCurrentUser = true): void
     {
-        $actorId = auth()->id();
-        $recipientIds = $chat->members->pluck('user_id')
-            ->filter(fn ($id) => $sendCurrentUser || $id !== $actorId)
-            ->all();
-
-        DB::afterCommit(function () use ($chat, $recipientIds): void {
-            foreach ($recipientIds as $recipientId) {
-                try {
-                    broadcast(new GlobalChatUpdateBroadcast(ChatResource::make($chat, $recipientId), $recipientId));
-                } catch (\Throwable $exception) {
-                    Log::error('chat.update_broadcast.failed', ['chat_id' => $chat->id, 'user_id' => $recipientId, 'exception' => $exception::class]);
-                }
-            }
-        });
+        $this->broadcastToMembers($chat, $sendCurrentUser, 'chat.update_broadcast.failed',
+            fn (int $recipientId) => new GlobalChatUpdateBroadcast(ChatResource::make($chat, $recipientId), $recipientId));
     }
 
     /**
@@ -196,9 +185,18 @@ class ChatService
      */
     public function delete(Chat $chat): void
     {
+        $this->assertChatCanBeDeleted($chat);
+
+        $this->broadcastDeleteToGlobal($chat);
+
+        $chat->delete();
+    }
+
+    private function assertChatCanBeDeleted(Chat $chat): void
+    {
         switch ($chat->type) {
             case ChatTypeEnum::GROUP->value:
-                if (! auth()->user()->isCreatorOfChat($chat)) {
+                if (! auth()->user()->isCreatorOfChat($chat->id)) {
                     throw new Exception(self::ERROR_MESSAGES['chatCreatorError']);
                 }
                 break;
@@ -210,48 +208,45 @@ class ChatService
                 break;
 
             case ChatTypeEnum::PARTNER->value:
-                $partnerExists = $chat->members()->whereHas('user.role', function ($query) {
-                    return $query->where('original_title', DefaultRolesEnum::PARTNER->value);
-                })->exists();
-
-                if ($partnerExists) {
+                if ($this->chatHasMemberWithRole($chat, DefaultRolesEnum::PARTNER)) {
                     throw new Exception(self::ERROR_MESSAGES['forbiddenAction']);
                 }
                 break;
 
             case ChatTypeEnum::CLIENT->value:
-                $clientExists = $chat->members()->whereHas('user.role', function ($query) {
-                    return $query->where('original_title', DefaultRolesEnum::CLIENT->value);
-                })->exists();
-
-                $partnerExists = $chat->members()->whereHas('user.role', function ($query) {
-                    return $query->where('original_title', DefaultRolesEnum::PARTNER->value);
-                })->exists();
-
-                if ($clientExists && $partnerExists) {
+                if ($this->chatHasMemberWithRole($chat, DefaultRolesEnum::CLIENT)
+                    && $this->chatHasMemberWithRole($chat, DefaultRolesEnum::PARTNER)) {
                     throw new Exception(self::ERROR_MESSAGES['forbiddenAction']);
                 }
                 break;
         }
+    }
 
-        $this->broadcastDeleteToGlobal($chat);
-
-        $chat->delete();
+    private function chatHasMemberWithRole(Chat $chat, DefaultRolesEnum $role): bool
+    {
+        return $chat->members()->whereHas('user.role', fn ($query) =>
+            $query->where('original_title', $role->value))->exists();
     }
 
     public function broadcastDeleteToGlobal(Chat $chat, bool $sendCurrentUser = false): void
+    {
+        $this->broadcastToMembers($chat, $sendCurrentUser, 'chat.delete_broadcast.failed',
+            fn (int $recipientId) => new GlobalChatDeleteBroadcast($chat->id, $recipientId));
+    }
+
+    private function broadcastToMembers(Chat $chat, bool $sendCurrentUser, string $errorEvent, Closure $eventForRecipient): void
     {
         $actorId = auth()->id();
         $recipientIds = $chat->members->pluck('user_id')
             ->filter(fn ($id) => $sendCurrentUser || $id !== $actorId)
             ->all();
 
-        DB::afterCommit(function () use ($chat, $recipientIds): void {
+        DB::afterCommit(function () use ($chat, $recipientIds, $errorEvent, $eventForRecipient): void {
             foreach ($recipientIds as $recipientId) {
                 try {
-                    broadcast(new GlobalChatDeleteBroadcast($chat->id, $recipientId));
+                    broadcast($eventForRecipient($recipientId));
                 } catch (\Throwable $exception) {
-                    Log::error('chat.delete_broadcast.failed', ['chat_id' => $chat->id, 'user_id' => $recipientId, 'exception' => $exception::class]);
+                    Log::error($errorEvent, ['chat_id' => $chat->id, 'user_id' => $recipientId, 'exception' => $exception::class]);
                 }
             }
         });
@@ -414,12 +409,7 @@ class ChatService
             }
 
         } else {
-            $userIds = User::whereHas('role.permissions', function ($query) {
-                $query->where('entity', PermissionEntityEnum::PARTNERS_CHATS->value)
-                    ->where('view', PermissionTypeEnum::ALL->value);
-            })
-                ->pluck('id')
-                ->toArray();
+            $userIds = $this->getUsersWithPartnerChatAccess();
 
             $data = [
                 'type' => ChatTypeEnum::PARTNER->value,

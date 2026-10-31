@@ -48,6 +48,12 @@ class SectionRelatedValueTest extends TestCase
         $sectionField = $section->fields->first();
         $this->assertSame('999999', $sectionField->value);
         $this->assertNull($sectionField->model);
+
+        UserFieldValue::where('entity_id', $deal->id)->where('field_id', $field->id)->update(['value' => (string) $user->id]);
+        app(SectionService::class)->setSectionsFieldsValues($section, $deal, 'view');
+
+        $this->assertSame('Иван Иванов', $sectionField->value);
+        $this->assertNotNull($sectionField->model);
     }
 
     public function test_personal_sections_take_priority_over_configured_default_source(): void
@@ -70,6 +76,24 @@ class SectionRelatedValueTest extends TestCase
 
         $personal->delete();
         $this->assertSame(['Default'], $service->getSectionsByEntity('deals', 999999, $filter, [], $viewer)->pluck('title')->all());
+    }
+
+    public function test_sections_keep_position_order_and_first_duplicate_title(): void
+    {
+        $viewer = User::withoutEvents(fn (): User => User::create([
+            'name' => 'Section', 'surname' => 'Viewer', 'email' => 'section-order@example.test',
+            'password' => 'unused',
+        ]));
+        $last = Section::create(['user_id' => $viewer->id, 'entity' => 'deals', 'title' => 'Last', 'position' => 3]);
+        $first = Section::create(['user_id' => $viewer->id, 'entity' => 'deals', 'title' => 'Repeated', 'position' => 1]);
+        Section::create(['user_id' => $viewer->id, 'entity' => 'deals', 'title' => 'Repeated', 'position' => 2]);
+
+        $sections = app(SectionService::class)->getSectionsByEntity(
+            'deals', 999999, new SectionFilter(Request::create('/', 'GET')), [], $viewer
+        );
+
+        $this->assertSame([$first->id, $last->id], $sections->pluck('id')->values()->all());
+        $this->assertSame(['Repeated', 'Last'], $sections->pluck('title')->values()->all());
     }
 
     public function test_section_create_ignores_unvalidated_owner_id(): void

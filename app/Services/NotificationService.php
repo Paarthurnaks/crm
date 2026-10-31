@@ -3,8 +3,9 @@
 namespace App\Services;
 
 use App\Http\Resources\NotificationResource;
-use Carbon\Carbon;
 use App\Models\User;
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
@@ -13,35 +14,15 @@ class NotificationService
 {
     public function getNotifications(array $data, User $actor): array
     {
-        // Получаем пагинированный список уведомлений
-        $notifications = $actor
-            ->notifications()
-            ->when(isset($data['search_term']), function ($query) use ($data) {
-                $searchTerm = $data['search_term'];
-                $driver = $query->getModel()->getConnection()->getDriverName();
-                $expression = match ($driver) {
-                    'mysql' => "REGEXP_REPLACE(JSON_UNQUOTE(JSON_EXTRACT(data, '$.html')), '<[^>]+>', '')",
-                    'pgsql' => "REGEXP_REPLACE(data::jsonb->>'html', '<[^>]+>', '', 'g')",
-                    default => null,
-                };
+        $query = $actor->notifications();
+        if (isset($data['search_term'])) {
+            $this->applySearchFilter($query, $data['search_term']);
+        }
+        if (isset($data['date'])) {
+            $this->applyDateFilter($query, $data['date']);
+        }
 
-                if ($expression === null) {
-                    Log::error('Notification search does not support database driver', ['driver' => $driver]);
-                    throw new RuntimeException('Поиск уведомлений не поддерживается для этой базы данных');
-                }
-
-                $query->whereRaw($expression.' LIKE ?', ["%$searchTerm%"]);
-            })
-            ->when(isset($data['date']), function ($query) use ($data) {
-                $date = Carbon::createFromFormat('Y-m-d', $data['date']);
-                $startOfDay = $date->startOfDay();
-                $endOfDay = $date->copy()->endOfDay();
-
-                $query->where('created_at', '>=', $startOfDay)
-                    ->where('created_at', '<=', $endOfDay);
-            })
-            ->orderByDesc('created_at')
-            ->paginate(config('notifications.pagination_items'));
+        $notifications = $query->orderByDesc('created_at')->paginate(config('notifications.pagination_items'));
 
         $totalNotifications = $actor->unreadNotifications()->count();
 
@@ -49,6 +30,30 @@ class NotificationService
             'notifications' => NotificationResource::collection($notifications)->response()->getData(true),
             'total_unread_notifications' => $totalNotifications,
         ];
+    }
+
+    private function applySearchFilter(MorphMany $query, string $searchTerm): void
+    {
+        $driver = $query->getModel()->getConnection()->getDriverName();
+        $expression = match ($driver) {
+            'mysql' => "REGEXP_REPLACE(JSON_UNQUOTE(JSON_EXTRACT(data, '$.html')), '<[^>]+>', '')",
+            'pgsql' => "REGEXP_REPLACE(data::jsonb->>'html', '<[^>]+>', '', 'g')",
+            default => null,
+        };
+
+        if ($expression === null) {
+            Log::error('Notification search does not support database driver', ['driver' => $driver]);
+            throw new RuntimeException('Поиск уведомлений не поддерживается для этой базы данных');
+        }
+
+        $query->whereRaw($expression.' LIKE ?', ["%$searchTerm%"]);
+    }
+
+    private function applyDateFilter(MorphMany $query, string $dateValue): void
+    {
+        $date = Carbon::createFromFormat('Y-m-d', $dateValue);
+        $query->where('created_at', '>=', $date->startOfDay())
+            ->where('created_at', '<=', $date->copy()->endOfDay());
     }
 
     public function markAsRead(array $data, User $actor): void

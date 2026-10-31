@@ -136,16 +136,26 @@ class ReportService
         Log::debug('report.fields.loaded', ['report_id' => $report->id, 'field_count' => $report->fields->count()]);
     }
 
+    public function prepareReport(Report $report, User $actor, LengthAwarePaginator|EloquentCollection $deals): void
+    {
+        $this->loadVisibleFields($report, $actor);
+        $report->deals = $deals;
+
+        foreach ($deals as $deal) {
+            $this->setReportFieldsValues($report, $deal);
+        }
+    }
+
     public function setReportFieldsValues(
         Report $report,
         Deal $entityObj,
     ): void {
         foreach ($report->fields as $reportField) {
             if ($reportField->userField) {
-                $reportField->value = $entityObj->getCustomFieldValue($reportField->userField);
+                $reportField->value = $this->fieldValueForDeal($reportField, $entityObj);
             } elseif ($reportField->field) {
                 if ($reportField->field->code == 'responsible' || $reportField->field->code == 'creator') {
-                    $user = $entityObj->{$reportField->field->code};
+                    $user = $this->fieldValueForDeal($reportField, $entityObj);
                     $reportField->model = UserResource::make($user);
                     $reportField->value = $user->name.' '.$user->surname;
                 } elseif ($reportField->field->code == 'sales_stage' || $reportField->field->code == 'sales_funnel') {
@@ -154,10 +164,19 @@ class ReportService
                     $reportField->model = $obj;
                     $reportField->value = $obj->title;
                 } else {
-                    $reportField->value = $entityObj->{$reportField->field->code};
+                    $reportField->value = $this->fieldValueForDeal($reportField, $entityObj);
                 }
             }
         }
+    }
+
+    private function fieldValueForDeal(ReportField $reportField, Deal $deal): mixed
+    {
+        if ($reportField->userField) {
+            return $deal->getCustomFieldValue($reportField->userField);
+        }
+
+        return $deal->{$reportField->field->code};
     }
 
     public function exportRows(Report $report, EloquentCollection $deals): array
@@ -167,15 +186,14 @@ class ReportService
             $row = [];
             foreach ($report->fields as $reportField) {
                 if ($reportField->field) {
-                    $value = $deal->{$reportField->field->code};
                     $label = $reportField->field->name;
                 } elseif ($reportField->userField) {
-                    $value = $deal->getCustomFieldValue($reportField->userField);
                     $label = $reportField->userField->name;
                 } else {
                     continue;
                 }
 
+                $value = $this->fieldValueForDeal($reportField, $deal);
                 $row[$label] = is_scalar($value) || $value === null
                     ? $value
                     : json_encode($value, JSON_UNESCAPED_UNICODE);
@@ -191,30 +209,31 @@ class ReportService
     public function getDealsByFilter(array $filters, array $queryParams): LengthAwarePaginator
     {
         $limit = $queryParams['limit'] ?? config('constants.paginator.limit');
-        $query = Deal::query();
 
         try {
-            $this->filterQuery($query, $filters);
-
-            return $query->paginate($limit);
+            return $this->filteredDealsQuery($filters)->paginate($limit);
         } catch (\Throwable $exception) {
             Log::error('report.deal_filter.failed', ['step' => 'paginate', 'filter_count' => count($filters), 'exception' => $exception::class]);
             throw $exception;
         }
     }
 
-    public function getDealsByFilterWithoutPaginate(array $filters, array $queryParams): EloquentCollection
+    public function getFilteredDeals(array $filters): EloquentCollection
     {
-        $query = Deal::query();
-
         try {
-            $this->filterQuery($query, $filters);
-
-            return $query->get();
+            return $this->filteredDealsQuery($filters)->get();
         } catch (\Throwable $exception) {
             Log::error('report.deal_filter.failed', ['step' => 'export', 'filter_count' => count($filters), 'exception' => $exception::class]);
             throw $exception;
         }
+    }
+
+    private function filteredDealsQuery(array $filters): Builder
+    {
+        $query = Deal::query();
+        $this->filterQuery($query, $filters);
+
+        return $query;
     }
 
     public function filterQuery(Builder $query, array $filters): void

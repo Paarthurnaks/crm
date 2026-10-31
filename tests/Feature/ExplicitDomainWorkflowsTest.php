@@ -8,6 +8,7 @@ use App\Models\Field;
 use App\Models\SalesFunnel;
 use App\Models\SalesStage;
 use App\Models\Section;
+use App\Models\SectionField;
 use App\Models\User;
 use App\Models\UserField;
 use App\Services\ChatService;
@@ -117,6 +118,54 @@ class ExplicitDomainWorkflowsTest extends TestCase
             $this->assertDatabaseMissing('deals', ['title' => 'Откатываемая сделка']);
             $this->assertSame($eventCount, DealEvent::count());
         }
+    }
+
+    public function test_deal_creation_copies_template_section_and_fields_without_changing_template(): void
+    {
+        $actor = $this->createBareUser('deal-template@example.test');
+        $funnel = SalesFunnel::firstOrFail();
+        $field = Field::create(['name' => 'Title', 'entity' => 'deals', 'type' => 'string', 'code' => 'title']);
+        $template = Section::create([
+            'user_id' => $actor->id,
+            'entity' => 'deals',
+            'title' => 'Template',
+            'position' => 1,
+            'sales_funnel_id' => $funnel->id,
+            'is_template' => true,
+        ]);
+        SectionField::create(['section_id' => $template->id, 'field_id' => $field->id, 'position' => 1]);
+        $fields = Mockery::mock(UserFieldService::class);
+        $fields->shouldReceive('setupBooleanValues')->once();
+
+        $deal = (new DealService(Mockery::mock(EntityActivityService::class), $fields))
+            ->createDeal(['title' => 'Сделка', 'sales_funnel_id' => $funnel->id], $actor);
+
+        $copy = Section::where('deal_id', $deal->id)->where('title', 'Template')->firstOrFail();
+        $this->assertNotSame($template->id, $copy->id);
+        $this->assertFalse((bool) $copy->is_template);
+        $this->assertSame([$field->id], $copy->fields->pluck('field_id')->all());
+        $this->assertTrue((bool) $template->fresh()->is_template);
+    }
+
+    public function test_client_change_event_preserves_null_previous_value(): void
+    {
+        $actor = $this->createBareUser('deal-client-change@example.test');
+        $fields = Mockery::mock(UserFieldService::class);
+        $fields->shouldReceive('setupBooleanValues')->once();
+        $fields->shouldReceive('updateUserFieldEntity')->once()->andReturnUsing(function ($deal): void {
+            $deal->client = 'Компания';
+        });
+        $service = new DealService(Mockery::mock(EntityActivityService::class), $fields);
+        $deal = $service->createDeal(['title' => 'Без клиента'], $actor);
+
+        $service->updateDeal($deal, ['client' => 'Компания'], $actor);
+
+        $this->assertDatabaseHas('deal_events', [
+            'deal_id' => $deal->id,
+            'type' => DealEventTypeEnum::CHANGE_CLIENT->value,
+            'old_value' => null,
+            'new_value' => 'Компания',
+        ]);
     }
 
     private function createBareUser(string $email): User

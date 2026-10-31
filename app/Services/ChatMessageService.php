@@ -38,50 +38,34 @@ class ChatMessageService
     public function getMessagesList(int $chatId, array $data, User $viewer): array
     {
         $limit = config('chats.messages_limit');
-        $additionalCount = 1; // дополнительное сообщение для проверки наличия следующих сообщений
         $data['search_term'] = $data['search_term'] ?? null;
 
         if (! isset($data['direction'])) {
-            $messages = $this->messagePageQuery($chatId, $viewer)
-                ->when($data['search_term'], function ($query) use ($data) {
-                    $query->whereRaw('LOWER(text) LIKE ?', [mb_strtolower("%{$data['search_term']}%")]);
-                })
-                ->limit($limit + $additionalCount)
+            $messages = $this->searchableMessagePageQuery($chatId, $viewer, $data['search_term'])
+                ->limit($limit + 1)
                 ->orderBy('id', 'desc')
                 ->get();
 
-            $hasMoreUpward = $messages->count() > $limit;
-            if ($hasMoreUpward) {
-                $messages->pop();
-            }
-
-            Log::debug('chat.message.list.loaded', [
-                'chat_id' => $chatId,
-                'direction' => 'latest',
-                'message_count' => $messages->count(),
-            ]);
-
-            return [
-                'messages' => $messages->map(function ($message) use ($viewer) {
-                    return new ChatMessageResource($message, $viewer->id);
-                }),
-                'has_more_upward' => $hasMoreUpward,
-                'has_more_downward' => false,
-            ];
+            return $this->messagePageResult(
+                $chatId,
+                'latest',
+                $viewer,
+                $messages,
+                $this->trimMessagePage($messages, $limit, false),
+                false
+            );
         }
 
-        $upwardMessages = $this->getUpwardMessages($chatId, $data, $limit + $additionalCount, $viewer);
-        $downwardMessages = $this->getDownwardMessages($chatId, $data, $limit + $additionalCount, $viewer);
+        return $this->directionalMessagePage($chatId, $data, $viewer, $limit);
+    }
 
-        $hasMoreUpward = $upwardMessages->count() > $limit;
-        $hasMoreDownward = $downwardMessages->count() > $limit;
+    private function directionalMessagePage(int $chatId, array $data, User $viewer, int $limit): array
+    {
+        $upwardMessages = $this->getUpwardMessages($chatId, $data, $limit + 1, $viewer);
+        $downwardMessages = $this->getDownwardMessages($chatId, $data, $limit + 1, $viewer);
 
-        if ($hasMoreUpward) {
-            $upwardMessages->pop();
-        }
-        if ($hasMoreDownward) {
-            $downwardMessages->shift();
-        }
+        $hasMoreUpward = $this->trimMessagePage($upwardMessages, $limit, false);
+        $hasMoreDownward = $this->trimMessagePage($downwardMessages, $limit, true);
 
         $lastMessage = collect();
         $messages = collect();
@@ -108,9 +92,29 @@ class ChatMessageService
             $messages = $messages->concat($downwardMessages);
         }
 
+        return $this->messagePageResult($chatId, $data['direction'], $viewer, $messages, $hasMoreUpward, $hasMoreDownward);
+    }
+
+    private function trimMessagePage(Collection $messages, int $limit, bool $removeFirst): bool
+    {
+        if ($messages->count() <= $limit) {
+            return false;
+        }
+
+        if ($removeFirst) {
+            $messages->shift();
+        } else {
+            $messages->pop();
+        }
+
+        return true;
+    }
+
+    private function messagePageResult(int $chatId, string $direction, User $viewer, Collection $messages, bool $hasMoreUpward, bool $hasMoreDownward): array
+    {
         Log::debug('chat.message.list.loaded', [
             'chat_id' => $chatId,
-            'direction' => $data['direction'],
+            'direction' => $direction,
             'message_count' => $messages->count(),
         ]);
 
@@ -148,12 +152,17 @@ class ChatMessageService
         ]);
     }
 
-    private function getUpwardMessages(int $chatId, array $data, int $limit, User $viewer): Collection
+    private function searchableMessagePageQuery(int $chatId, User $viewer, ?string $searchTerm): Builder
     {
         return $this->messagePageQuery($chatId, $viewer)
-            ->when($data['search_term'], function ($query) use ($data) {
-                $query->whereRaw('LOWER(text) LIKE ?', [mb_strtolower("%{$data['search_term']}%")]);
-            })
+            ->when($searchTerm, function (Builder $query) use ($searchTerm): void {
+                $query->whereRaw('LOWER(text) LIKE ?', [mb_strtolower("%{$searchTerm}%")]);
+            });
+    }
+
+    private function getUpwardMessages(int $chatId, array $data, int $limit, User $viewer): Collection
+    {
+        return $this->searchableMessagePageQuery($chatId, $viewer, $data['search_term'])
             ->where('id', '<', $data['last_message_id'])
             ->orderBy('id', 'desc')
             ->limit($limit)
@@ -162,10 +171,7 @@ class ChatMessageService
 
     private function getDownwardMessages(int $chatId, array $data, int $limit, User $viewer): Collection
     {
-        return $this->messagePageQuery($chatId, $viewer)
-            ->when($data['search_term'], function ($query) use ($data) {
-                $query->whereRaw('LOWER(text) LIKE ?', [mb_strtolower("%{$data['search_term']}%")]);
-            })
+        return $this->searchableMessagePageQuery($chatId, $viewer, $data['search_term'])
             ->where('id', '>', $data['last_message_id'])
             ->orderBy('id', 'asc')
             ->limit($limit)
@@ -301,9 +307,28 @@ class ChatMessageService
     public function updateMessageStatus(array $data, int $chatId, User $actor): Collection
     {
         $userId = $actor->id;
-        $messageIds = $data['message_ids'];
+        $messages = $this->statusMessages($chatId, $data['message_ids'], $actor);
+        $selectedMessageIds = $messages->pluck('id');
+        Log::debug('Chat messages selected for status update', ['chat_id' => $chatId, 'message_count' => $selectedMessageIds->count()]);
 
-        $messages = $this->visibleMessages($chatId, $actor)->with([
+        $lastMessageId = $this->visibleMessages($chatId, $actor)
+            ->latest('id')
+            ->value('id');
+
+        return DB::transaction(function () use ($chatId, $actor, $userId, $selectedMessageIds, $messages, $lastMessageId): Collection {
+            $this->markSelectedMessagesRead($chatId, $actor, $userId, $selectedMessageIds, $messages);
+
+            DB::afterCommit(fn () => $this->broadcastStatusChanges($messages, $lastMessageId, $chatId));
+
+            Log::debug('chat.message_status.updated', ['chat_id' => $chatId, 'message_count' => $messages->count()]);
+
+            return $messages;
+        });
+    }
+
+    private function statusMessages(int $chatId, array $messageIds, User $actor): Collection
+    {
+        return $this->visibleMessages($chatId, $actor)->with([
             'chat' => [
                 'lastMessage' => [
                     'chat',
@@ -318,51 +343,42 @@ class ChatMessageService
         ])
             ->whereIn('id', $messageIds)
             ->get();
+    }
 
-        $selectedMessageIds = $messages->pluck('id');
-        Log::debug('Chat messages selected for status update', ['chat_id' => $chatId, 'message_count' => $selectedMessageIds->count()]);
+    private function markSelectedMessagesRead(int $chatId, User $actor, int $userId, Collection $selectedMessageIds, Collection $messages): void
+    {
+        UnreadChatMessage::where('user_id', $userId)
+            ->whereIn('chat_message_id', $selectedMessageIds)
+            ->delete();
 
-        $lastMessageId = $this->visibleMessages($chatId, $actor)
-            ->latest('id')
-            ->value('id');
+        $this->visibleMessages($chatId, $actor)
+            ->whereIn('id', $selectedMessageIds)
+            ->where('user_id', '!=', $userId)
+            ->where('status', '!=', ChatMessageTypeEnum::READ->value)
+            ->update(['status' => ChatMessageTypeEnum::READ->value]);
 
-        return DB::transaction(function () use ($chatId, $actor, $userId, $selectedMessageIds, $messages, $lastMessageId): Collection {
-            UnreadChatMessage::where('user_id', $userId)
-                ->whereIn('chat_message_id', $selectedMessageIds)
-                ->delete();
-
-            $this->visibleMessages($chatId, $actor)
-                ->whereIn('id', $selectedMessageIds)
-                ->where('user_id', '!=', $userId)
-                ->where('status', '!=', ChatMessageTypeEnum::READ->value)
-                ->update(['status' => ChatMessageTypeEnum::READ->value]);
-
-            $messages->each(function (ChatMessage $message) use ($userId): void {
-                if ($message->user_id !== $userId) {
-                    $message->status = ChatMessageTypeEnum::READ->value;
-                }
-            });
-
-            DB::afterCommit(function () use ($messages, $lastMessageId, $chatId): void {
-                foreach ($messages as $message) {
-                    try {
-                        $chatResource = ChatResource::make($message->chat, $message->user_id);
-                        $messageResource = ChatMessageResource::make($message, $message->user_id);
-                        broadcast(new ChangeMessageStatusBroadcast($messageResource, $chatResource));
-
-                        if ($message->id === $lastMessageId) {
-                            broadcast(new GlobalChatsMessageStatusChangeBroadcast($messageResource, $chatResource));
-                        }
-                    } catch (\Throwable $exception) {
-                        Log::error('chat.message_status.broadcast.failed', ['chat_id' => $chatId, 'message_id' => $message->id, 'exception' => $exception::class]);
-                    }
-                }
-            });
-
-            Log::debug('chat.message_status.updated', ['chat_id' => $chatId, 'message_count' => $messages->count()]);
-
-            return $messages;
+        $messages->each(function (ChatMessage $message) use ($userId): void {
+            if ($message->user_id !== $userId) {
+                $message->status = ChatMessageTypeEnum::READ->value;
+            }
         });
+    }
+
+    private function broadcastStatusChanges(Collection $messages, ?int $lastMessageId, int $chatId): void
+    {
+        foreach ($messages as $message) {
+            try {
+                $chatResource = ChatResource::make($message->chat, $message->user_id);
+                $messageResource = ChatMessageResource::make($message, $message->user_id);
+                broadcast(new ChangeMessageStatusBroadcast($messageResource, $chatResource));
+
+                if ($message->id === $lastMessageId) {
+                    broadcast(new GlobalChatsMessageStatusChangeBroadcast($messageResource, $chatResource));
+                }
+            } catch (\Throwable $exception) {
+                Log::error('chat.message_status.broadcast.failed', ['chat_id' => $chatId, 'message_id' => $message->id, 'exception' => $exception::class]);
+            }
+        }
     }
 
     public function hideMessage(int $messageId, User $actor): void
@@ -430,6 +446,7 @@ class ChatMessageService
             ->whereHas('chat', fn (Builder $chat) => $chat->withoutGlobalScopes()
                 ->whereHas('members', fn (Builder $members) => $members->where('user_id', $actor->id)))
             ->whereDoesntHave('hiddenByUsers', fn (Builder $hidden) => $hidden->where('user_id', $actor->id))
+            ->with('forward', 'media')
             ->get();
 
         return DB::transaction(function () use ($data, $messages, $actor): Collection {
@@ -437,29 +454,7 @@ class ChatMessageService
 
             foreach ($data['chat_ids'] as $chatId) {
                 foreach ($messages as $message) {
-                    $newMessageData = [
-                        'chat_id' => $chatId,
-                        'user_id' => $actor->id,
-                        'status' => ChatMessageTypeEnum::SENT->value,
-                        'text' => $message->text,
-                        'is_forwarded' => true,
-                        'reply_message_id' => null,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ];
-
-                    $forwardedMessage = $this->sendMessage($newMessageData, $chatId, $actor);
-
-                    foreach ($message->getMedia() as $media) {
-                        $media->copy($forwardedMessage);
-                    }
-
-                    ForwardingChatMessage::create([
-                        'original_message_id' => $message->forward()->exists() ? $message->forward->original_message_id : $message->id,
-                        'forwarded_message_id' => $forwardedMessage->id,
-                    ]);
-
-                    $result[] = $forwardedMessage;
+                    $result[] = $this->forwardToChat($message, $chatId, $actor);
                 }
             }
 
@@ -467,5 +462,24 @@ class ChatMessageService
 
             return collect($result);
         });
+    }
+
+    private function forwardToChat(ChatMessage $message, int $chatId, User $actor): ChatMessage
+    {
+        $forwardedMessage = $this->sendMessage([
+            'text' => $message->text,
+            'is_forwarded' => true,
+        ], $chatId, $actor);
+
+        foreach ($message->getMedia() as $media) {
+            $media->copy($forwardedMessage);
+        }
+
+        ForwardingChatMessage::create([
+            'original_message_id' => $message->forward?->original_message_id ?? $message->id,
+            'forwarded_message_id' => $forwardedMessage->id,
+        ]);
+
+        return $forwardedMessage;
     }
 }

@@ -22,14 +22,12 @@ class RoleService
 
     public function createRole(array $roleData): Role
     {
-        $role = DB::transaction(function () use ($roleData) {
+        return DB::transaction(function () use ($roleData) {
             $role = Role::create([
                 'title' => $roleData['title'],
             ]);
 
-            foreach ($roleData['permissions'] as $permissionData) {
-                $this->permissionService->createPermission($permissionData, $role->id);
-            }
+            $this->syncPermissions($role, $roleData['permissions'], false);
 
             $this->syncFieldAccess($role, $roleData, false);
             if (isset($roleData['available_disk_entities'])) {
@@ -38,8 +36,6 @@ class RoleService
 
             return $role;
         });
-
-        return $role;
     }
 
     public function updateRole(Role $role, array $roleData): Role
@@ -49,13 +45,7 @@ class RoleService
                 $role->update(['title' => $roleData['title']]);
             }
             if (isset($roleData['permissions'])) {
-                foreach ($roleData['permissions'] as $permissionData) {
-                    if (array_key_exists('id', $permissionData)) {
-                        $this->permissionService->updatePermission($permissionData, $role->id);
-                    } else {
-                        $this->permissionService->createPermission($permissionData, $role->id);
-                    }
-                }
+                $this->syncPermissions($role, $roleData['permissions'], true);
             }
 
             if (isset($roleData['available_disk_entities'])) {
@@ -67,6 +57,17 @@ class RoleService
         });
 
         return $role;
+    }
+
+    private function syncPermissions(Role $role, array $permissions, bool $updating): void
+    {
+        foreach ($permissions as $permissionData) {
+            if ($updating && array_key_exists('id', $permissionData)) {
+                $this->permissionService->updatePermission($permissionData, $role->id);
+            } else {
+                $this->permissionService->createPermission($permissionData, $role->id);
+            }
+        }
     }
 
     public function deleteRole(Role $role): void
@@ -81,22 +82,27 @@ class RoleService
             : null;
 
         foreach (['view', 'create', 'update'] as $action) {
-            foreach (['fields' => 'fields', 'user_fields' => 'userFields'] as $suffix => $relation) {
-                $key = "available_{$action}_{$suffix}";
-                if (! isset($data[$key])) {
-                    continue;
-                }
+            $this->syncFieldAction($role, $clientRole, $data, $action, $replace);
+        }
+    }
 
-                $this->syncRoleRelation($role, $relation, $action, $data[$key], $replace);
-                if ($action === 'view' && $clientRole) {
-                    $this->syncRoleRelation($clientRole, $relation, $action, $data[$key], true);
-                }
-                Log::debug('role.field_access.synced', [
-                    'role_id' => $role->id,
-                    'action' => $action,
-                    'field_count' => count($data[$key]),
-                ]);
+    private function syncFieldAction(Role $role, ?Role $clientRole, array $data, string $action, bool $replace): void
+    {
+        foreach (['fields' => 'fields', 'user_fields' => 'userFields'] as $suffix => $relation) {
+            $key = "available_{$action}_{$suffix}";
+            if (! isset($data[$key])) {
+                continue;
             }
+
+            $this->syncRoleRelation($role, $relation, $action, $data[$key], $replace);
+            if ($action === 'view' && $clientRole) {
+                $this->syncRoleRelation($clientRole, $relation, $action, $data[$key], true);
+            }
+            Log::debug('role.field_access.synced', [
+                'role_id' => $role->id,
+                'action' => $action,
+                'field_count' => count($data[$key]),
+            ]);
         }
     }
 

@@ -32,18 +32,16 @@ class EntityActivityService
 
         Log::debug('entity_activity.list.loaded', ['entity_type' => $model::class, 'entity_id' => $model->getKey(), 'count' => $activities->count()]);
 
-        $transformedItems = $activities->getCollection()->map(function ($activity) use ($activityMap) {
-            if (array_key_exists($activity->activityable_type, $activityMap)) {
+        $transformedItems = $activities->getCollection()
+            ->filter(fn ($activity): bool => array_key_exists($activity->activityable_type, $activityMap))
+            ->map(function ($activity) use ($activityMap): array {
                 $resourceClass = $activityMap[$activity->activityable_type]['resource'];
 
                 return [
                     'type' => $activityMap[$activity->activityable_type]['type'],
                     'data' => new $resourceClass($activity->activityable),
                 ];
-            }
-
-            return null;
-        })->filter();
+            });
 
         return new LengthAwarePaginator(
             $transformedItems,

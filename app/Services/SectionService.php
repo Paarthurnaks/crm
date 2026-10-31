@@ -11,6 +11,7 @@ use App\Models\Deal;
 use App\Models\Section;
 use App\Models\SectionField;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -19,30 +20,17 @@ class SectionService
 {
     public function __construct(private SectionFieldService $sectionFieldService) {}
 
-    public function getSectionsByEntity(string $entity, int $id, SectionFilter $sectionFilter, array $queryParams, User $actor): mixed
+    public function getSectionsByEntity(string $entity, int $id, SectionFilter $sectionFilter, array $queryParams, User $actor): EloquentCollection
     {
-        $sections = Section::query()
-            ->where('entity', $entity)
-            ->where('is_template', false)
-            ->orderBy('position')
-            ->where('user_id', $actor->id)
-            ->filter($sectionFilter)
-            ->with('fields.userField', 'fields.field')
-            ->get();
+        $sections = $this->sectionQuery($entity, $actor->id, $sectionFilter)->get();
 
         if ($sections->count() === 0) {
-            Log::debug('section.source.selected', ['entity' => $entity, 'actor_id' => $actor->id, 'source' => 'default']);
-            $sections = Section::query()
-                ->where('entity', $entity)
-                ->where('is_template', false)
-                ->orderBy('position')
-                ->where('user_id', config('sections.default_template_user_id'))
-                ->filter($sectionFilter)
-                ->with('fields.userField', 'fields.field')
-                ->get();
+            $sections = $this->sectionQuery($entity, config('sections.default_template_user_id'), $sectionFilter)->get();
+            $source = 'default';
         } else {
-            Log::debug('section.source.selected', ['entity' => $entity, 'actor_id' => $actor->id, 'source' => 'personal']);
+            $source = 'personal';
         }
+        Log::debug('section.source.selected', ['entity' => $entity, 'actor_id' => $actor->id, 'source' => $source]);
 
         $seenTitles = [];
         $sections = $sections->filter(function ($section) use (&$seenTitles) {
@@ -73,6 +61,17 @@ class SectionService
         }
 
         return $sections;
+    }
+
+    private function sectionQuery(string $entity, int $userId, SectionFilter $filter): Builder
+    {
+        return Section::query()
+            ->where('entity', $entity)
+            ->where('is_template', false)
+            ->orderBy('position')
+            ->where('user_id', $userId)
+            ->filter($filter)
+            ->with('fields.userField', 'fields.field');
     }
 
     public function setSectionsFieldsValues(Section $section, $entityObj, string $type, ?array $related = null): void
@@ -107,21 +106,35 @@ class SectionService
         $sectionField->value = $related['values'][$sectionField->id]
             ?? $sectionField->getUserFieldValue($deal->id);
         if ($sectionField->userField->type === 'user') {
-            $user = $related['users'][(int) $sectionField->value] ?? null;
-            if ($user) {
-                $sectionField->model = UserResource::make($user);
-                $sectionField->value = $user->name.' '.$user->surname;
-            } elseif ($sectionField->value) {
-                Log::warning('section.related_user.missing', ['section_field_id' => $sectionField->id]);
-            }
-        } elseif ($sectionField->userField->type === 'deal') {
-            $relatedDeal = $related['deals'][(int) $sectionField->value] ?? null;
-            if ($relatedDeal) {
-                $sectionField->model = DealResource::make($relatedDeal);
-                $sectionField->value = $relatedDeal->title;
-            } elseif ($sectionField->value) {
-                Log::warning('section.related_deal.missing', ['section_field_id' => $sectionField->id]);
-            }
+            $this->setRelatedUserValue($sectionField, $related['users']);
+
+            return;
+        }
+
+        if ($sectionField->userField->type === 'deal') {
+            $this->setRelatedDealValue($sectionField, $related['deals']);
+        }
+    }
+
+    private function setRelatedUserValue(SectionField $sectionField, array $users): void
+    {
+        $user = $users[(int) $sectionField->value] ?? null;
+        if ($user) {
+            $sectionField->model = UserResource::make($user);
+            $sectionField->value = $user->name.' '.$user->surname;
+        } elseif ($sectionField->value) {
+            Log::warning('section.related_user.missing', ['section_field_id' => $sectionField->id]);
+        }
+    }
+
+    private function setRelatedDealValue(SectionField $sectionField, array $deals): void
+    {
+        $relatedDeal = $deals[(int) $sectionField->value] ?? null;
+        if ($relatedDeal) {
+            $sectionField->model = DealResource::make($relatedDeal);
+            $sectionField->value = $relatedDeal->title;
+        } elseif ($sectionField->value) {
+            Log::warning('section.related_deal.missing', ['section_field_id' => $sectionField->id]);
         }
     }
 

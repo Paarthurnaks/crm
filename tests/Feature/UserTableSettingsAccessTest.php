@@ -87,6 +87,37 @@ class UserTableSettingsAccessTest extends TestCase
         $this->assertSame('Title', $result->settings['table_columns'][0]['name']);
     }
 
+    public function test_index_returns_collection_without_entity_and_empty_payload_for_null_settings(): void
+    {
+        $role = Role::create(['title' => 'limited']);
+        $user = $this->createUser($role);
+        UserTableSettings::create(['user_id' => $user->id, 'entity' => 'deals', 'settings' => null]);
+        $this->actingAs($user, 'api');
+
+        $this->getJson('/api/user-table-settings')->assertOk()->assertJsonCount(1, 'data');
+        $this->getJson('/api/user-table-settings?entity=deals')->assertOk()->assertJsonPath('data', []);
+    }
+
+    public function test_invalid_and_unresolved_columns_are_omitted_from_presentation(): void
+    {
+        $role = Role::create(['title' => 'admin', 'original_title' => DefaultRolesEnum::SUPER_ADMIN->value]);
+        $user = $this->createUser($role);
+        $field = Field::create(['name' => 'Title', 'entity' => 'deals', 'type' => 'string', 'code' => 'title']);
+        UserTableSettings::create([
+            'user_id' => $user->id,
+            'entity' => 'deals',
+            'settings' => ['table_columns' => [
+                ['id' => $field->id, 'is_userfield' => false],
+                ['id' => 999999, 'is_userfield' => false],
+                ['missing_id' => true],
+            ]],
+        ]);
+        $this->actingAs($user, 'api');
+
+        $settings = (new UserTableSettingsService)->getUserTableSettings(['entity' => 'deals'], $user);
+        $this->assertSame([$field->id], array_column($settings->settings['table_columns'], 'id'));
+    }
+
     private function createUser(Role $role): User
     {
         return User::withoutEvents(fn (): User => User::create([

@@ -163,29 +163,39 @@ class DealService
         ]);
 
         if ($actorId !== null) {
-            $sections = Section::where('entity', 'deals')
-                ->where('is_template', true)
-                ->where('sales_funnel_id', $deal->sales_funnel_id)
-                ->where('user_id', $actorId)
-                ->with('fields')
-                ->get();
-
-            foreach ($sections as $section) {
-                $clone = $section->replicate();
-                $clone->deal_id = $deal->id;
-                $clone->is_template = false;
-                $clone->save();
-
-                foreach ($section->fields as $field) {
-                    $cloneField = $field->replicate();
-                    $cloneField->section_id = $clone->id;
-                    $cloneField->save();
-                }
-            }
+            $this->copyTemplateSectionsToDeal($deal, $actorId);
         }
 
         $this->userFieldService->setupBooleanValues();
         Log::debug('deal.initialized', ['deal_id' => $deal->id, 'actor_id' => $actorId]);
+    }
+
+    private function copyTemplateSectionsToDeal(Deal $deal, int $actorId): void
+    {
+        $sections = Section::where('entity', 'deals')
+            ->where('is_template', true)
+            ->where('sales_funnel_id', $deal->sales_funnel_id)
+            ->where('user_id', $actorId)
+            ->with('fields')
+            ->get();
+
+        foreach ($sections as $section) {
+            $this->copyTemplateSection($section, $deal);
+        }
+    }
+
+    private function copyTemplateSection(Section $section, Deal $deal): void
+    {
+        $copy = $section->replicate();
+        $copy->deal_id = $deal->id;
+        $copy->is_template = false;
+        $copy->save();
+
+        foreach ($section->fields as $field) {
+            $fieldCopy = $field->replicate();
+            $fieldCopy->section_id = $copy->id;
+            $fieldCopy->save();
+        }
     }
 
     private function recordDealChanges(Deal $deal, array $changes, array $original, ?int $actorId): void
@@ -198,12 +208,12 @@ class DealService
             $this->recordResponsibleChange($deal, $original, $actorId);
         }
 
-        if (array_key_exists('client', $changes) && $actorId !== null) {
-            $this->recordClientChange($deal, $original, $actorId);
-        }
-
         if ($actorId === null) {
             return;
+        }
+
+        if (array_key_exists('client', $changes)) {
+            $this->recordClientChange($deal, $original, $actorId);
         }
 
         $this->recordOtherFieldChanges($deal, $changes, $original, $actorId);

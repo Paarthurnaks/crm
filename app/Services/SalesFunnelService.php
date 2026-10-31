@@ -222,20 +222,15 @@ class SalesFunnelService
                 in_array(SalesStageEnum::UNSUCCESS->value, $types);
     }
 
-    /**
-     * @param array @arrayStagesIds
-     * @return SalesFunnel $salesFunnel
-     */
-    private function syncStages(SalesFunnel $salesFunnel, array $arrayStagesIds): SalesFunnel
+    /** @param array<int, int> $stageIds */
+    private function syncStages(SalesFunnel $salesFunnel, array $stageIds): void
     {
         foreach ($salesFunnel->salesStages as $stage) {
-            if (! in_array($stage->id, $arrayStagesIds)) {
+            if (! in_array($stage->id, $stageIds, true)) {
                 $stage->delete();
             }
         }
 
         $salesFunnel->refresh();
-
-        return $salesFunnel;
     }
 }

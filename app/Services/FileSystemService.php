@@ -188,23 +188,7 @@ class FileSystemService
             ->first();
 
         $sourcePath = $this->availablePath($entity->path, $entity->title);
-        $trashParent = $duplicateInTrash?->path ?? $entity->path;
-        $destinationPath = $this->storagePath(
-            self::TRASH_DIRECTORY,
-            $trashParent,
-            $entity->id.'_'.$entity->title
-        );
-        $renamedTitle = null;
-
-        if ($duplicateInTrash && $entity->type->value === DiskEntityTypeEnum::FILE->value) {
-            $renamedTitle = $this->titleWithEntityId($entity);
-            $destinationPath = $this->storagePath(
-                self::TRASH_DIRECTORY,
-                $entity->path,
-                $entity->id.'_'.$renamedTitle
-            );
-            Log::debug('disk.file.trash_name_resolved', ['entity_id' => $entity->id]);
-        }
+        [$destinationPath, $renamedTitle] = $this->trashDestination($entity, $duplicateInTrash);
 
         if (! Storage::disk('public')->exists($sourcePath)) {
             Log::error('Disk entity source is missing', ['disk_entity_id' => $entity->id]);
@@ -251,22 +235,30 @@ class FileSystemService
         }
     }
 
+    /** @return array{string, ?string} */
+    private function trashDestination(DiskEntity $entity, ?DiskEntity $duplicateInTrash): array
+    {
+        if ($duplicateInTrash && $entity->type->value === DiskEntityTypeEnum::FILE->value) {
+            $renamedTitle = $this->titleWithEntityId($entity);
+            Log::debug('disk.file.trash_name_resolved', ['entity_id' => $entity->id]);
+
+            return [
+                $this->storagePath(self::TRASH_DIRECTORY, $entity->path, $entity->id.'_'.$renamedTitle),
+                $renamedTitle,
+            ];
+        }
+
+        return [
+            $this->storagePath(self::TRASH_DIRECTORY, $duplicateInTrash?->path ?? $entity->path, $entity->id.'_'.$entity->title),
+            null,
+        ];
+    }
+
     private function moveEntities(string $sourcePath, string $destinationPath): void
     {
         $disk = Storage::disk('public');
-        $allFilesAndDirs = $disk->allFiles($sourcePath);
         $allDirectories = $disk->allDirectories($sourcePath);
-        $moves = [];
-        foreach ($allFilesAndDirs as $file) {
-            $newPath = Str::replaceFirst(rtrim($sourcePath, '/').'/', rtrim($destinationPath, '/').'/', $file);
-            if ($disk->exists($newPath)) {
-                Log::warning('Disk entity destination already exists', ['path_hash' => hash('sha256', $newPath)]);
-
-                throw new RuntimeException('Файл с таким именем уже существует');
-            }
-
-            $moves[] = [$file, $newPath];
-        }
+        $moves = $this->plannedFileMoves($disk->allFiles($sourcePath), $sourcePath, $destinationPath);
 
         $completedMoves = [];
         try {
@@ -275,26 +267,53 @@ class FileSystemService
                 $completedMoves[] = [$source, $destination];
             }
 
-            foreach ($allDirectories as $directory) {
-                $newPath = Str::replaceFirst(rtrim($sourcePath, '/').'/', rtrim($destinationPath, '/').'/', $directory);
-                if (! $disk->exists($newPath)) {
-                    $this->makeDirectoryOrFail($newPath);
-                }
-                $this->deleteDirectoryOrFail($directory);
-            }
+            $this->moveDirectories($allDirectories, $sourcePath, $destinationPath);
 
             $this->deleteDirectoryOrFail($sourcePath);
         } catch (Throwable $exception) {
-            foreach (array_reverse($completedMoves) as [$source, $destination]) {
-                if (! $disk->move($destination, $source)) {
-                    Log::error('Disk entity move rollback failed', [
-                        'source_hash' => hash('sha256', $source),
-                        'destination_hash' => hash('sha256', $destination),
-                    ]);
-                }
-            }
+            $this->rollbackFileMoves($completedMoves);
 
             throw $exception;
+        }
+    }
+
+    private function plannedFileMoves(array $files, string $sourcePath, string $destinationPath): array
+    {
+        $moves = [];
+        foreach ($files as $file) {
+            $newPath = Str::replaceFirst(rtrim($sourcePath, '/').'/', rtrim($destinationPath, '/').'/', $file);
+            if (Storage::disk('public')->exists($newPath)) {
+                Log::warning('Disk entity destination already exists', ['path_hash' => hash('sha256', $newPath)]);
+
+                throw new RuntimeException('Файл с таким именем уже существует');
+            }
+
+            $moves[] = [$file, $newPath];
+        }
+
+        return $moves;
+    }
+
+    private function moveDirectories(array $directories, string $sourcePath, string $destinationPath): void
+    {
+        foreach ($directories as $directory) {
+            $newPath = Str::replaceFirst(rtrim($sourcePath, '/').'/', rtrim($destinationPath, '/').'/', $directory);
+            if (! Storage::disk('public')->exists($newPath)) {
+                $this->makeDirectoryOrFail($newPath);
+            }
+            $this->deleteDirectoryOrFail($directory);
+        }
+    }
+
+    private function rollbackFileMoves(array $completedMoves): void
+    {
+        foreach (array_reverse($completedMoves) as [$source, $destination]) {
+            if (! Storage::disk('public')->move($destination, $source)) {
+                Log::error('Disk entity move rollback failed', [
+                    'source_hash' => hash('sha256', $source),
+                    'destination_hash' => hash('sha256', $destination),
+                ]);
+            }
         }
     }
 
@@ -311,17 +330,7 @@ class FileSystemService
 
         $sourcePath = $this->locateTrashedEntityPath($entity);
 
-        $destinationPath = $this->availablePath(
-            $duplicateInDisk?->path ?? $entity->original_path,
-            $duplicateInDisk?->title ?? $entity->title
-        );
-        $renamedTitle = null;
-
-        if ($duplicateInDisk && $entity->type->value === DiskEntityTypeEnum::FILE->value) {
-            $renamedTitle = $this->titleWithEntityId($entity);
-            $destinationPath = $this->availablePath($entity->original_path, $renamedTitle);
-            Log::debug('disk.file.restore_name_resolved', ['entity_id' => $entity->id]);
-        }
+        [$destinationPath, $renamedTitle] = $this->restoreDestination($entity, $duplicateInDisk);
         $missingParents = $this->missingRestoreParents($entity);
 
         if (! Storage::disk('public')->exists($sourcePath)) {
@@ -368,6 +377,22 @@ class FileSystemService
         if ($duplicateInDisk && $entity->type->value !== DiskEntityTypeEnum::FILE->value) {
             $entity->delete();
         }
+    }
+
+    /** @return array{string, ?string} */
+    private function restoreDestination(DiskEntity $entity, ?DiskEntity $duplicateInDisk): array
+    {
+        if ($duplicateInDisk && $entity->type->value === DiskEntityTypeEnum::FILE->value) {
+            $renamedTitle = $this->titleWithEntityId($entity);
+            Log::debug('disk.file.restore_name_resolved', ['entity_id' => $entity->id]);
+
+            return [$this->availablePath($entity->original_path, $renamedTitle), $renamedTitle];
+        }
+
+        return [
+            $this->availablePath($duplicateInDisk?->path ?? $entity->original_path, $duplicateInDisk?->title ?? $entity->title),
+            null,
+        ];
     }
 
     private function missingRestoreParents(DiskEntity $entity): array

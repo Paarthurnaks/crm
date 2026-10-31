@@ -73,14 +73,7 @@ class KnowledgeBaseService
     {
         foreach ($contents as $index => $contentData) {
             $type = isset($contentData['file']) ? 'file' : 'text';
-            $content = $knowledgeBase->contents()->create([
-                'type' => $type,
-                'content' => $type === 'text' ? $contentData['content'] : null,
-                'order' => $index + 1,
-            ]);
-            if (isset($contentData['file']) && $contentData['file']) {
-                $content->addMedia($contentData['file'])->toMediaCollection('file');
-            }
+            $this->saveContent($knowledgeBase, new KnowledgeBaseContent, $contentData, $type, $index + 1);
         }
     }
 
@@ -101,16 +94,21 @@ class KnowledgeBaseService
                 continue;
             }
 
-            $content->fill([
-                'type' => $type,
-                'content' => $contentData['content'] ?? null,
-                'order' => $index + 1,
-            ]);
-            $knowledgeBase->contents()->save($content);
+            $this->saveContent($knowledgeBase, $content, $contentData, $type, $index + 1);
+        }
+    }
 
-            if ($type === 'file' && isset($contentData['file'])) {
-                $this->replaceMedia($content, $contentData['file'], 'file');
-            }
+    private function saveContent(KnowledgeBase $knowledgeBase, KnowledgeBaseContent $content, array $data, string $type, int $position): void
+    {
+        $content->fill([
+            'type' => $type,
+            'content' => $type === 'text' ? $data['content'] : null,
+            'order' => $position,
+        ]);
+        $knowledgeBase->contents()->save($content);
+
+        if ($type === 'file' && isset($data['file']) && $data['file']) {
+            $this->replaceMedia($content, $data['file'], 'file');
         }
     }
 

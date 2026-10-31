@@ -183,13 +183,11 @@ class ReportController extends Controller
             return ResponseService::forbidden(message: 'Вы не имеете доступ к этому отчёту');
         }
 
-        $this->reportService->loadVisibleFields($report, $request->user());
-
-        $report->deals = $this->reportService->getDealsByFilter($report->filter, $request->all());
-
-        foreach ($report->deals as $deal) {
-            $this->reportService->setReportFieldsValues($report, $deal);
-        }
+        $this->reportService->prepareReport(
+            $report,
+            $request->user(),
+            $this->reportService->getDealsByFilter($report->filter, $request->all())
+        );
 
         return ResponseService::success(
             ReportDetailResource::make($report)
@@ -210,13 +208,11 @@ class ReportController extends Controller
             return ResponseService::forbidden(message: 'Вы не имеете доступ к этому отчёту');
         }
 
-        $this->reportService->loadVisibleFields($report, $request->user());
-
-        $report->deals = $this->reportService->getDealsByFilterWithoutPaginate($report->filter ?? [], $request->all());
-
-        foreach ($report->deals as $deal) {
-            $this->reportService->setReportFieldsValues($report, $deal);
-        }
+        $this->reportService->prepareReport(
+            $report,
+            $request->user(),
+            $this->reportService->getFilteredDeals($report->filter ?? [])
+        );
 
         $rows = $this->reportService->exportRows($report, $report->deals);
         $fileContent = Excel::raw(new ReportExport($rows), \Maatwebsite\Excel\Excel::XLSX);
