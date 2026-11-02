@@ -8,10 +8,6 @@ use Illuminate\Database\Eloquent\Model;
 use OpenApi\Annotations as OA;
 
 /**
- * @property int $field_id
- * @property string $option
- * @property int $sort_order
- *
  * @OA\Schema(
  *     title="UserFieldEnumValue",
  *     description="Значение пользовательского поля",
@@ -20,6 +16,16 @@ use OpenApi\Annotations as OA;
  *         name="UserFieldValue"
  *     )
  * )
+ *
+ * @property int $id
+ * @property string $option
+ * @property int $field_id
+ * @property int|null $sort_order
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @method static \Illuminate\Database\Eloquent\Builder<static> filter(\App\Http\Filters\Abstract\QueryFilter $filter)
+ * @method static \Illuminate\Database\Eloquent\Builder<static> query()
+ * @mixin \Illuminate\Database\Eloquent\Builder<static>
  */
 class UserFieldEnumValue extends Model
 {

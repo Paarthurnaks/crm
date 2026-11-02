@@ -17,15 +17,6 @@ use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 
 /**
- * @property int $id
- * @property int $deal_id
- * @property int $creator_id
- * @property string $title
- * @property string $description
- * @property string $status
- * @property string $deadline
- * @property string $type
- *
  * @OA\Schema(
  *     title="Task",
  *     description="Задача",
@@ -34,6 +25,37 @@ use Spatie\MediaLibrary\InteractsWithMedia;
  *         name="Task"
  *     )
  * )
+ *
+ * @property int $id
+ * @property int|null $deal_id
+ * @property int $creator_id
+ * @property string $title
+ * @property string $status
+ * @property string|null $deadline
+ * @property string|null $start_time
+ * @property string $type
+ * @property string|null $email
+ * @property string|null $client_full_name
+ * @property string|null $service
+ * @property int|null $docket_number
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\User|null $creator
+ * @property-read \App\Models\Deal|null $deal
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\User> $executors
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\User> $observers
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\TaskEvent> $events
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\EntityActivity> $activities
+ * @property-read string $description
+ * @property-write string|null $description
+ * @method static \Illuminate\Database\Eloquent\Builder<static> ownTasks(?int $actorId = null)
+ * @method static \Illuminate\Database\Eloquent\Builder<static> openedTasks()
+ * @method static \Illuminate\Database\Eloquent\Builder<static> allTasks()
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \Spatie\MediaLibrary\MediaCollections\Models\Media> $media
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Comment> $comments
+ * @method static \Illuminate\Database\Eloquent\Builder<static> filter(\App\Http\Filters\Abstract\QueryFilter $filter)
+ * @method static \Illuminate\Database\Eloquent\Builder<static> query()
+ * @mixin \Illuminate\Database\Eloquent\Builder<static>
  */
 class Task extends Model implements HasMedia
 {

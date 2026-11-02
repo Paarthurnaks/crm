@@ -34,7 +34,7 @@ class ConfirmEmailMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'ЕСБ CRM: Подтвердите адрес электронной почты.',
+            subject: 'CRM: Подтвердите адрес электронной почты.',
         );
     }
 

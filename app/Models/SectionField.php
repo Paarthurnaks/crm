@@ -16,6 +16,21 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *         name="SectionField"
  *     )
  * )
+ *
+ * @property int $id
+ * @property int $section_id
+ * @property int|null $field_id
+ * @property int|null $user_field_id
+ * @property int $position
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\Section|null $section
+ * @property-read \App\Models\Field|null $field
+ * @property-read \App\Models\UserField|null $userField
+ * @property mixed $value
+ * @property mixed $model
+ * @method static \Illuminate\Database\Eloquent\Builder<static> query()
+ * @mixin \Illuminate\Database\Eloquent\Builder<static>
  */
 class SectionField extends Model
 {

@@ -21,8 +21,6 @@ use Spatie\MediaLibrary\InteractsWithMedia;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 /**
- * @property Role $role
- *
  * @OA\Schema(
  *     title="User",
  *     description="Пользователь",
@@ -31,6 +29,35 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
  *         name="User"
  *     )
  * )
+ *
+ * @property int $id
+ * @property string $name
+ * @property string $surname
+ * @property string $email
+ * @property string $password
+ * @property bool $active
+ * @property string|null $last_login
+ * @property string|null $post
+ * @property string|null $color
+ * @property int|null $role_id
+ * @property int|null $division_id
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\HighLevelAdmin|null $highLevelAdmin
+ * @property-read \App\Models\Role|null $role
+ * @property-read \App\Models\Division|null $division
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Deal> $deals
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Deal> $partnerDeals
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\User> $clients
+ * @property-read \App\Models\User|null $partner
+ * @property-read bool $is_high_level_admin
+ * @property-read string $partner_deal_client_key
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \Spatie\MediaLibrary\MediaCollections\Models\Media> $media
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Chat> $chats
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\ChatCategory> $chatCategories
+ * @method static \Illuminate\Database\Eloquent\Builder<static> filter(\App\Http\Filters\Abstract\QueryFilter $filter)
+ * @method static \Illuminate\Database\Eloquent\Builder<static> query()
+ * @mixin \Illuminate\Database\Eloquent\Builder<static>
  */
 class User extends Authenticatable implements HasMedia, JWTSubject
 {

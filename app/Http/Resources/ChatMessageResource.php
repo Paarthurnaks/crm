@@ -138,7 +138,7 @@ class ChatMessageResource extends JsonResource
 
             if ($user && $user->hasRole(DefaultRolesEnum::PARTNER->value) && $this->user->id !== $this->userId) {
                 return [
-                    'name' => 'ЕСБ',
+                    'name' => 'CRM',
                     'surname' => 'Система',
                     'avatar' => Storage::url('avatars/esb_logo.png'),
                 ];

@@ -14,13 +14,6 @@ use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 
 /**
- * @property $chat_id
- * @property $user_id
- * @property $status_id
- * @property $text_id
- * @property $reply_message_id
- * @property $is_forwarded
- *
  * @OA\Schema(
  *     title="ChatMessagel",
  *     description="Модель сообщения",
@@ -82,6 +75,28 @@ use Spatie\MediaLibrary\InteractsWithMedia;
  *         example=true
  *     )
  * )
+ *
+ * @property int $id
+ * @property int $chat_id
+ * @property int $user_id
+ * @property string $status
+ * @property string|null $text
+ * @property int|null $reply_message_id
+ * @property bool $is_forwarded
+ * @property \Illuminate\Support\Carbon|null $deleted_at
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\Chat|null $chat
+ * @property-read \App\Models\User|null $user
+ * @property-read \App\Models\ChatMessage|null $replyTo
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\ChatMessage> $replies
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\ChatHiddenMessage> $hiddenByUsers
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\ForwardingChatMessage> $forwards
+ * @property-read \App\Models\ForwardingChatMessage|null $forward
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\UnreadChatMessage> $unreadMessages
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \Spatie\MediaLibrary\MediaCollections\Models\Media> $media
+ * @method static \Illuminate\Database\Eloquent\Builder<static> query()
+ * @mixin \Illuminate\Database\Eloquent\Builder<static>
  */
 class ChatMessage extends Model implements HasMedia
 {

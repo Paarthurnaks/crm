@@ -4,7 +4,7 @@ namespace App\Enums;
 
 enum DefaultChatNameEnum: string
 {
-    case ESB_SYSTEM = 'ЕСБ Система';
+    case ESB_SYSTEM = 'CRM Система';
     case DEFAULT = 'Общий чат';
     case DELETED = 'Чат удален';
     case DELETED_PARTNER = 'Партнер удален';

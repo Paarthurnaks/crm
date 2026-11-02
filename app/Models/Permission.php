@@ -15,6 +15,21 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *         name="Permission"
  *     )
  * )
+ *
+ * @property int $id
+ * @property int $role_id
+ * @property string $entity
+ * @property string $view
+ * @property string $create
+ * @property string $update
+ * @property string $delete
+ * @property string|null $import
+ * @property string|null $export
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\Role|null $role
+ * @method static \Illuminate\Database\Eloquent\Builder<static> query()
+ * @mixin \Illuminate\Database\Eloquent\Builder<static>
  */
 class Permission extends Model
 {

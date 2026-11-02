@@ -9,10 +9,6 @@ use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 
 /**
- * @property int $id
- * @property string $title
- * @property string $preview
- *
  * @OA\Schema(
  *     title="KnowledgeBase",
  *     description="База знаний",
@@ -21,6 +17,16 @@ use Spatie\MediaLibrary\InteractsWithMedia;
  *         name="KnowledgeBase"
  *     )
  * )
+ *
+ * @property int $id
+ * @property string $title
+ * @property string|null $description
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\KnowledgeBaseContent> $contents
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \Spatie\MediaLibrary\MediaCollections\Models\Media> $media
+ * @method static \Illuminate\Database\Eloquent\Builder<static> query()
+ * @mixin \Illuminate\Database\Eloquent\Builder<static>
  */
 class KnowledgeBase extends Model implements HasMedia
 {

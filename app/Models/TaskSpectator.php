@@ -7,10 +7,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * @property int $id
- * @property int $user_id
- * @property int $task_id
- *
  * @OA\Schema(
  *     title="TaskSpectator",
  *     description="Наблюдатель задачи",
@@ -19,6 +15,16 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *         name="TaskSpectator"
  *     )
  * )
+ *
+ * @property int $id
+ * @property int $task_id
+ * @property int $user_id
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\Task|null $task
+ * @property-read \App\Models\User|null $user
+ * @method static \Illuminate\Database\Eloquent\Builder<static> query()
+ * @mixin \Illuminate\Database\Eloquent\Builder<static>
  */
 class TaskSpectator extends Model
 {

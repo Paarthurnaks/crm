@@ -15,6 +15,15 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *         name="SalesFunnel"
  *     )
  * )
+ *
+ * @property int $id
+ * @property int $from_stage_id
+ * @property int $to_stage_id
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\SalesStage|null $toStage
+ * @method static \Illuminate\Database\Eloquent\Builder<static> query()
+ * @mixin \Illuminate\Database\Eloquent\Builder<static>
  */
 class SalesTunnel extends Model
 {

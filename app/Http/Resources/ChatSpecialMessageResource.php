@@ -52,7 +52,7 @@ class ChatSpecialMessageResource extends JsonResource
 
             if ($user && ($user->role?->original_title === DefaultRolesEnum::PARTNER->value || $user->role?->title === DefaultRolesEnum::PARTNER->value)) {
                 $res['user'] = [
-                    'name' => 'ЕСБ',
+                    'name' => 'CRM',
                     'surname' => 'Система',
                     'avatar' => Storage::url('avatars/esb_logo.png'),
                 ];

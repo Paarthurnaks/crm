@@ -7,10 +7,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * @property int $id
- * @property int $deal_id
- * @property int $client_id
- *
  * @OA\Schema(
  *     title="PartnerClientDeal",
  *     description="Связь между сделкой партнера и его клиентом",
@@ -19,6 +15,16 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *         name="Deal"
  *     )
  * )
+ *
+ * @property int $id
+ * @property int $deal_id
+ * @property int $client_id
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\User|null $client
+ * @property-read \App\Models\Deal|null $deal
+ * @method static \Illuminate\Database\Eloquent\Builder<static> query()
+ * @mixin \Illuminate\Database\Eloquent\Builder<static>
  */
 class PartnerClientDeal extends Model
 {

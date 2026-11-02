@@ -6,9 +6,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * @property $user_id
- * @property $chat_message_id
- *
  * @OA\Schema(
  *     title="ChatHiddenMessage",
  *     description="Модель для скрытых сообщений",
@@ -40,6 +37,14 @@ use Illuminate\Database\Eloquent\Model;
  *         example=1
  *     )
  * )
+ *
+ * @property int $id
+ * @property int $user_id
+ * @property int $chat_message_id
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @method static \Illuminate\Database\Eloquent\Builder<static> query()
+ * @mixin \Illuminate\Database\Eloquent\Builder<static>
  */
 class ChatHiddenMessage extends Model
 {

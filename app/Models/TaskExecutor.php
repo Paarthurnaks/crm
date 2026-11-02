@@ -9,10 +9,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use OpenApi\Annotations as OA;
 
 /**
- * @property int $id
- * @property int $user_id
- * @property int $task_id
- *
  * @OA\Schema(
  *     title="TaskExecutor",
  *     description="Ответственный задачи",
@@ -21,6 +17,17 @@ use OpenApi\Annotations as OA;
  *         name="TaskExecutor"
  *     )
  * )
+ *
+ * @property int $id
+ * @property int $task_id
+ * @property int $user_id
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\Task|null $task
+ * @property-read \App\Models\User|null $user
+ * @method static \Illuminate\Database\Eloquent\Builder<static> filter(\App\Http\Filters\Abstract\QueryFilter $filter)
+ * @method static \Illuminate\Database\Eloquent\Builder<static> query()
+ * @mixin \Illuminate\Database\Eloquent\Builder<static>
  */
 class TaskExecutor extends Model
 {

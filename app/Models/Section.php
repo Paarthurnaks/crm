@@ -20,6 +20,31 @@ use Illuminate\Support\Facades\Auth;
  *         name="Section"
  *     )
  * )
+ *
+ * @property int $id
+ * @property string $entity
+ * @property string $title
+ * @property int $user_id
+ * @property int $position
+ * @property int|null $deal_id
+ * @property int|null $sales_funnel_id
+ * @property bool $is_template
+ * @property bool $main_section
+ * @property string|null $type
+ * @property bool $is_customized
+ * @property int|null $creditor_id
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\User|null $user
+ * @property-read \App\Models\Deal|null $deal
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\SectionField> $fields
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\SectionField> $availableFields
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\SectionField> $availableFieldsView
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\SectionField> $availableFieldsCreate
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\SectionField> $availableFieldsUpdate
+ * @method static \Illuminate\Database\Eloquent\Builder<static> filter(\App\Http\Filters\Abstract\QueryFilter $filter)
+ * @method static \Illuminate\Database\Eloquent\Builder<static> query()
+ * @mixin \Illuminate\Database\Eloquent\Builder<static>
  */
 class Section extends Model
 {

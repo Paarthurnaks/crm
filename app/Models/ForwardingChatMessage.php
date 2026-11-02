@@ -38,6 +38,15 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *         example=2
  *     )
  * )
+ *
+ * @property int $id
+ * @property int|null $original_message_id
+ * @property int|null $forwarded_message_id
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\ChatMessage|null $originalMessage
+ * @method static \Illuminate\Database\Eloquent\Builder<static> query()
+ * @mixin \Illuminate\Database\Eloquent\Builder<static>
  */
 class ForwardingChatMessage extends Model
 {

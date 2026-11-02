@@ -9,8 +9,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * @property string $path
- *
  * @OA\Schema(
  *     title="DiskEntity",
  *     description="Элемент диска (папка/файл)",
@@ -19,6 +17,24 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *         name="DiskEntity"
  *     )
  * )
+ *
+ * @property int $id
+ * @property string $title
+ * @property int|null $who_created_id
+ * @property int|null $who_changed_id
+ * @property int|null $size
+ * @property \App\Enums\DiskEntityTypeEnum $type
+ * @property bool $deleted
+ * @property string|null $path
+ * @property string|null $original_path
+ * @property string|null $mime_type
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\User|null $whoCreated
+ * @property-read \App\Models\User|null $whoChanged
+ * @method static \Illuminate\Database\Eloquent\Builder<static> filter(\App\Http\Filters\Abstract\QueryFilter $filter)
+ * @method static \Illuminate\Database\Eloquent\Builder<static> query()
+ * @mixin \Illuminate\Database\Eloquent\Builder<static>
  */
 class DiskEntity extends Model
 {

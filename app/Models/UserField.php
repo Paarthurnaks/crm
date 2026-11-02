@@ -9,11 +9,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use OpenApi\Annotations as OA;
 
 /**
- * @property string $name
- * @property string $entity
- * @property string $type
- * @property string $code
- *
  * @OA\Schema(
  *     title="UserField",
  *     description="Пользовательское поле",
@@ -22,6 +17,20 @@ use OpenApi\Annotations as OA;
  *         name="UserField"
  *     )
  * )
+ *
+ * @property int $id
+ * @property string $name
+ * @property string $entity
+ * @property string $type
+ * @property string|null $code
+ * @property bool $is_required
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\UserFieldEnumValue> $userFieldEnumValues
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\UserFieldValue> $fieldValues
+ * @method static \Illuminate\Database\Eloquent\Builder<static> filter(\App\Http\Filters\Abstract\QueryFilter $filter)
+ * @method static \Illuminate\Database\Eloquent\Builder<static> query()
+ * @mixin \Illuminate\Database\Eloquent\Builder<static>
  */
 class UserField extends Model
 {

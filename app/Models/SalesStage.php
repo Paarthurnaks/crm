@@ -18,6 +18,22 @@ use OpenApi\Annotations as OA;
  *         name="SalesStage"
  *     )
  * )
+ *
+ * @property int $id
+ * @property string $title
+ * @property string $color
+ * @property int $position
+ * @property string $type
+ * @property int $sales_funnel_id
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\SalesFunnel|null $salesFunnel
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Deal> $deals
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\SalesTunnel> $salesTunnels
+ * @property array<string, mixed>|null $metrics
+ * @method static \Illuminate\Database\Eloquent\Builder<static> filter(\App\Http\Filters\Abstract\QueryFilter $filter)
+ * @method static \Illuminate\Database\Eloquent\Builder<static> query()
+ * @mixin \Illuminate\Database\Eloquent\Builder<static>
  */
 class SalesStage extends Model
 {

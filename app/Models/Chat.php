@@ -17,12 +17,6 @@ use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 
 /**
- * @property $id
- * @property $type
- * @property $name
- * @property $description
- * @property $category
- *
  * @OA\Schema(
  *     title="Chat",
  *     description="Модель чата",
@@ -68,6 +62,24 @@ use Spatie\MediaLibrary\InteractsWithMedia;
  *          example="system"
  *      )
  * )
+ *
+ * @property int $id
+ * @property string $type
+ * @property string|null $name
+ * @property string|null $description
+ * @property string|null $avatar
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\ChatMessage> $messages
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\ChatMember> $members
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\UnreadChatMessage> $unreadMessages
+ * @property-read \App\Models\ChatMessage|null $lastMessage
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\ChatCategory> $category
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\ChatCategory> $categories
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \Spatie\MediaLibrary\MediaCollections\Models\Media> $media
+ * @method static \Illuminate\Database\Eloquent\Builder<static> filter(\App\Http\Filters\Abstract\QueryFilter $filter)
+ * @method static \Illuminate\Database\Eloquent\Builder<static> query()
+ * @mixin \Illuminate\Database\Eloquent\Builder<static>
  */
 class Chat extends Model implements HasMedia
 {

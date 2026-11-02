@@ -17,6 +17,21 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  *         name="Report"
  *     )
  * )
+ *
+ * @property int $id
+ * @property string $title
+ * @property string|null $description
+ * @property string $period_from
+ * @property string $period_to
+ * @property array<string, mixed> $filter
+ * @property int|null $author_id
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\ReportField> $fields
+ * @property-read \App\Models\User|null $author
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\User> $userAccess
+ * @method static \Illuminate\Database\Eloquent\Builder<static> query()
+ * @mixin \Illuminate\Database\Eloquent\Builder<static>
  */
 class Report extends Model
 {

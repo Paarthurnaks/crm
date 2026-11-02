@@ -11,10 +11,6 @@ use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 
 /**
- * @property int $entity_id
- * @property int $field_id
- * @property string $value
- *
  * @OA\Schema(
  *     title="UserFieldValue",
  *     description="Значение пользовательского поля",
@@ -23,6 +19,18 @@ use Spatie\MediaLibrary\InteractsWithMedia;
  *         name="UserFieldValue"
  *     )
  * )
+ *
+ * @property int $id
+ * @property int $entity_id
+ * @property int $field_id
+ * @property string|null $value
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\UserField|null $userField
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \Spatie\MediaLibrary\MediaCollections\Models\Media> $media
+ * @method static \Illuminate\Database\Eloquent\Builder<static> filter(\App\Http\Filters\Abstract\QueryFilter $filter)
+ * @method static \Illuminate\Database\Eloquent\Builder<static> query()
+ * @mixin \Illuminate\Database\Eloquent\Builder<static>
  */
 class UserFieldValue extends Model implements HasMedia
 {

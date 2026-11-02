@@ -7,7 +7,7 @@ use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Routing\Controller as BaseController;
 
 /**
- * @OA\Info(title="ЕСБ CRM", version="1.0")
+ * @OA\Info(title="CRM", version="1.0")
  *
  * @OA\SecurityScheme(
  *      securityScheme="bearer_token",

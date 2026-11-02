@@ -8,10 +8,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
- * @property $chat_id
- * @property $user_id
- * @property $is_creator
- *
  * @OA\Schema(
  *     title="ChatMember",
  *     description="Модель для участника чата",
@@ -43,6 +39,18 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  *         example=3
  *     )
  * )
+ *
+ * @property int $id
+ * @property int $chat_id
+ * @property int $user_id
+ * @property bool $is_creator
+ * @property \Illuminate\Support\Carbon|null $deleted_at
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\Chat|null $chat
+ * @property-read \App\Models\User|null $user
+ * @method static \Illuminate\Database\Eloquent\Builder<static> query()
+ * @mixin \Illuminate\Database\Eloquent\Builder<static>
  */
 class ChatMember extends Model
 {

@@ -16,6 +16,20 @@ use OpenApi\Annotations as OA;
  *         name="DealEvent"
  *     )
  * )
+ *
+ * @property int $id
+ * @property int $deal_id
+ * @property int|null $initiator_id
+ * @property string $type
+ * @property string|null $changed_field
+ * @property string|null $old_value
+ * @property string|null $new_value
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\User|null $initiator
+ * @property-read \App\Models\Deal|null $deal
+ * @method static \Illuminate\Database\Eloquent\Builder<static> query()
+ * @mixin \Illuminate\Database\Eloquent\Builder<static>
  */
 class DealEvent extends Model
 {

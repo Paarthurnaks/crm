@@ -34,7 +34,7 @@ class SendLinkChangePasswordMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'ЕСБ CRM: Сброс пароля',
+            subject: 'CRM: Сброс пароля',
         );
     }
 

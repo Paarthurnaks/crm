@@ -15,6 +15,16 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *         name="UserTableSettings"
  *     )
  * )
+ *
+ * @property int $id
+ * @property string $entity
+ * @property int $user_id
+ * @property array<string, mixed>|null $settings
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\User|null $user
+ * @method static \Illuminate\Database\Eloquent\Builder<static> query()
+ * @mixin \Illuminate\Database\Eloquent\Builder<static>
  */
 class UserTableSettings extends Model
 {

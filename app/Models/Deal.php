@@ -16,16 +16,6 @@ use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 
 /**
- * @property int $id
- * @property string $title
- * @property int $sales_stage_id
- * @property int $sales_funnel_id
- * @property int $creator_id
- * @property int $responsible_id
- * @property string $note
- * @property float $amount
- * @property string $client
- *
  * @OA\Schema(
  *     title="Deal",
  *     description="Сделка",
@@ -34,6 +24,35 @@ use Spatie\MediaLibrary\InteractsWithMedia;
  *         name="Deal"
  *     )
  * )
+ *
+ * @property int $id
+ * @property string $title
+ * @property int $sales_stage_id
+ * @property int $sales_funnel_id
+ * @property int $creator_id
+ * @property int|null $responsible_id
+ * @property string $note
+ * @property string|float $amount
+ * @property int|null $creditor_id
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\SalesStage|null $salesStage
+ * @property-read \App\Models\SalesFunnel|null $salesFunnel
+ * @property-read \App\Models\User|null $creator
+ * @property-read \App\Models\User|null $responsible
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\DealEvent> $events
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\EntityActivity> $activities
+ * @property-read \App\Models\User|string|null $client
+ * @property-write int|string|null $client
+ * @method static \Illuminate\Database\Eloquent\Builder<static> allDeals()
+ * @method static \Illuminate\Database\Eloquent\Builder<static> ownDeals(int $actorId)
+ * @method static \Illuminate\Database\Eloquent\Builder<static> openedDeals()
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \Spatie\MediaLibrary\MediaCollections\Models\Media> $media
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Comment> $comments
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\UserFieldValue> $userFieldValues
+ * @method static \Illuminate\Database\Eloquent\Builder<static> filter(\App\Http\Filters\Abstract\QueryFilter $filter)
+ * @method static \Illuminate\Database\Eloquent\Builder<static> query()
+ * @mixin \Illuminate\Database\Eloquent\Builder<static>
  */
 class Deal extends Model implements HasMedia
 {

@@ -11,11 +11,6 @@ use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 
 /**
- * @property int $id
- * @property string $title
- * @property int $creator_id
- * @property string $entity
- *
  * @OA\Schema(
  *     title="DocumentTemplate",
  *     description="Шаблон документов",
@@ -24,6 +19,18 @@ use Spatie\MediaLibrary\InteractsWithMedia;
  *         name="DocumentTemplate"
  *     )
  * )
+ *
+ * @property int $id
+ * @property string $title
+ * @property int $creator_id
+ * @property string $entity
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\User|null $creator
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \Spatie\MediaLibrary\MediaCollections\Models\Media> $media
+ * @method static \Illuminate\Database\Eloquent\Builder<static> filter(\App\Http\Filters\Abstract\QueryFilter $filter)
+ * @method static \Illuminate\Database\Eloquent\Builder<static> query()
+ * @mixin \Illuminate\Database\Eloquent\Builder<static>
  */
 class DocumentTemplate extends Model implements HasMedia
 {

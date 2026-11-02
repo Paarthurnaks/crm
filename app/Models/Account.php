@@ -9,12 +9,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use OpenApi\Annotations as OA;
 
 /**
- * @property int $id
- * @property int $deal_id
- * @property int $author_id
- * @property float $sum
- * @property string $invoice_date
- *
  * @OA\Schema(
  *     title="Account",
  *     description="Счет",
@@ -23,6 +17,19 @@ use OpenApi\Annotations as OA;
  *         name="Account"
  *     )
  * )
+ *
+ * @property int $id
+ * @property int $deal_id
+ * @property float $sum
+ * @property string $invoice_date
+ * @property int $author_id
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\User|null $author
+ * @property-read \App\Models\Deal|null $deal
+ * @method static \Illuminate\Database\Eloquent\Builder<static> filter(\App\Http\Filters\Abstract\QueryFilter $filter)
+ * @method static \Illuminate\Database\Eloquent\Builder<static> query()
+ * @mixin \Illuminate\Database\Eloquent\Builder<static>
  */
 class Account extends Model
 {

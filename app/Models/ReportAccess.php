@@ -6,10 +6,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * @property int $id
- * @property int $report_id
- * @property int $user_id
- *
  * @OA\Schema(
  *     title="ReportAccess",
  *     description="Кто имеет доступ к отчёту",
@@ -18,6 +14,14 @@ use Illuminate\Database\Eloquent\Model;
  *         name="ReportAccess"
  *     )
  * )
+ *
+ * @property int $id
+ * @property int $report_id
+ * @property int $user_id
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @method static \Illuminate\Database\Eloquent\Builder<static> query()
+ * @mixin \Illuminate\Database\Eloquent\Builder<static>
  */
 class ReportAccess extends Model
 {

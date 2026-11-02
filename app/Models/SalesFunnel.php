@@ -18,6 +18,19 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  *         name="SalesFunnel"
  *     )
  * )
+ *
+ * @property int $id
+ * @property string $title
+ * @property int|null $position
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\SalesStage> $salesStages
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Deal> $deals
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Field> $fields
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\UserField> $userFields
+ * @method static \Illuminate\Database\Eloquent\Builder<static> filter(\App\Http\Filters\Abstract\QueryFilter $filter)
+ * @method static \Illuminate\Database\Eloquent\Builder<static> query()
+ * @mixin \Illuminate\Database\Eloquent\Builder<static>
  */
 class SalesFunnel extends Model
 {

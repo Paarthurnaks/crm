@@ -10,8 +10,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use OpenApi\Annotations as OA;
 
 /**
- * @property int $id
- *
  * @OA\Schema(
  *     title="Role",
  *     description="Роль",
@@ -20,6 +18,26 @@ use OpenApi\Annotations as OA;
  *         name="Role"
  *     )
  * )
+ *
+ * @property int $id
+ * @property string $title
+ * @property string|null $original_title
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\User> $users
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Permission> $permissions
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\DiskEntity> $availableDiskEntities
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Field> $fields
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\UserField> $userFields
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Field> $fieldsView
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\UserField> $userFieldsView
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Field> $fieldsCreate
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\UserField> $userFieldsCreate
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Field> $fieldsUpdate
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\UserField> $userFieldsUpdate
+ * @method static \Illuminate\Database\Eloquent\Builder<static> filter(\App\Http\Filters\Abstract\QueryFilter $filter)
+ * @method static \Illuminate\Database\Eloquent\Builder<static> query()
+ * @mixin \Illuminate\Database\Eloquent\Builder<static>
  */
 class Role extends Model
 {

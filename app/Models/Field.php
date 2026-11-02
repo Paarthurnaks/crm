@@ -14,6 +14,17 @@ use Illuminate\Database\Eloquent\Model;
  *         name="Field"
  *     )
  * )
+ *
+ * @property int $id
+ * @property string $name
+ * @property string $entity
+ * @property string $type
+ * @property string $code
+ * @property bool $is_required
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @method static \Illuminate\Database\Eloquent\Builder<static> query()
+ * @mixin \Illuminate\Database\Eloquent\Builder<static>
  */
 class Field extends Model
 {
