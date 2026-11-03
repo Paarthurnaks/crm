@@ -4,6 +4,8 @@ namespace App\Models;
 
 use App\Http\Filters\Traits\Filterable;
 use App\Traits\HasChats;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -12,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
 use Laravel\Sanctum\HasApiTokens;
 use PHPOpenSourceSaver\JWTAuth\Contracts\JWTSubject;
@@ -41,23 +44,25 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
  * @property string|null $color
  * @property int|null $role_id
  * @property int|null $division_id
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \App\Models\HighLevelAdmin|null $highLevelAdmin
- * @property-read \App\Models\Role|null $role
- * @property-read \App\Models\Division|null $division
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Deal> $deals
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Deal> $partnerDeals
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\User> $clients
- * @property-read \App\Models\User|null $partner
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read HighLevelAdmin|null $highLevelAdmin
+ * @property-read Role|null $role
+ * @property-read Division|null $division
+ * @property-read Collection<int, Deal> $deals
+ * @property-read Collection<int, Deal> $partnerDeals
+ * @property-read Collection<int, User> $clients
+ * @property-read User|null $partner
  * @property-read bool $is_high_level_admin
  * @property-read string $partner_deal_client_key
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \Spatie\MediaLibrary\MediaCollections\Models\Media> $media
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Chat> $chats
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\ChatCategory> $chatCategories
+ * @property-read Collection<int, Media> $media
+ * @property-read Collection<int, Chat> $chats
+ * @property-read Collection<int, ChatCategory> $chatCategories
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static> filter(\App\Http\Filters\Abstract\QueryFilter $filter)
  * @method static \Illuminate\Database\Eloquent\Builder<static> query()
- * @mixin \Illuminate\Database\Eloquent\Builder<static>
+ *
+ * @mixin Builder<static>
  */
 class User extends Authenticatable implements HasMedia, JWTSubject
 {
@@ -71,7 +76,7 @@ class User extends Authenticatable implements HasMedia, JWTSubject
     /**
      * The attributes that are mass assignable.
      *
-     * @var array<int, string>
+     * @var list<string>
      */
     protected $fillable = [
         'name',
@@ -106,7 +111,7 @@ class User extends Authenticatable implements HasMedia, JWTSubject
      *     example=1
      * )
      *
-     * @var bigInteger
+     * @var int
      */
     private $id;
 
@@ -151,7 +156,7 @@ class User extends Authenticatable implements HasMedia, JWTSubject
      *     example=1
      * )
      *
-     * @var bigInteger
+     * @var int
      */
     private $role_id;
 
@@ -163,7 +168,7 @@ class User extends Authenticatable implements HasMedia, JWTSubject
      *     example=1
      * )
      *
-     * @var bigInteger
+     * @var int
      */
     private $division_id;
 
@@ -187,7 +192,7 @@ class User extends Authenticatable implements HasMedia, JWTSubject
      *     example="2022-12-27 10:09:20"
      * )
      *
-     * @var datetime
+     * @var string
      */
     private $last_login;
 
@@ -199,7 +204,7 @@ class User extends Authenticatable implements HasMedia, JWTSubject
      *     example="2022-12-27 10:09:20"
      * )
      *
-     * @var datetime
+     * @var string
      */
     private $created_at;
 
@@ -211,7 +216,7 @@ class User extends Authenticatable implements HasMedia, JWTSubject
      *     example="2022-12-27 10:09:20"
      * )
      *
-     * @var datetime
+     * @var string
      */
     private $updated_at;
 
@@ -295,8 +300,8 @@ class User extends Authenticatable implements HasMedia, JWTSubject
     {
         $this
             ->addMediaConversion('preview')
-            ->fit(Fit::Contain, 300, 300)
-            ->nonQueued();
+            ->nonQueued()
+            ->fit(Fit::Contain, 300, 300);
     }
 
     public function hasDealAccess(int $dealId): bool
@@ -320,13 +325,9 @@ class User extends Authenticatable implements HasMedia, JWTSubject
         return $this->role->permissions()
             ->where('entity', $entity)
             ->orderByDesc('permissions.id')
-            ->pluck($action)
-            ->first();
+            ->value($action);
     }
 
-    /**
-     * @param  mixed  $roles
-     */
     public function hasRole(array|string $roles): bool
     {
         if (is_string($roles)) {

@@ -41,6 +41,20 @@ class AuthTest extends TestCase
         $response->assertStatus(200);
     }
 
+    public function test_jwt_from_login_authenticates_api_request(): void
+    {
+        $token = $this->postJson('/api/login', $this->userData)
+            ->assertOk()
+            ->json('data.token');
+
+        $this->assertIsString($token);
+
+        $this->withToken($token)
+            ->getJson('/api/me')
+            ->assertOk()
+            ->assertJsonPath('status', 'success');
+    }
+
     public function test_authenticated_user(): void
     {
         Auth::login($this->user);

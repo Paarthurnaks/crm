@@ -41,11 +41,8 @@ class TaskObserver
         if ($task->deadline &&
             ($task->type === TaskTypeEnum::DOCKET->value || $task->type === TaskTypeEnum::STANDARD->value)) {
             $deadline = Carbon::parse($task->deadline);
-            $now = Carbon::now();
-
             if ($deadline->isFuture()) {
-                $delay = $deadline->diffInSeconds($now);
-                TaskDeadlineExpirationJob::dispatch($task)->delay($delay)->afterCommit();
+                TaskDeadlineExpirationJob::dispatch($task)->delay($deadline)->afterCommit();
             }
         }
     }
@@ -68,12 +65,13 @@ class TaskObserver
         }
 
         if ($task->isDirty('deadline') && $task->deadline) {
-            if (Carbon::parse($task->deadline)->isFuture()) {
+            $deadline = Carbon::parse($task->deadline);
+
+            if ($deadline->isFuture()) {
                 $task->status = TaskStatusEnum::PENDING->value;
 
-                $delay = Carbon::parse($task->deadline)->diffInSeconds(now());
-                TaskDeadlineExpirationJob::dispatch($task)->delay($delay)->afterCommit();
-            } elseif (Carbon::parse($task->deadline)->isPast()) {
+                TaskDeadlineExpirationJob::dispatch($task)->delay($deadline)->afterCommit();
+            } elseif ($deadline->isPast()) {
                 TaskDeadlineExpirationJob::dispatch($task)->afterCommit();
             }
         }

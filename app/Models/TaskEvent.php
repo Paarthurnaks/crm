@@ -2,9 +2,11 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 use OpenApi\Annotations as OA;
 
 /**
@@ -24,12 +26,14 @@ use OpenApi\Annotations as OA;
  * @property string|null $changed_field
  * @property string|null $old_value
  * @property string|null $new_value
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \App\Models\User|null $initiator
- * @property-read \App\Models\Task|null $task
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read User|null $initiator
+ * @property-read Task|null $task
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static> query()
- * @mixin \Illuminate\Database\Eloquent\Builder<static>
+ *
+ * @mixin Builder<static>
  */
 class TaskEvent extends Model
 {
@@ -52,7 +56,7 @@ class TaskEvent extends Model
      *     example=1
      * )
      *
-     * @var bigInteger
+     * @var int
      */
     private $id;
 
@@ -64,7 +68,7 @@ class TaskEvent extends Model
      *     example=4
      * )
      *
-     * @var bigInteger
+     * @var int
      */
     private $initiator_id;
 

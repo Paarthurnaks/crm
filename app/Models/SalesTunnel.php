@@ -2,9 +2,11 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * @OA\Schema(
@@ -19,11 +21,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $id
  * @property int $from_stage_id
  * @property int $to_stage_id
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \App\Models\SalesStage|null $toStage
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read SalesStage|null $toStage
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static> query()
- * @mixin \Illuminate\Database\Eloquent\Builder<static>
+ *
+ * @mixin Builder<static>
  */
 class SalesTunnel extends Model
 {
@@ -42,7 +46,7 @@ class SalesTunnel extends Model
      *     example=1
      * )
      *
-     * @var bigInteger
+     * @var int
      */
     private $id;
 
@@ -54,7 +58,7 @@ class SalesTunnel extends Model
      *     example=3
      * )
      *
-     * @var bigInteger
+     * @var int
      */
     private $from_stage_id;
 
@@ -66,7 +70,7 @@ class SalesTunnel extends Model
      *     example=8
      * )
      *
-     * @var bigInteger
+     * @var int
      */
     private $to_stage_id;
 

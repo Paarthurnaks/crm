@@ -3,10 +3,13 @@
 namespace App\Models;
 
 use App\Http\Filters\Traits\Filterable;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 use OpenApi\Annotations as OA;
 
 /**
@@ -25,15 +28,17 @@ use OpenApi\Annotations as OA;
  * @property int $position
  * @property string $type
  * @property int $sales_funnel_id
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \App\Models\SalesFunnel|null $salesFunnel
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Deal> $deals
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\SalesTunnel> $salesTunnels
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read SalesFunnel|null $salesFunnel
+ * @property-read Collection<int, Deal> $deals
+ * @property-read Collection<int, SalesTunnel> $salesTunnels
  * @property array<string, mixed>|null $metrics
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static> filter(\App\Http\Filters\Abstract\QueryFilter $filter)
  * @method static \Illuminate\Database\Eloquent\Builder<static> query()
- * @mixin \Illuminate\Database\Eloquent\Builder<static>
+ *
+ * @mixin Builder<static>
  */
 class SalesStage extends Model
 {
@@ -61,7 +66,7 @@ class SalesStage extends Model
      *     example=1
      * )
      *
-     * @var bigInteger
+     * @var int
      */
     private $id;
 
@@ -117,7 +122,7 @@ class SalesStage extends Model
      *     example=1
      * )
      *
-     * @var bigInteger
+     * @var int
      */
     private $sales_funnel_id;
 

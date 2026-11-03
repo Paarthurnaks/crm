@@ -3,10 +3,13 @@
 namespace App\Models;
 
 use App\Http\Filters\Traits\Filterable;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 use OpenApi\Annotations as OA;
 
 /**
@@ -22,22 +25,24 @@ use OpenApi\Annotations as OA;
  * @property int $id
  * @property string $title
  * @property string|null $original_title
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\User> $users
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Permission> $permissions
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\DiskEntity> $availableDiskEntities
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Field> $fields
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\UserField> $userFields
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Field> $fieldsView
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\UserField> $userFieldsView
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Field> $fieldsCreate
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\UserField> $userFieldsCreate
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Field> $fieldsUpdate
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\UserField> $userFieldsUpdate
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read Collection<int, User> $users
+ * @property-read Collection<int, Permission> $permissions
+ * @property-read Collection<int, DiskEntity> $availableDiskEntities
+ * @property-read Collection<int, Field> $fields
+ * @property-read Collection<int, UserField> $userFields
+ * @property-read Collection<int, Field> $fieldsView
+ * @property-read Collection<int, UserField> $userFieldsView
+ * @property-read Collection<int, Field> $fieldsCreate
+ * @property-read Collection<int, UserField> $userFieldsCreate
+ * @property-read Collection<int, Field> $fieldsUpdate
+ * @property-read Collection<int, UserField> $userFieldsUpdate
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static> filter(\App\Http\Filters\Abstract\QueryFilter $filter)
  * @method static \Illuminate\Database\Eloquent\Builder<static> query()
- * @mixin \Illuminate\Database\Eloquent\Builder<static>
+ *
+ * @mixin Builder<static>
  */
 class Role extends Model
 {
@@ -58,7 +63,7 @@ class Role extends Model
      *     example=1
      * )
      *
-     * @var bigInteger
+     * @var int
      */
     private $id;
 

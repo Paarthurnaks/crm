@@ -21,6 +21,7 @@ class ReportFieldValueParityTest extends TestCase
     public function test_view_and_export_keep_their_existing_representation_of_user_and_scalar_fields(): void
     {
         $responsible = new User(['name' => 'Иван', 'surname' => 'Петров']);
+        $responsible->setRelation('highLevelAdmin', null);
         $deal = new Deal(['title' => 'Сделка']);
         $deal->setRelation('responsible', $responsible);
 

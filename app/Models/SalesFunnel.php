@@ -4,10 +4,13 @@ namespace App\Models;
 
 use App\Enums\SalesStageEnum;
 use App\Http\Filters\Traits\Filterable;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
 /**
  * @OA\Schema(
@@ -22,15 +25,17 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int $id
  * @property string $title
  * @property int|null $position
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\SalesStage> $salesStages
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Deal> $deals
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Field> $fields
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\UserField> $userFields
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read Collection<int, SalesStage> $salesStages
+ * @property-read Collection<int, Deal> $deals
+ * @property-read Collection<int, Field> $fields
+ * @property-read Collection<int, UserField> $userFields
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static> filter(\App\Http\Filters\Abstract\QueryFilter $filter)
  * @method static \Illuminate\Database\Eloquent\Builder<static> query()
- * @mixin \Illuminate\Database\Eloquent\Builder<static>
+ *
+ * @mixin Builder<static>
  */
 class SalesFunnel extends Model
 {
@@ -51,7 +56,7 @@ class SalesFunnel extends Model
      *     example=1
      * )
      *
-     * @var bigInteger
+     * @var int
      */
     private $id;
 

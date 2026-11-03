@@ -156,7 +156,7 @@ return [
      * access: 0 - deny, 1 - read, 2 - read/write
      */
     'aclRules' => [
-        null => [
+        '' => [
             // ['disk_entities' => 'public', 'path' => '/', 'access' => 2],
         ],
         1 => [

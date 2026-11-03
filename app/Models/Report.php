@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
 /**
  * @OA\Schema(
@@ -25,13 +28,15 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $period_to
  * @property array<string, mixed> $filter
  * @property int|null $author_id
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\ReportField> $fields
- * @property-read \App\Models\User|null $author
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\User> $userAccess
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read Collection<int, ReportField> $fields
+ * @property-read User|null $author
+ * @property-read Collection<int, User> $userAccess
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static> query()
- * @mixin \Illuminate\Database\Eloquent\Builder<static>
+ *
+ * @mixin Builder<static>
  */
 class Report extends Model
 {
@@ -58,7 +63,7 @@ class Report extends Model
      *     example=1
      * )
      *
-     * @var bigInteger
+     * @var int
      */
     private $id;
 
@@ -92,7 +97,7 @@ class Report extends Model
      *     example="2022-12-27 10:09:20"
      * )
      *
-     * @var datetime
+     * @var string
      */
     private $period_from;
 
@@ -104,7 +109,7 @@ class Report extends Model
      *     example="2022-12-27 10:09:20"
      * )
      *
-     * @var datetime
+     * @var string
      */
     private $period_to;
 
@@ -130,7 +135,7 @@ class Report extends Model
      *     example=1
      * )
      *
-     * @var bigInteger
+     * @var int
      */
     private $author_id;
 

@@ -2,11 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Enums\TaskTypeEnum;
+use App\Jobs\TaskDeadlineExpirationJob;
 use App\Models\Task;
 use App\Models\User;
-use App\Jobs\TaskDeadlineExpirationJob;
-use App\Enums\TaskTypeEnum;
 use App\Services\TaskService;
+use Carbon\CarbonInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
@@ -37,6 +38,27 @@ class TaskEmptyActivityTest extends TestCase
         app(TaskService::class)->create(['title' => 'Without deadline'], $user);
 
         Queue::assertNotPushed(TaskDeadlineExpirationJob::class);
+    }
+
+    public function test_future_deadline_schedules_expiration_at_the_deadline(): void
+    {
+        Queue::fake();
+        $user = User::withoutEvents(fn (): User => User::create([
+            'name' => 'Test', 'surname' => 'User', 'email' => 'task-deadline@example.test',
+            'password' => 'password',
+        ]));
+        $deadline = now()->addHour()->startOfSecond();
+
+        Task::create([
+            'title' => 'Future deadline',
+            'creator_id' => $user->id,
+            'type' => TaskTypeEnum::STANDARD->value,
+            'deadline' => $deadline,
+        ]);
+
+        Queue::assertPushed(TaskDeadlineExpirationJob::class, function (TaskDeadlineExpirationJob $job) use ($deadline): bool {
+            return $job->delay instanceof CarbonInterface && $job->delay->equalTo($deadline);
+        });
     }
 
     public function test_all_task_types_can_be_created_without_http_actor(): void

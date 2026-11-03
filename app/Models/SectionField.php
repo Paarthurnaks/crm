@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use App\Enums\UserFieldTypeEnum;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * @OA\Schema(
@@ -22,15 +24,17 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int|null $field_id
  * @property int|null $user_field_id
  * @property int $position
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \App\Models\Section|null $section
- * @property-read \App\Models\Field|null $field
- * @property-read \App\Models\UserField|null $userField
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read Section|null $section
+ * @property-read Field|null $field
+ * @property-read UserField|null $userField
  * @property mixed $value
  * @property mixed $model
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static> query()
- * @mixin \Illuminate\Database\Eloquent\Builder<static>
+ *
+ * @mixin Builder<static>
  */
 class SectionField extends Model
 {
@@ -56,7 +60,7 @@ class SectionField extends Model
      *     example=1
      * )
      *
-     * @var bigInteger
+     * @var int
      */
     private $id;
 
@@ -68,7 +72,7 @@ class SectionField extends Model
      *     example=1
      * )
      *
-     * @var bigInteger
+     * @var int
      */
     private $section_id;
 

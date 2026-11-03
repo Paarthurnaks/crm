@@ -5,10 +5,13 @@ namespace App\Models;
 use App\Enums\ProhibitedFieldEnum;
 use App\Http\Filters\Traits\Filterable;
 use App\Services\FieldAccess;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 
 /**
@@ -33,18 +36,20 @@ use Illuminate\Support\Facades\Auth;
  * @property string|null $type
  * @property bool $is_customized
  * @property int|null $creditor_id
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \App\Models\User|null $user
- * @property-read \App\Models\Deal|null $deal
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\SectionField> $fields
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\SectionField> $availableFields
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\SectionField> $availableFieldsView
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\SectionField> $availableFieldsCreate
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\SectionField> $availableFieldsUpdate
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read User|null $user
+ * @property-read Deal|null $deal
+ * @property-read Collection<int, SectionField> $fields
+ * @property-read Collection<int, SectionField> $availableFields
+ * @property-read Collection<int, SectionField> $availableFieldsView
+ * @property-read Collection<int, SectionField> $availableFieldsCreate
+ * @property-read Collection<int, SectionField> $availableFieldsUpdate
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static> filter(\App\Http\Filters\Abstract\QueryFilter $filter)
  * @method static \Illuminate\Database\Eloquent\Builder<static> query()
- * @mixin \Illuminate\Database\Eloquent\Builder<static>
+ *
+ * @mixin Builder<static>
  */
 class Section extends Model
 {
@@ -71,7 +76,7 @@ class Section extends Model
      *     example=1
      * )
      *
-     * @var bigInteger
+     * @var int
      */
     private $id;
 
@@ -105,7 +110,7 @@ class Section extends Model
      *     example=1
      * )
      *
-     * @var bigInteger
+     * @var int
      */
     private $user_id;
 
@@ -117,7 +122,7 @@ class Section extends Model
      *     example=1
      * )
      *
-     * @var bigInteger
+     * @var int
      */
     private $sales_funnel_id;
 

@@ -6,14 +6,17 @@ use App\Http\Filters\Traits\Filterable;
 use App\Traits\HasUserFields;
 use BeyondCode\Comments\Traits\HasComments;
 use Illuminate\Contracts\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Support\Carbon;
 use OpenApi\Annotations as OA;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 /**
  * @OA\Schema(
@@ -34,24 +37,28 @@ use Spatie\MediaLibrary\InteractsWithMedia;
  * @property string $note
  * @property string|float $amount
  * @property int|null $creditor_id
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \App\Models\SalesStage|null $salesStage
- * @property-read \App\Models\SalesFunnel|null $salesFunnel
- * @property-read \App\Models\User|null $creator
- * @property-read \App\Models\User|null $responsible
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\DealEvent> $events
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\EntityActivity> $activities
- * @property-read \App\Models\User|string|null $client
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read SalesStage|null $salesStage
+ * @property-read SalesFunnel|null $salesFunnel
+ * @property-read User|null $creator
+ * @property-read User|null $responsible
+ * @property-read Collection<int, DealEvent> $events
+ * @property-read Collection<int, EntityActivity> $activities
+ * @property-read User|string|null $client
  * @property-write int|string|null $client
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static> allDeals()
  * @method static \Illuminate\Database\Eloquent\Builder<static> ownDeals(int $actorId)
  * @method static \Illuminate\Database\Eloquent\Builder<static> openedDeals()
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \Spatie\MediaLibrary\MediaCollections\Models\Media> $media
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Comment> $comments
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\UserFieldValue> $userFieldValues
+ *
+ * @property-read Collection<int, Media> $media
+ * @property-read Collection<int, Comment> $comments
+ * @property-read Collection<int, UserFieldValue> $userFieldValues
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static> filter(\App\Http\Filters\Abstract\QueryFilter $filter)
  * @method static \Illuminate\Database\Eloquent\Builder<static> query()
+ *
  * @mixin \Illuminate\Database\Eloquent\Builder<static>
  */
 class Deal extends Model implements HasMedia
@@ -81,7 +88,7 @@ class Deal extends Model implements HasMedia
      *     example=1
      * )
      *
-     * @var bigInteger
+     * @var int
      */
     private $id;
 

@@ -10,7 +10,7 @@ class ReportExport implements FromArray, ShouldAutoSize, WithHeadings
 {
     protected array $reports;
 
-    public function __construct($reports)
+    public function __construct(array $reports)
     {
         $this->reports = $reports;
     }
@@ -22,6 +22,6 @@ class ReportExport implements FromArray, ShouldAutoSize, WithHeadings
 
     public function headings(): array
     {
-        return array_keys($this->reports[0]);
+        return isset($this->reports[0]) ? array_keys($this->reports[0]) : [];
     }
 }
