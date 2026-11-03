@@ -300,6 +300,12 @@ class ReportController extends Controller
      */
     public function update(ReportUpdateRequest $request, Report $report): JsonResponse
     {
+        if (! $request->user()->can('update', $report)) {
+            Log::warning('Report access denied', ['report_id' => $report->id, 'actor_id' => $request->user()->id, 'action' => 'update']);
+
+            return ResponseService::forbidden(message: 'Вы не имеете право изменять этот отчёт');
+        }
+
         $validated = $request->validated();
         $report = $this->reportService->updateReport($report, $validated);
 

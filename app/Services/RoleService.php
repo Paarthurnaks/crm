@@ -27,7 +27,7 @@ class RoleService
                 'title' => $roleData['title'],
             ]);
 
-            $this->syncPermissions($role, $roleData['permissions'], false);
+            $this->syncPermissions($role, $roleData['permissions'] ?? [], false);
 
             $this->syncFieldAccess($role, $roleData, false);
             if (isset($roleData['available_disk_entities'])) {

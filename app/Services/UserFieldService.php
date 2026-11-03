@@ -7,13 +7,12 @@ use App\Enums\SectionFieldEntityEnum;
 use App\Enums\UserFieldTypeEnum;
 use App\Http\Filters\UserFieldFilter;
 use App\Models\Deal;
-use App\Models\SalesFunnel;
+use App\Models\SalesStage;
 use App\Models\User;
 use App\Models\UserField;
 use App\Models\UserFieldEnumValue;
 use App\Models\UserFieldValue;
 use Exception;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -138,13 +137,9 @@ class UserFieldService
     {
         try {
             return DB::transaction(function () use ($data, $userField) {
-                $userField->update([
-                    'entity' => $data['entity'],
-                    'name' => $data['name'],
-                    'type' => $data['type'],
-                ]);
+                $userField->update(array_intersect_key($data, array_flip(['entity', 'name', 'type'])));
 
-                if ($data['type'] === UserFieldTypeEnum::ENUM->value) {
+                if ($userField->type === UserFieldTypeEnum::ENUM->value && array_key_exists('options', $data)) {
                     $existingOptions = $userField->userFieldEnumValues()->get()->keyBy('id');
                     $options = collect($data['options'])->map(function ($option) use ($existingOptions) {
                         if (isset($option['id'])) {
@@ -184,16 +179,19 @@ class UserFieldService
         $field->delete();
     }
 
-    public function updateUserFieldEntity(Model $model, array $data, SectionFieldEntityEnum $entityEnum): void
+    public function updateUserFieldEntity(Deal $model, array $data, SectionFieldEntityEnum $entityEnum): void
     {
         foreach ($data as $key => $value) {
             if ($key === 'user_field_values') {
                 $this->addUserFieldValues($model->id, $value, $entityEnum);
             } elseif ($key === 'sales_funnel_id') {
                 $model->sales_funnel_id = $value;
-                $salesFunnel = SalesFunnel::find($value);
-                $salesStage = $salesFunnel->salesStages()->where('position', 1)->first();
-                $model->sales_stage_id = $salesStage->id ?? $salesFunnel->salesStages()->first()->id;
+                $salesStage = SalesStage::query()
+                    ->where('sales_funnel_id', $value)
+                    ->where('position', 1)
+                    ->first()
+                    ?? SalesStage::query()->where('sales_funnel_id', $value)->firstOrFail();
+                $model->sales_stage_id = $salesStage->id;
             } elseif ($key === 'responsible_id' && $model->client instanceof User && $model->client->partner && $value !== $model->client->partner->id) {
                 $model->client = null;
             } elseif ($key === 'client_id') {

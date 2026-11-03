@@ -6,6 +6,8 @@ use App\Enums\DefaultRolesEnum;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class PartnerProfileAccessTest extends TestCase
@@ -32,6 +34,24 @@ class PartnerProfileAccessTest extends TestCase
         $this->actingAs($staff, 'api')
             ->postJson('/api/partner-color', ['color' => '#123456'])
             ->assertForbidden();
+    }
+
+    public function test_partner_logo_requires_image_and_can_be_read_after_upload(): void
+    {
+        Storage::fake('public');
+        $role = Role::create(['title' => 'Partner', 'original_title' => DefaultRolesEnum::PARTNER->value]);
+        $partner = $this->createUser($role);
+        $this->actingAs($partner, 'api');
+
+        $this->postJson('/api/partner-logo', [
+            'logo' => UploadedFile::fake()->create('notes.txt', 1, 'text/plain'),
+        ])->assertUnprocessable()->assertJsonValidationErrors('logo');
+        $this->postJson('/api/partner-logo', [
+            'logo' => UploadedFile::fake()->image('logo.png'),
+        ])->assertOk();
+        $this->actingAs($partner->fresh(), 'api');
+        $this->getJson('/api/partner-logo')->assertOk();
+        $this->assertSame(1, $partner->fresh()->getMedia('logo')->count());
     }
 
     private function createUser(Role $role): User

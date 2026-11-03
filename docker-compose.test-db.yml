@@ -1,0 +1,35 @@
+services:
+    pgsql-test:
+        image: postgres:15
+        environment:
+            POSTGRES_DB: crm_testing
+            POSTGRES_USER: crm_testing
+            POSTGRES_PASSWORD: testing-only
+        volumes:
+            - test-pgsql:/var/lib/postgresql/data
+        networks:
+            - sail
+        healthcheck:
+            test: ['CMD-SHELL', 'pg_isready -U crm_testing -d crm_testing']
+            interval: 5s
+            retries: 12
+
+    mysql-test:
+        image: mysql:8.4
+        environment:
+            MYSQL_DATABASE: crm_testing
+            MYSQL_USER: crm_testing
+            MYSQL_PASSWORD: testing-only
+            MYSQL_ROOT_PASSWORD: testing-root-only
+        volumes:
+            - test-mysql:/var/lib/mysql
+        networks:
+            - sail
+        healthcheck:
+            test: ['CMD-SHELL', 'mysqladmin ping -h localhost --silent']
+            interval: 5s
+            retries: 20
+
+volumes:
+    test-pgsql:
+    test-mysql:

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\DefaultRolesEnum;
 use App\Enums\EntityTypeEnum;
 use App\Enums\PermissionEntityEnum;
 use App\Enums\PermissionTypeEnum;
@@ -11,8 +12,6 @@ use App\Models\Report;
 use App\Models\ReportField;
 use App\Models\RoleUserField;
 use App\Models\User;
-use App\Enums\DefaultRolesEnum;
-use Carbon\Carbon;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -45,8 +44,8 @@ class ReportService
             $report = Report::create([
                 'title' => $reportData['title'],
                 'description' => $reportData['description'] ?? null,
-                'period_from' => $reportData['period_from'] ?? Carbon::minValue()->format('Y-m-d H:i:s'),
-                'period_to' => $reportData['period_to'] ?? Carbon::maxValue()->format('Y-m-d H:i:s'),
+                'period_from' => $reportData['period_from'] ?? '1970-01-01 00:00:00',
+                'period_to' => $reportData['period_to'] ?? '9999-12-31 23:59:59',
                 'filter' => $reportData['filter'],
                 'author_id' => $actor->id,
             ]);

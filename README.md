@@ -24,3 +24,5 @@ docker compose -f docker-compose-local.yml exec -T laravel.test composer install
 ## Диагностика
 
 Правила и ключи прикладного DEBUG журнала описаны в [руководстве по логированию](docs/debug-logging.md).
+
+Команды запуска тестов, проверки покрытия и изолированных PostgreSQL/MySQL баз приведены в [руководстве по тестированию](docs/testing.md).

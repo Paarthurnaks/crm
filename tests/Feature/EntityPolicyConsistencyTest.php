@@ -44,6 +44,9 @@ class EntityPolicyConsistencyTest extends TestCase
         $this->assertTrue($creator->hasDealAccess($deal->id));
         $this->assertFalse(Gate::forUser($other)->allows('view', $deal));
         $this->assertFalse($other->hasDealAccess($deal->id));
+
+        $this->actingAs($creator, 'api')->getJson('/api/deals/'.$deal->id)->assertOk();
+        $this->actingAs($other, 'api')->getJson('/api/deals/'.$deal->id)->assertForbidden();
     }
 
     public function test_report_policy_uses_report_access_rule(): void
@@ -59,6 +62,8 @@ class EntityPolicyConsistencyTest extends TestCase
 
         $this->assertTrue(Gate::forUser($author)->allows('view', $report));
         $this->assertFalse(Gate::forUser($other)->allows('view', $report));
+
+        $this->actingAs($other, 'api')->getJson('/api/reports/'.$report->id)->assertForbidden();
     }
 
     private function user(?Role $role, string $email): User

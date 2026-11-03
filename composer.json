@@ -51,6 +51,10 @@
     "scripts": {
         "phpstan": "@php vendor/bin/phpstan analyse --memory-limit=1G",
         "pint": "@php vendor/bin/pint",
+        "test:fast": "@php artisan test --compact",
+        "test:coverage": "@php -d pcov.enabled=1 -d xdebug.mode=off vendor/bin/phpunit --coverage-text --colors=never",
+        "test:pgsql": "@php vendor/bin/phpunit --configuration phpunit.pgsql.xml",
+        "test:mysql": "@php vendor/bin/phpunit --configuration phpunit.mysql.xml",
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
             "@php artisan package:discover --ansi"

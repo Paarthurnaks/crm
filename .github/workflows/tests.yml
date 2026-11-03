@@ -1,0 +1,88 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  quality-and-sqlite:
+    runs-on: ubuntu-24.04
+    env:
+      JWT_SECRET: ci-only-jwt-signing-key-for-automated-tests
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          extensions: bcmath, gd, intl, mbstring, pcov, pdo_sqlite, zip
+          coverage: pcov
+      - name: Install locked dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+      - name: Prepare test application
+        run: |
+          cp .env.example .env
+          php artisan key:generate --force
+      - name: Check changed PHP files
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if ! git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
+            BASE_SHA="$(git rev-parse HEAD^)"
+          fi
+          mapfile -d '' -t php_files < <(git diff --name-only --diff-filter=ACMR -z "$BASE_SHA" "$GITHUB_SHA" -- '*.php')
+          if ((${#php_files[@]})); then
+            composer pint -- --test "${php_files[@]}"
+            composer phpstan -- "${php_files[@]}" --no-progress
+          fi
+      - name: Run fast tests and collect coverage
+        run: php -d pcov.enabled=1 -d xdebug.mode=off vendor/bin/phpunit --coverage-clover storage/coverage.xml --colors=never
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: php-coverage-clover
+          path: storage/coverage.xml
+          if-no-files-found: ignore
+
+  postgresql-integration:
+    runs-on: ubuntu-24.04
+    services:
+      pgsql-test:
+        image: postgres:15
+        env:
+          POSTGRES_DB: crm_testing
+          POSTGRES_USER: crm_testing
+          POSTGRES_PASSWORD: testing-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U crm_testing -d crm_testing"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      DB_HOST: 127.0.0.1
+      JWT_SECRET: ci-only-jwt-signing-key-for-automated-tests
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          extensions: bcmath, gd, intl, mbstring, pdo_pgsql, zip
+          coverage: none
+      - name: Install locked dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+      - name: Prepare test application
+        run: |
+          cp .env.example .env
+          php artisan key:generate --force
+      - name: Run SQL integration tests
+        run: >-
+          composer test:pgsql --
+          tests/Feature/NotificationSearchPortabilityTest.php
+          tests/Feature/DealApiWorkflowTest.php
+          tests/Feature/TaskApiWorkflowTest.php
+          tests/Feature/UserFieldApiWorkflowTest.php
+          tests/Feature/ExplicitDomainWorkflowsTest.php

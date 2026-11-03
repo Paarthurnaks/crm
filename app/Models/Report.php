@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
 
 /**
@@ -33,6 +34,7 @@ use Illuminate\Support\Carbon;
  * @property-read Collection<int, ReportField> $fields
  * @property-read User|null $author
  * @property-read Collection<int, User> $userAccess
+ * @property LengthAwarePaginator<int, Deal>|Collection<int, Deal> $deals
  *
  * @method static \Illuminate\Database\Eloquent\Builder<static> query()
  *
